@@ -49,16 +49,23 @@ export default async function SharedPostPage({ params }: Props) {
       <Header />
       <main className="max-w-2xl mx-auto pb-20 animate-fade-in">
         {/* ヒーロー画像 */}
-        <div className="relative w-full aspect-[4/3] bg-[#1a1a1a]">
-          <Image
-            src={post.image_url}
-            alt={post.title}
-            fill
-            className="object-cover"
-            priority
-          />
-          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#0a0a0a] to-transparent" />
-        </div>
+        {post.image_url ? (
+          <div className="relative w-full aspect-[4/3] bg-[#1a1a1a]">
+            <Image
+              src={post.image_url}
+              alt={post.title}
+              fill
+              className="object-cover"
+              priority
+            />
+            <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#0a0a0a] to-transparent" />
+          </div>
+        ) : (
+          <div className="relative w-full aspect-[4/3] bg-[#1a1a1a] flex items-center justify-center">
+            <span className="text-6xl opacity-30">🍽️</span>
+            <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#0a0a0a] to-transparent" />
+          </div>
+        )}
 
         {/* コンテンツ */}
         <div className="px-5 -mt-10 relative z-10 space-y-8">
