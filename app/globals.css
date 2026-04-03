@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  body {
+    background-color: #fcfcfc;
+    color: #1f1f1f;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background-color: #ffedd5;
+    color: #f97316;
+  }
+
+  /* Date input のスタイル調整 */
+  input[type='date']::-webkit-calendar-picker-indicator {
+    filter: none;
+    cursor: pointer;
+  }
+}
+
+@layer components {
+  .page-container {
+    @apply max-w-2xl mx-auto px-4 py-6;
+  }
+}
