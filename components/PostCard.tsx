@@ -17,15 +17,21 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
       <Link href={`/posts/${post.id}`} className="group block mb-4">
         <div className="relative flex bg-white rounded-[2rem] p-4 border border-gray-100/60 shadow-sm hover:shadow-2xl hover:shadow-orange-500/5 hover:-translate-y-1 transition-all duration-300 active:scale-[0.98]">
           {/* 左側: 写真 */}
-          <div className="relative w-24 h-24 sm:w-28 sm:w-28 flex-shrink-0 rounded-[1.5rem] overflow-hidden bg-gray-50 shadow-inner">
-            <Image
-              src={post.image_url}
-              alt={post.title}
-              fill
-              className="object-cover group-hover:scale-110 transition-transform duration-700"
-              sizes="128px"
-            />
-          </div>
+          {post.image_url ? (
+            <div className="relative w-24 h-24 sm:w-28 sm:w-28 flex-shrink-0 rounded-[1.5rem] overflow-hidden bg-gray-50 shadow-inner">
+              <Image
+                src={post.image_url}
+                alt={post.title}
+                fill
+                className="object-cover group-hover:scale-110 transition-transform duration-700"
+                sizes="128px"
+              />
+            </div>
+          ) : (
+            <div className="relative w-24 h-24 sm:w-28 sm:w-28 flex-shrink-0 rounded-[1.5rem] overflow-hidden bg-orange-50 flex items-center justify-center shadow-inner border border-orange-100/50">
+              <span className="text-4xl opacity-50">🍽️</span>
+            </div>
+          )}
 
           {/* 右側: 情報 */}
           <div className="flex-1 ml-5 py-1 flex flex-col justify-between min-w-0">
@@ -83,13 +89,19 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
     <Link href={`/posts/${post.id}`} className="group block h-full">
       <div className="h-full rounded-[2.5rem] overflow-hidden bg-white border border-gray-100/60 transition-all duration-500 group-hover:-translate-y-2 group-hover:shadow-[0_30px_60px_rgba(249,115,22,0.08)]">
         <div className="relative aspect-[4/5] overflow-hidden bg-gray-50">
-          <Image
-            src={post.image_url}
-            alt={post.title}
-            fill
-            className="object-cover transition-transform duration-1000 group-hover:scale-110"
-            sizes="(max-width: 640px) 50vw, 33vw"
-          />
+          {post.image_url ? (
+            <Image
+              src={post.image_url}
+              alt={post.title}
+              fill
+              className="object-cover transition-transform duration-1000 group-hover:scale-110"
+              sizes="(max-width: 640px) 50vw, 33vw"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-orange-50 to-pink-50 flex items-center justify-center group-hover:scale-105 transition-transform duration-1000">
+              <span className="text-6xl opacity-40">🍽️</span>
+            </div>
+          )}
           <div className="absolute top-4 left-4 flex flex-col gap-2">
             {post.is_favorite && (
               <div className="bg-pink-500 text-white p-2 rounded-full shadow-xl animate-in zoom-in">

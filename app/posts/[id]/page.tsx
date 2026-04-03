@@ -54,24 +54,34 @@ export default async function PostDetailPage({ params }: Props) {
           )}
         </div>
 
-        {/* ヒーロー画像 */}
-        <div className="relative w-full aspect-square sm:aspect-[16/10] bg-gray-50 overflow-hidden">
-          <Image
-            src={post.image_url}
-            alt={post.title}
-            fill
-            className="object-cover"
-            priority
-          />
-          {/* ステータスバッジ */}
-          <div className="absolute bottom-4 left-4">
-            <span className={`px-5 py-2 rounded-2xl text-[11px] font-black shadow-xl backdrop-blur-xl ${
+        {/* ヒーロー画像またはバッジのみ */}
+        {post.image_url ? (
+          <div className="relative w-full aspect-square sm:aspect-[16/10] bg-gray-50 overflow-hidden">
+            <Image
+              src={post.image_url}
+              alt={post.title}
+              fill
+              className="object-cover"
+              priority
+            />
+            {/* ステータスバッジ */}
+            <div className="absolute bottom-4 left-4">
+              <span className={`px-5 py-2 rounded-2xl text-[11px] font-black shadow-xl backdrop-blur-xl ${
+                post.status === 'visited' ? 'bg-orange-500 text-white' : 'bg-blue-600 text-white'
+              }`}>
+                {post.status === 'visited' ? '行った' : '行きたい'}
+              </span>
+            </div>
+          </div>
+        ) : (
+          <div className="px-6 pt-4">
+            <span className={`inline-block px-5 py-2 rounded-2xl text-[11px] font-black shadow-sm ${
               post.status === 'visited' ? 'bg-orange-500 text-white' : 'bg-blue-600 text-white'
             }`}>
               {post.status === 'visited' ? '行った' : '行きたい'}
             </span>
           </div>
-        </div>
+        )}
 
         {/* 詳細情報 */}
         <div className="px-6 pt-8 space-y-8">
