@@ -27,6 +27,8 @@ export function PlaceAutocomplete({ onPlaceSelected, defaultValue = '' }: Props)
     id: 'google-map-script',
     googleMapsApiKey: apiKey,
     libraries,
+    language: 'ja',
+    region: 'JP',
   });
 
   const onLoad = (autocomplete: google.maps.places.Autocomplete) => {

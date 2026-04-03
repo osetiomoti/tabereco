@@ -27,6 +27,8 @@ export default function MapView({ posts, center, zoom = 14 }: Props) {
     id: 'google-map-script',
     googleMapsApiKey: apiKey,
     libraries,
+    language: 'ja',
+    region: 'JP',
   });
 
   const [map, setMap] = useState<google.maps.Map | null>(null);

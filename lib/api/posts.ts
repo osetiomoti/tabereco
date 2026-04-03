@@ -69,10 +69,15 @@ export async function getPosts(filters?: {
   address?: string;
 }): Promise<Post[]> {
   const supabase = createClient();
+  const user = await getAuthUser();
   let query = supabase
     .from('posts')
     .select('*, tags(id, name)')
     .order('visited_at', { ascending: false });
+
+  if (user) {
+    query = query.eq('user_id', user.id);
+  }
 
   if (filters?.status) {
     query = query.eq('status', filters.status);

@@ -138,12 +138,11 @@ export function PostForm({ post }: Props) {
     setError(null);
 
     if (!values.store_name.trim()) return setError('店名を入力してください');
-    if (!values.is_public && !values.image && !post?.image_url) return setError('写真を選択してください');
     if (!values.rating) return setError('評価を選択してください');
 
     setLoading(true);
     try {
-      let image_url = post?.image_url ?? '';
+      let image_url = post?.image_url ?? null;
 
       if (values.image) {
         image_url = isEdit && post?.image_url
@@ -196,7 +195,7 @@ export function PostForm({ post }: Props) {
       {/* 1. 写真 */}
       <ImageUpload
         value={values.image ?? null}
-        previewUrl={post?.image_url}
+        previewUrl={post?.image_url ?? undefined}
         onChange={handleImageChange}
       />
 

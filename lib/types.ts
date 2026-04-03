@@ -9,7 +9,7 @@ export type Post = {
   store_name: string | null;
   comment: string | null;
   rating: number;
-  image_url: string;
+  image_url?: string | null;
   visited_at: string; // YYYY-MM-DD
   created_at: string;
   status: PostStatus;
@@ -28,7 +28,7 @@ export type PostInsert = {
   title?: string;     // 任意化
   comment?: string | null;
   rating: number;
-  image_url: string;
+  image_url?: string | null;
   visited_at: string;
   status?: PostStatus;
   is_public?: boolean;
@@ -44,7 +44,7 @@ export type PostUpdate = {
   title?: string;
   comment?: string | null;
   rating?: number;
-  image_url?: string;
+  image_url?: string | null;
   visited_at?: string;
   status?: PostStatus;
   is_public?: boolean;
