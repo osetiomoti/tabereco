@@ -40,7 +40,7 @@ export function ImageUpload({ value, previewUrl, onChange }: Props) {
   return (
     <div className="space-y-3">
       <label className="block text-sm font-black text-gray-600 ml-1 flex items-center gap-2">
-        写真 <span className="text-red-500">*</span>
+        写真 <span className="text-[10px] font-bold text-gray-400 bg-gray-100 px-2 py-0.5 rounded-full">任意</span>
       </label>
 
       {displayUrl ? (
