@@ -242,6 +242,12 @@ export async function deleteTag(id: string): Promise<void> {
   if (error) throw new Error(error.message);
 }
 
+export async function updateTagName(id: string, newName: string): Promise<void> {
+  const supabase = createClient();
+  const { error } = await supabase.from('tags').update({ name: newName }).eq('id', id);
+  if (error) throw new Error(error.message);
+}
+
 export async function updateTagOrder(tagOrders: { id: string; sort_order: number }[]): Promise<void> {
   const supabase = createClient();
   const { error } = await supabase.from('tags').upsert(tagOrders);

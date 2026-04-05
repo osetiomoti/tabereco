@@ -24,7 +24,7 @@ export function PlaceAutocomplete({ onPlaceSelected, defaultValue = '' }: Props)
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
   
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script',
+    id: 'google-map-script-ja',
     googleMapsApiKey: apiKey,
     libraries,
     language: 'ja',

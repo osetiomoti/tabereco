@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { UtensilsCrossed, LogOut, User, Navigation, Users } from 'lucide-react';
+import { UtensilsCrossed, LogOut, User, Navigation, Users, Tag } from 'lucide-react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 
 export function Header() {
@@ -59,6 +59,12 @@ export function Header() {
               >
                 <Users size={15} strokeWidth={3} />
                 グループ
+              <Link 
+                href="/tags" 
+                className="flex items-center gap-2 text-sm font-black text-gray-500 hover:text-orange-500 transition-all hover:translate-x-0.5"
+              >
+                <Tag size={15} strokeWidth={3} />
+                タグ
               </Link>
             </div>
           )}

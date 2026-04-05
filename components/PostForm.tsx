@@ -225,31 +225,7 @@ export function PostForm({ post }: Props) {
         </button>
       </div>
 
-      {/* 公開設定トグル */}
-      <div className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className={`p-2.5 rounded-xl ${values.is_public ? 'bg-orange-50 text-orange-500' : 'bg-gray-100 text-gray-400'}`}>
-            {values.is_public ? <Globe size={22} /> : <Lock size={22} />}
-          </div>
-          <div>
-            <p className="text-sm font-bold text-gray-900">公開設定</p>
-            <p className="text-[11px] text-gray-500">{values.is_public ? '他の人と共有されます' : '自分だけの秘密の記録'}</p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => set('is_public', !values.is_public)}
-          className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors focus:outline-none ${
-            values.is_public ? 'bg-orange-500' : 'bg-gray-200'
-          }`}
-        >
-          <span
-            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-sm transition-transform ${
-              values.is_public ? 'translate-x-6' : 'translate-x-1'
-            }`}
-          />
-        </button>
-      </div>
+
 
       {/* 食事名 & 店名検索 */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">

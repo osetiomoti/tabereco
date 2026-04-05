@@ -24,7 +24,7 @@ export default function MapView({ posts, center, zoom = 14 }: Props) {
   const apiKey = (process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '').trim();
 
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script',
+    id: 'google-map-script-ja',
     googleMapsApiKey: apiKey,
     libraries,
     language: 'ja',
@@ -85,6 +85,7 @@ export default function MapView({ posts, center, zoom = 14 }: Props) {
           streetViewControl: true,
           mapTypeControl: true,
           fullscreenControl: true,
+          gestureHandling: 'greedy',
         }}
       >
         {posts.map((post) => (

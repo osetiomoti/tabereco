@@ -114,39 +114,24 @@ export async function joinGroup(inviteCode: string): Promise<Group | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
 
-  // 1. 招待コードに一致するグループを探す
-  const { data: group, error: gError } = await supabase
-    .from('groups')
-    .select('*')
-    .eq('invite_code', inviteCode.trim().toUpperCase())
-    .single();
+  // RPC関数を呼び出してグループに参加 (RLSをバイパス)
+  const { data: groupId, error } = await supabase
+    .rpc('join_group_by_code', { p_invite_code: inviteCode.trim().toUpperCase() });
 
-  if (gError || !group) {
-    console.error('Group not found with code:', inviteCode);
+  if (error || !groupId) {
+    console.error('Error joining group by code:', error || 'Group not found');
     return null;
   }
 
-  // 2. 既に参加していないか確認
-  const { data: existing } = await supabase
-    .from('group_members')
+  // 参加後、そのグループの情報を取得して返す（参加したことでRLSが通り、閲覧可能になる）
+  const { data: group, error: gError } = await supabase
+    .from('groups')
     .select('*')
-    .eq('group_id', group.id)
-    .eq('user_id', user.id)
+    .eq('id', groupId)
     .single();
 
-  if (existing) return group;
-
-  // 3. 参加
-  const { error: mError } = await supabase
-    .from('group_members')
-    .insert({
-      group_id: group.id,
-      user_id: user.id,
-      role: 'member'
-    });
-
-  if (mError) {
-    console.error('Error joining group:', mError);
+  if (gError || !group) {
+    console.error('Error fetching group after joining:', gError);
     return null;
   }
 
