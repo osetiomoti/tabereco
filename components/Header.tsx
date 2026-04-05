@@ -59,6 +59,7 @@ export function Header() {
               >
                 <Users size={15} strokeWidth={3} />
                 グループ
+              </Link>
               <Link 
                 href="/tags" 
                 className="flex items-center gap-2 text-sm font-black text-gray-500 hover:text-orange-500 transition-all hover:translate-x-0.5"
@@ -78,6 +79,12 @@ export function Header() {
                 className="p-2 text-gray-600 hover:text-orange-500"
               >
                 <Navigation size={20} />
+              </Link>
+              <Link 
+                href="/tags" 
+                className="p-2 text-gray-600 hover:text-orange-500"
+              >
+                <Tag size={20} />
               </Link>
               <Link 
                 href="/groups" 
