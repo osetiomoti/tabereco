@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef, useState } from 'react';
-import { Autocomplete, useJsApiLoader } from '@react-google-maps/api';
+import { useRef, useState, useCallback } from 'react';
+import { useJsApiLoader } from '@react-google-maps/api';
 import { Search, MapPin, X, Loader2 } from 'lucide-react';
 
 type Props = {
@@ -19,10 +19,17 @@ const libraries: ("places" | "drawing" | "geometry" | "visualization")[] = ["pla
 
 export function PlaceAutocomplete({ onPlaceSelected, defaultValue = '' }: Props) {
   const [inputValue, setInputValue] = useState(defaultValue);
-  const autocompleteRef = useRef<google.maps.places.Autocomplete | null>(null);
-  
+  const [predictions, setPredictions] = useState<google.maps.places.AutocompletePrediction[]>([]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [loadingPredictions, setLoadingPredictions] = useState(false);
+  const [activeIndex, setActiveIndex] = useState(-1);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const serviceRef = useRef<google.maps.places.AutocompleteService | null>(null);
+  const geocoderRef = useRef<google.maps.Geocoder | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
+
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
-  
+
   const { isLoaded, loadError } = useJsApiLoader({
     id: 'google-map-script-ja',
     googleMapsApiKey: apiKey,
@@ -31,33 +38,100 @@ export function PlaceAutocomplete({ onPlaceSelected, defaultValue = '' }: Props)
     region: 'JP',
   });
 
-  const onLoad = (autocomplete: google.maps.places.Autocomplete) => {
-    autocompleteRef.current = autocomplete;
-    // 検索結果を日本国内、または「店」に絞るなどのオプション設定も可能
-    autocomplete.setFields(['address_components', 'geometry', 'name', 'place_id', 'formatted_address']);
+  // サービスを初期化
+  const initServices = useCallback(() => {
+    if (isLoaded && !serviceRef.current) {
+      serviceRef.current = new google.maps.places.AutocompleteService();
+      geocoderRef.current = new google.maps.Geocoder();
+    }
+  }, [isLoaded]);
+
+  const fetchPredictions = (value: string) => {
+    initServices();
+    if (!serviceRef.current || value.length < 1) {
+      setPredictions([]);
+      setIsOpen(false);
+      return;
+    }
+
+    setLoadingPredictions(true);
+    serviceRef.current.getPlacePredictions(
+      {
+        input: value,
+        componentRestrictions: { country: 'jp' },
+        // 'establishment' のみのタイプ制限を外し、幅広い候補を取得
+      },
+      (results, status) => {
+        setLoadingPredictions(false);
+        if (status === google.maps.places.PlacesServiceStatus.OK && results) {
+          setPredictions(results); // 最大で10件まで返ってくる
+          setIsOpen(true);
+        } else {
+          setPredictions([]);
+          setIsOpen(false);
+        }
+      }
+    );
   };
 
-  const onPlaceChanged = () => {
-    if (autocompleteRef.current !== null) {
-      const place = autocompleteRef.current.getPlace();
-      
-      const lat = place.geometry?.location?.lat();
-      const lng = place.geometry?.location?.lng();
-      const address = place.formatted_address || '';
-      const name = place.name || '';
-      const placeId = place.place_id || '';
+  const handleInput = (value: string) => {
+    setInputValue(value);
+    setActiveIndex(-1);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => fetchPredictions(value), 250);
+  };
 
-      if (lat && lng && name) {
-        onPlaceSelected({ name, address, lat, lng, placeId });
-        setInputValue(name);
+  const handleSelect = (prediction: google.maps.places.AutocompletePrediction) => {
+    setIsOpen(false);
+    setInputValue(prediction.structured_formatting.main_text);
+
+    // place_id から詳細情報（緯度経度）を取得する
+    if (!geocoderRef.current) {
+      initServices();
+    }
+    geocoderRef.current?.geocode({ placeId: prediction.place_id }, (results, status) => {
+      if (status === 'OK' && results && results[0]) {
+        const loc = results[0].geometry.location;
+        onPlaceSelected({
+          name: prediction.structured_formatting.main_text,
+          address: results[0].formatted_address || prediction.description,
+          lat: loc.lat(),
+          lng: loc.lng(),
+          placeId: prediction.place_id,
+        });
+      } else {
+        // 緯度経度が取れなかった場合も名前だけ返す
+        onPlaceSelected({
+          name: prediction.structured_formatting.main_text,
+          address: prediction.description,
+          lat: 0,
+          lng: 0,
+          placeId: prediction.place_id,
+        });
       }
+    });
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!isOpen || predictions.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex(i => Math.min(i + 1, predictions.length - 1));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex(i => Math.max(i - 1, -1));
+    } else if (e.key === 'Enter' && activeIndex >= 0) {
+      e.preventDefault();
+      handleSelect(predictions[activeIndex]);
+    } else if (e.key === 'Escape') {
+      setIsOpen(false);
     }
   };
 
   if (loadError) return <div className="text-red-500 text-[11px] ml-1 mt-1 font-bold">マップの読み込みに失敗しました</div>;
   if (!isLoaded) return (
     <div className="relative w-full">
-      <input 
+      <input
         disabled
         className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3.5 pl-10 text-gray-300 cursor-not-allowed"
         placeholder="地図を読み込み中..."
@@ -69,86 +143,67 @@ export function PlaceAutocomplete({ onPlaceSelected, defaultValue = '' }: Props)
   );
 
   return (
-    <div className="relative w-full group">
-      <Autocomplete
-        onLoad={onLoad}
-        onPlaceChanged={onPlaceChanged}
-        options={{
-          types: ['establishment', 'geocode'],
-          componentRestrictions: { country: 'jp' }
-        }}
-      >
-        <div className="relative">
-          <input
-            type="text"
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            placeholder="店名を入力（例：麺屋 モグレコ）"
-            className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3.5 pl-10 text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all shadow-sm group-hover:border-gray-300"
-          />
-          <div className="absolute left-3.5 top-4">
-            <Search size={18} className="text-gray-400 group-focus-within:text-orange-500 transition-colors" />
-          </div>
-          {inputValue && (
-            <button
-              type="button"
-              onClick={() => setInputValue('')}
-              className="absolute right-3.5 top-4 p-0.5 rounded-full hover:bg-gray-100 text-gray-400 transition-colors"
-            >
-              <X size={16} />
-            </button>
-          )}
+    <div className="relative w-full group" ref={containerRef}>
+      <div className="relative">
+        <input
+          type="text"
+          value={inputValue}
+          onChange={(e) => handleInput(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={() => setTimeout(() => setIsOpen(false), 150)}
+          onFocus={() => inputValue && predictions.length > 0 && setIsOpen(true)}
+          placeholder="店名・スポット名を入力（例：マクドナルド 渋谷）"
+          className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3.5 pl-10 text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all shadow-sm group-hover:border-gray-300"
+        />
+        <div className="absolute left-3.5 top-4">
+          {loadingPredictions
+            ? <Loader2 size={18} className="animate-spin text-orange-400" />
+            : <Search size={18} className="text-gray-400 group-focus-within:text-orange-500 transition-colors" />
+          }
         </div>
-      </Autocomplete>
+        {inputValue && (
+          <button
+            type="button"
+            onClick={() => { setInputValue(''); setPredictions([]); setIsOpen(false); }}
+            className="absolute right-3.5 top-4 p-0.5 rounded-full hover:bg-gray-100 text-gray-400 transition-colors"
+          >
+            <X size={16} />
+          </button>
+        )}
+      </div>
 
-      {/* Google Autocomplete dropdown (Light Theme) */}
-      <style jsx global>{`
-        .pac-container {
-          background-color: #ffffff !important;
-          border: 1px solid #e5e7eb !important;
-          border-radius: 16px !important;
-          margin-top: 8px !important;
-          box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1) !important;
-          font-family: inherit !important;
-          z-index: 9999 !important;
-          padding: 8px 0 !important;
-          max-height: 70vh !important;
-          overflow-y: auto !important;
-          -webkit-overflow-scrolling: touch !important;
-        }
-        .pac-item {
-          border-top: 1px solid #f3f4f6 !important;
-          padding: 14px 16px !important;
-          color: #6b7280 !important;
-          cursor: pointer !important;
-          display: flex !important;
-          align-items: center !important;
-          line-height: 1.6 !important;
-          min-height: 52px !important;
-        }
-        .pac-item:first-of-type {
-          border-top: none !important;
-        }
-        .pac-item:hover, .pac-item-selected {
-          background-color: #fff7ed !important;
-        }
-        .pac-item-query {
-          color: #111827 !important;
-          font-size: 15px !important;
-          font-weight: 700 !important;
-          padding-right: 8px !important;
-        }
-        .pac-matched {
-          color: #f97316 !important;
-        }
-        .pac-icon {
-          display: none !important;
-        }
-        .pac-secondary-text {
-          color: #9ca3af !important;
-          font-size: 12px !important;
-        }
-      `}</style>
+      {/* カスタム候補リスト */}
+      {isOpen && predictions.length > 0 && (
+        <ul className="absolute z-[100000] left-0 right-0 mt-2 bg-white border border-gray-100 rounded-2xl shadow-2xl overflow-y-auto max-h-[65vh] py-1"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
+          {predictions.map((p, i) => (
+            <li
+              key={p.place_id}
+              onMouseDown={() => handleSelect(p)}
+              className={`flex items-start gap-3 px-4 py-3.5 cursor-pointer transition-colors ${
+                i === activeIndex ? 'bg-orange-50' : 'hover:bg-gray-50'
+              } ${i !== 0 ? 'border-t border-gray-50' : ''}`}
+            >
+              <div className="mt-0.5 flex-shrink-0 w-7 h-7 rounded-full bg-orange-50 flex items-center justify-center">
+                <MapPin size={14} className="text-orange-400" />
+              </div>
+              <div className="min-w-0">
+                <p className="font-black text-sm text-gray-900 leading-snug truncate">
+                  {/* キーワードに一致する部分をオレンジでハイライト */}
+                  {p.structured_formatting.main_text}
+                </p>
+                <p className="text-[11px] text-gray-400 mt-0.5 leading-snug line-clamp-2">
+                  {p.structured_formatting.secondary_text || p.description}
+                </p>
+              </div>
+            </li>
+          ))}
+          <li className="px-4 py-2 text-center">
+            <span className="text-[10px] text-gray-300 font-bold">Powered by Google Maps</span>
+          </li>
+        </ul>
+      )}
     </div>
   );
 }
