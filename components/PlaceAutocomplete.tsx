@@ -74,7 +74,7 @@ export function PlaceAutocomplete({ onPlaceSelected, defaultValue = '' }: Props)
         onLoad={onLoad}
         onPlaceChanged={onPlaceChanged}
         options={{
-          types: ['establishment'],
+          types: ['establishment', 'geocode'],
           componentRestrictions: { country: 'jp' }
         }}
       >
@@ -112,20 +112,25 @@ export function PlaceAutocomplete({ onPlaceSelected, defaultValue = '' }: Props)
           font-family: inherit !important;
           z-index: 9999 !important;
           padding: 8px 0 !important;
+          max-height: 70vh !important;
+          overflow-y: auto !important;
+          -webkit-overflow-scrolling: touch !important;
         }
         .pac-item {
           border-top: 1px solid #f3f4f6 !important;
-          padding: 12px 16px !important;
+          padding: 14px 16px !important;
           color: #6b7280 !important;
           cursor: pointer !important;
           display: flex !important;
           align-items: center !important;
+          line-height: 1.6 !important;
+          min-height: 52px !important;
         }
         .pac-item:first-of-type {
           border-top: none !important;
         }
-        .pac-item:hover {
-          background-color: #f9fafb !important;
+        .pac-item:hover, .pac-item-selected {
+          background-color: #fff7ed !important;
         }
         .pac-item-query {
           color: #111827 !important;
@@ -138,6 +143,10 @@ export function PlaceAutocomplete({ onPlaceSelected, defaultValue = '' }: Props)
         }
         .pac-icon {
           display: none !important;
+        }
+        .pac-secondary-text {
+          color: #9ca3af !important;
+          font-size: 12px !important;
         }
       `}</style>
     </div>

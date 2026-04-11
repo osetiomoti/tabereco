@@ -40,8 +40,9 @@
   margin-top: 8px !important;
   font-family: var(--font-noto), sans-serif !important;
   z-index: 100000 !important;
-  max-height: 45vh !important;
+  max-height: 70vh !important;
   overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch !important;
   padding: 4px 0 !important;
 }
 .pac-item {
