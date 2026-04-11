@@ -230,6 +230,7 @@ export async function getUserTags(): Promise<Tag[]> {
     .from('tags')
     .select('*')
     .eq('user_id', user.id)
+    .order('sort_order', { ascending: true })
     .order('name', { ascending: true });
 
   if (error) throw new Error(error.message);

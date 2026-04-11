@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
-import { getUserTags, deleteTag, updateTagName } from '@/lib/api/posts';
+import { getUserTags, deleteTag, updateTagName, updateTagOrder } from '@/lib/api/posts';
 import type { Tag } from '@/lib/types';
-import { Tag as TagIcon, X, Check, Edit2, AlertCircle } from 'lucide-react';
+import { Tag as TagIcon, X, Check, Edit2, AlertCircle, ChevronUp, ChevronDown, GripVertical } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function TagsPage() {
@@ -13,6 +13,7 @@ export default function TagsPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [savingOrder, setSavingOrder] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -33,10 +34,10 @@ export default function TagsPage() {
   }
 
   const handleDelete = async (id: string, name: string) => {
-    if (!confirm(`タグ「#${name}` + '」を削除しますか？\n(投稿からは外れますが、投稿自体は消えません)')) return;
+    if (!confirm(`タグ「#${name}」を削除しますか？\n(投稿からは外れますが、投稿自体は消えません)`)) return;
     try {
       await deleteTag(id);
-      setTags(tags.filter(t => t.id !== id));
+      setTags(prev => prev.filter(t => t.id !== id));
       router.refresh();
     } catch (err) {
       console.error(err);
@@ -56,10 +57,9 @@ export default function TagsPage() {
       alert('同じ名前のタグが既に存在します');
       return;
     }
-
     try {
       await updateTagName(id, trimmed);
-      setTags(tags.map(t => t.id === id ? { ...t, name: trimmed } : t));
+      setTags(prev => prev.map(t => t.id === id ? { ...t, name: trimmed } : t));
       setEditingId(null);
       router.refresh();
     } catch (err) {
@@ -68,24 +68,49 @@ export default function TagsPage() {
     }
   };
 
+  const handleMove = async (index: number, direction: 'up' | 'down') => {
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= tags.length) return;
+
+    const newTags = [...tags];
+    [newTags[index], newTags[newIndex]] = [newTags[newIndex], newTags[index]];
+    setTags(newTags);
+
+    setSavingOrder(true);
+    try {
+      await updateTagOrder(newTags.map((t, i) => ({ id: t.id, sort_order: i })));
+    } catch (err) {
+      console.error(err);
+      // revert on error
+      loadTags();
+    } finally {
+      setSavingOrder(false);
+    }
+  };
+
   return (
     <>
       <Header />
       <main className="max-w-2xl mx-auto px-4 py-8 pb-32 animate-fade-in">
         <header className="mb-8">
-          <h1 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
-            <div className="p-2.5 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100">
-              <TagIcon size={24} strokeWidth={3} />
-            </div>
-            タグ管理
-          </h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">
+              <div className="p-2.5 rounded-2xl bg-orange-50 text-orange-500 border border-orange-100">
+                <TagIcon size={24} strokeWidth={3} />
+              </div>
+              タグ管理
+            </h1>
+            {savingOrder && (
+              <span className="text-xs text-orange-500 font-bold animate-pulse">保存中…</span>
+            )}
+          </div>
           <p className="text-gray-400 font-bold mt-2 text-sm leading-relaxed">
-            登録済みのタグを編集・削除できます。追加は新規投稿画面から行ってください。
+            タグの編集・削除・並び替えができます。▲▼で順番を変えると投稿画面にも反映されます。
           </p>
         </header>
 
         {error && (
-          <div className="rounded-xl bg-red-50 border border-red-100 p-4 flex items-center justify-center text-red-500 gap-2 mb-6">
+          <div className="rounded-xl bg-red-50 border border-red-100 p-4 flex items-center gap-2 text-red-500 mb-6">
             <AlertCircle size={20} />
             <span className="font-bold text-sm">{error}</span>
           </div>
@@ -93,7 +118,9 @@ export default function TagsPage() {
 
         <div className="grid grid-cols-1 gap-3">
           {loading ? (
-             <div className="text-center py-10 opacity-50"><div className="w-8 h-8 mx-auto border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div></div>
+            <div className="text-center py-10 opacity-50">
+              <div className="w-8 h-8 mx-auto border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+            </div>
           ) : tags.length === 0 ? (
             <div className="text-center py-20 bg-gray-50 rounded-[3rem] border border-dashed border-gray-200">
               <TagIcon size={48} className="mx-auto text-gray-200 mb-4" />
@@ -101,10 +128,32 @@ export default function TagsPage() {
               <p className="text-gray-400 text-[10px] mt-1">投稿画面からタグを追加してみてください</p>
             </div>
           ) : (
-            tags.map(tag => (
-              <div key={tag.id} className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow group">
+            tags.map((tag, index) => (
+              <div
+                key={tag.id}
+                className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow"
+              >
+                {/* 並び替えボタン */}
+                <div className="flex flex-col gap-0.5 mr-3">
+                  <button
+                    onClick={() => handleMove(index, 'up')}
+                    disabled={index === 0 || savingOrder}
+                    className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-300 hover:text-orange-500 hover:bg-orange-50 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronUp size={14} strokeWidth={3} />
+                  </button>
+                  <button
+                    onClick={() => handleMove(index, 'down')}
+                    disabled={index === tags.length - 1 || savingOrder}
+                    className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-300 hover:text-orange-500 hover:bg-orange-50 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronDown size={14} strokeWidth={3} />
+                  </button>
+                </div>
+
+                {/* タグ名 */}
                 <div className="flex-1 flex items-center gap-3">
-                  <div className="text-orange-500/50">#</div>
+                  <span className="text-orange-400 font-black text-lg select-none">#</span>
                   {editingId === tag.id ? (
                     <input
                       type="text"
@@ -113,26 +162,39 @@ export default function TagsPage() {
                       onBlur={() => handleSaveEdit(tag.id)}
                       onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit(tag.id)}
                       autoFocus
-                      className="flex-1 bg-gray-50 border border-orange-200 rounded-lg px-3 py-1.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-orange-500/20 w-full"
+                      className="flex-1 bg-gray-50 border border-orange-200 rounded-lg px-3 py-1.5 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-orange-500/20"
                     />
                   ) : (
-                    <span className="text-gray-900 font-bold text-base cursor-pointer" onClick={() => handleStartEdit(tag)}>
+                    <span
+                      className="text-gray-900 font-bold text-base cursor-pointer hover:text-orange-500 transition-colors"
+                      onClick={() => handleStartEdit(tag)}
+                    >
                       {tag.name}
                     </span>
                   )}
                 </div>
 
+                {/* アクションボタン */}
                 <div className="flex items-center gap-2 ml-4">
                   {editingId === tag.id ? (
-                    <button onClick={() => handleSaveEdit(tag.id)} className="w-8 h-8 rounded-full bg-green-50 text-green-500 flex items-center justify-center shadow-sm">
+                    <button
+                      onClick={() => handleSaveEdit(tag.id)}
+                      className="w-8 h-8 rounded-full bg-green-50 text-green-500 flex items-center justify-center shadow-sm"
+                    >
                       <Check size={16} strokeWidth={3} />
                     </button>
                   ) : (
                     <>
-                      <button onClick={() => handleStartEdit(tag)} className="w-8 h-8 rounded-full bg-gray-50 text-gray-400 hover:text-orange-500 flex items-center justify-center transition-colors">
+                      <button
+                        onClick={() => handleStartEdit(tag)}
+                        className="w-8 h-8 rounded-full bg-gray-50 text-gray-400 hover:text-orange-500 flex items-center justify-center transition-colors"
+                      >
                         <Edit2 size={16} />
                       </button>
-                      <button onClick={() => handleDelete(tag.id, tag.name)} className="w-8 h-8 rounded-full bg-gray-50 text-gray-400 hover:text-red-500 flex items-center justify-center transition-colors">
+                      <button
+                        onClick={() => handleDelete(tag.id, tag.name)}
+                        className="w-8 h-8 rounded-full bg-gray-50 text-gray-400 hover:text-red-500 flex items-center justify-center transition-colors"
+                      >
                         <X size={16} />
                       </button>
                     </>
@@ -142,6 +204,12 @@ export default function TagsPage() {
             ))
           )}
         </div>
+
+        {tags.length > 1 && (
+          <p className="text-center text-gray-400 text-xs font-bold mt-6">
+            ▲▼ で並び替え → 自動で保存されます
+          </p>
+        )}
       </main>
     </>
   );

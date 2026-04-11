@@ -343,6 +343,16 @@ export function PostForm({ post }: Props) {
           selectedTags={values.tags}
           onSelect={(tags) => set('tags', tags)}
         />
+        <div className="flex justify-end">
+          <a
+            href="/tags"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[10px] text-gray-400 hover:text-orange-500 font-bold transition-colors flex items-center gap-1 mt-1"
+          >
+            🏷️ タグの管理・並び替えはこちら
+          </a>
+        </div>
 
         {/* グループシェア設定 (ソーシャル拡張) */}
         {groups.length > 0 && (
