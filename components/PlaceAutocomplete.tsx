@@ -59,8 +59,9 @@ export function PlaceAutocomplete({ onPlaceSelected, defaultValue = '' }: Props)
       {
         input: value,
         componentRestrictions: { country: 'jp' },
-        // 'establishment' のみのタイプ制限を外し、幅広い候補を取得
-      },
+        language: 'ja',
+        // 'establishment' のみのタイプ制限を外し、幅広い候補を取得（住所も含む）
+      } as any,
       (results, status) => {
         setLoadingPredictions(false);
         if (status === google.maps.places.PlacesServiceStatus.OK && results) {
@@ -89,7 +90,7 @@ export function PlaceAutocomplete({ onPlaceSelected, defaultValue = '' }: Props)
     if (!geocoderRef.current) {
       initServices();
     }
-    geocoderRef.current?.geocode({ placeId: prediction.place_id }, (results, status) => {
+    geocoderRef.current?.geocode({ placeId: prediction.place_id, language: 'ja' } as any, (results, status) => {
       if (status === 'OK' && results && results[0]) {
         const loc = results[0].geometry.location;
         onPlaceSelected({
