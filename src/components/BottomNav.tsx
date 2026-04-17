@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Clock, Users, User, Share2, Search, Plus } from 'lucide-react';
+import { Clock, Users, User, Plus } from 'lucide-react';
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -18,19 +18,17 @@ export function BottomNav() {
       </Link>
 
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-2xl border-t border-gray-100 shadow-[0_-5px_20px_rgba(0,0,0,0.02)] pb-safe">
-        <nav className="max-w-md mx-auto px-4 h-16 flex items-center justify-between">
+        <nav className="max-w-md mx-auto px-10 h-16 flex items-center justify-between">
           <NavItem href="/posts" icon={<Clock size={24} />} label="タイムライン" isActive={pathname === '/posts'} />
-          <NavItem href="/groups" icon={<Users size={24} />} label="ともだち" isActive={pathname === '/groups'} />
           
-          <Link href="/mypage" className={`flex flex-col items-center justify-center min-w-[70px] h-12 rounded-[2rem] transition-all px-2 ${pathname.startsWith('/mypage') ? 'bg-orange-50' : 'bg-transparent'}`}>
+          <Link href="/mypage" className={`flex flex-col items-center justify-center min-w-[80px] h-12 rounded-[2rem] transition-all px-2 ${pathname.startsWith('/mypage') ? 'bg-orange-50' : 'bg-transparent'}`}>
             <User size={24} className={pathname.startsWith('/mypage') ? 'text-orange-500' : 'text-gray-900'} />
             <span className={`text-[10px] font-black mt-0.5 tracking-wider ${pathname.startsWith('/mypage') ? 'text-orange-500' : 'text-gray-900'}`}>
               マイページ
             </span>
           </Link>
-
-          <NavItem href="#" icon={<Share2 size={24} />} label="シェア" isActive={false} />
-          <NavItem href="/search" icon={<Search size={24} />} label="見つける" isActive={pathname === '/search'} />
+          
+          <NavItem href="/groups" icon={<Users size={24} />} label="ともだち" isActive={pathname === '/groups'} />
         </nav>
       </div>
     </>

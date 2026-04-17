@@ -159,6 +159,33 @@ export default function PostsPage() {
       </Header>
       <main className="max-w-2xl mx-auto px-4 py-6 pb-28">
         
+        {/* 1. リスト・マップ切り替えトグル (最上部) */}
+        <div className="flex justify-center mb-6">
+          <div className="flex bg-gray-100/80 rounded-full p-1 w-full max-w-[240px]">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`flex-1 py-1.5 text-[12px] font-bold rounded-full transition-all ${
+                viewMode === 'list'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              リスト
+            </button>
+            <button
+              onClick={() => setViewMode('map')}
+              className={`flex-1 py-1.5 text-[12px] font-bold rounded-full transition-all ${
+                viewMode === 'map'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              マップ
+            </button>
+          </div>
+        </div>
+
+        {/* 2. 検索バー */}
         <div className="mb-6">
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
@@ -172,7 +199,7 @@ export default function PostsPage() {
           </div>
         </div>
 
-        {/* グループフィルターチップス */}
+        {/* 3. グループフィルターチップス */}
         {(joinedGroups.length > 0 || ownPostsCache.length > 0) && (
           <div className="flex gap-2 overflow-x-auto no-scrollbar pb-4 mb-2">
             <button
@@ -199,56 +226,8 @@ export default function PostsPage() {
           </div>
         )}
 
-        {/* タブナビゲーション (画像3再現) */}
-        <div className="flex border-b border-gray-100 mb-6 sticky top-[64px] bg-[#fcfcfc]/90 backdrop-blur-xl z-20">
-          {[
-            { id: 'all', label: 'すべて' },
-            { id: 'visited', label: '行った' },
-            { id: 'want_to_go', label: '行きたい' },
-          ].map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => updateFilter({ activeTab: tab.id as TabType })}
-              className={`flex-1 py-4 text-sm font-black transition-all relative ${
-                activeTab === tab.id ? 'text-pink-500' : 'text-gray-400 hover:text-gray-600'
-              }`}
-            >
-              {tab.label}
-              {activeTab === tab.id && (
-                <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-pink-500 rounded-full animate-in slide-in-from-left duration-300" />
-              )}
-            </button>
-          ))}
-        </div>
-
         {/* 適用中のフィルタチップ */}
         <FilterChips filters={advancedFilters} onRemove={removeFilter} />
-
-        {/* リスト・マップ切り替えトグル */}
-        <div className="flex justify-center mb-6">
-          <div className="flex bg-gray-100/80 rounded-full p-1 w-full max-w-[240px]">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`flex-1 py-1.5 text-[12px] font-bold rounded-full transition-all ${
-                viewMode === 'list'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              リスト
-            </button>
-            <button
-              onClick={() => setViewMode('map')}
-              className={`flex-1 py-1.5 text-[12px] font-bold rounded-full transition-all ${
-                viewMode === 'map'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              マップ
-            </button>
-          </div>
-        </div>
 
         {/* 一覧機能 / マップ表示切り替え */}
         {loading ? (
