@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Clock, Users, User, Plus, Settings } from 'lucide-react';
+import { Clock, Users, User, Plus, PieChart } from 'lucide-react';
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -32,7 +32,7 @@ export function BottomNav() {
             </span>
           </Link>
           
-          <NavItem href="/settings" icon={<Settings size={22} />} label="設定" isActive={pathname === '/settings'} />
+          <NavItem href="/analytics" icon={<PieChart size={22} />} label="分析" isActive={pathname === '/analytics'} />
         </nav>
       </div>
     </>

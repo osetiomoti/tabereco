@@ -92,48 +92,54 @@ export default function GroupsPage() {
         </header>
 
         <div className="grid grid-cols-1 gap-6 mb-12">
-          {/* グループ参加セクション */}
-          <section className="bg-gradient-to-br from-orange-50 to-white p-6 rounded-[2.5rem] border border-orange-100 shadow-sm">
-            <h2 className="text-sm font-black text-orange-600 uppercase tracking-widest mb-4 flex items-center gap-2">
-              <Plus size={16} strokeWidth={3} />
-              新しいグループ
-            </h2>
-            <div className="space-y-4">
-              <form onSubmit={handleJoinGroup} className="flex gap-2">
-                <input 
-                  type="text" 
-                  value={inviteCode}
-                  onChange={(e) => setInviteCode(e.target.value)}
-                  placeholder="招待コードを入力" 
-                  className="flex-1 bg-white border border-orange-100/50 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-orange-500/20 transition-all outline-none"
-                />
-                <button 
-                  type="submit"
-                  disabled={isJoining}
-                  className="bg-orange-500 text-white px-6 py-3 rounded-2xl text-sm font-black shadow-lg shadow-orange-500/20 hover:bg-orange-600 transition-all active:scale-95 disabled:opacity-50"
-                >
-                  {isJoining ? '参加中...' : '参加する'}
-                </button>
-              </form>
-              <div className="relative flex items-center py-2">
-                <div className="flex-grow border-t border-orange-100"></div>
-                <span className="flex-shrink mx-4 text-[10px] text-orange-300 font-black uppercase">Or</span>
-                <div className="flex-grow border-t border-orange-100"></div>
-              </div>
-              <form onSubmit={handleCreateGroup} className="flex gap-2">
+          {/* グループ参加・作成セクション */}
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+            {/* 新しいグループを作成 */}
+            <div className="bg-white p-5 rounded-[2rem] border border-gray-100 shadow-sm relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-orange-100/50 to-red-50/50 rounded-bl-[100px] -mr-10 -mt-10 transition-transform group-hover:scale-110"></div>
+              <h2 className="text-sm font-black text-gray-800 flex items-center gap-2 mb-4 relative z-10">
+                <Plus size={18} className="text-orange-500" strokeWidth={3} />
+                新しいグループを作る
+              </h2>
+              <form onSubmit={handleCreateGroup} className="flex gap-2 relative z-10">
                 <input 
                   type="text" 
                   value={newGroupName}
                   onChange={(e) => setNewGroupName(e.target.value)}
-                  placeholder="グループ名を入力" 
-                  className="flex-1 bg-white border border-orange-100/50 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-orange-500/20 transition-all outline-none"
+                  placeholder="グループ名" 
+                  className="flex-1 bg-gray-50/50 border border-gray-100 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-orange-500/20 transition-all outline-none min-w-0"
                 />
                 <button 
                   type="submit"
-                  disabled={isCreating}
-                  className="bg-white text-orange-500 border border-orange-100 px-6 py-3 rounded-2xl text-sm font-black shadow-sm hover:bg-orange-50 transition-all active:scale-95 disabled:opacity-50"
+                  disabled={isCreating || !newGroupName.trim()}
+                  className="whitespace-nowrap shrink-0 bg-gray-900 text-white px-5 py-3 rounded-2xl text-sm font-black shadow-sm disabled:opacity-40 transition-all active:scale-95"
                 >
-                  {isCreating ? '作成中...' : '新規作成'}
+                  {isCreating ? '作成...' : '作成'}
+                </button>
+              </form>
+            </div>
+
+            {/* 既存グループに参加 */}
+            <div className="bg-white p-5 rounded-[2rem] border border-gray-100 shadow-sm relative overflow-hidden group">
+               <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-blue-100/50 to-indigo-50/50 rounded-bl-[100px] -mr-10 -mt-10 transition-transform group-hover:scale-110"></div>
+              <h2 className="text-sm font-black text-gray-800 flex items-center gap-2 mb-4 relative z-10">
+                <Users size={18} className="text-blue-500" strokeWidth={3} />
+                招待コードで参加
+              </h2>
+              <form onSubmit={handleJoinGroup} className="flex gap-2 relative z-10">
+                 <input 
+                  type="text" 
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value)}
+                  placeholder="コード: ABCX9Z" 
+                  className="flex-1 bg-gray-50/50 border border-gray-100 rounded-2xl px-4 py-3 text-sm font-bold focus:ring-2 focus:ring-blue-500/20 transition-all outline-none min-w-0"
+                />
+                <button 
+                  type="submit"
+                  disabled={isJoining || !inviteCode.trim()}
+                  className="whitespace-nowrap shrink-0 bg-blue-500 text-white px-5 py-3 rounded-2xl text-sm font-black shadow-sm shadow-blue-500/20 disabled:opacity-40 transition-all active:scale-95"
+                >
+                  {isJoining ? '通信中...' : '参加'}
                 </button>
               </form>
             </div>
