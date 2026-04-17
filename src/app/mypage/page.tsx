@@ -112,15 +112,7 @@ export default function MyPage() {
         ))}
       </div>
       
-      {/* Banner info mockup */}
-      <div className="px-4 mt-10">
-        <div className="border border-orange-300 rounded-lg p-4 flex gap-3 text-gray-800 bg-white">
-          <span className="text-orange-500 font-black whitespace-nowrap text-xs mt-0.5 border border-orange-200 px-1 py-0.5 rounded">重要</span>
-          <p className="text-[11px] font-black leading-relaxed">
-            もぐレコは<span className="text-[12px]">2026年7月20日(月)</span>をもって<br/>サービスを終了いたします。<Link href="#" className="underline decoration-gray-400">詳細はこちら</Link>
-          </p>
-        </div>
-      </div>
+
     </div>
   );
 }

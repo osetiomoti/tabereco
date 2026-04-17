@@ -41,7 +41,7 @@ export default async function EditPostPage({ params }: Props) {
   return (
     <>
       <Header />
-      <main className="max-w-2xl mx-auto px-4 py-6 pb-16">
+      <main className="max-w-2xl mx-auto px-4 py-6 pb-[120px]">
         <Link
           href={`/posts/${id}`}
           className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors mb-6"
