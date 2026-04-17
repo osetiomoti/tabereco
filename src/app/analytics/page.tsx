@@ -76,7 +76,7 @@ export default function AnalyticsPage() {
 
   return (
     <>
-      <Header />
+      <Header title="分析" />
       <main className="max-w-2xl mx-auto px-4 py-8 pb-32 animate-in fade-in duration-700">
         <header className="mb-10">
           <h1 className="text-3xl font-black text-gray-900 tracking-tight flex items-center gap-3">

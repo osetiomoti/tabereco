@@ -40,17 +40,9 @@ export default async function EditPostPage({ params }: Props) {
 
   return (
     <>
-      <Header />
-      <main className="max-w-2xl mx-auto px-4 py-6 pb-[120px]">
-        <Link
-          href={`/posts/${id}`}
-          className="inline-flex items-center gap-1.5 text-sm text-gray-400 hover:text-white transition-colors mb-6"
-        >
-          <ChevronLeft size={16} />
-          詳細に戻る
-        </Link>
-
-        <h1 className="text-xl font-bold text-white mb-6">投稿を編集</h1>
+      <Header title="編集する" showBackButton />
+      <main className="max-w-2xl mx-auto px-4 py-8 pb-32">
+        <h1 className="text-xl font-bold text-gray-900 mb-6 px-1">記録の内容を編集</h1>
 
         <React.Suspense fallback={<div className="h-64 flex justify-center items-center"><div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>}>
           <PostForm post={transformedPost as any} />

@@ -145,39 +145,28 @@ export default function PostsPage() {
 
   return (
     <>
-      <Header>
-        <button 
-          onClick={() => setIsFilterModalOpen(true)}
-          className={`p-2 rounded-xl transition-all ${
-            advancedFilters 
-              ? 'bg-orange-50 text-orange-500' 
-              : 'text-gray-500 hover:bg-gray-50 hover:text-orange-500'
-          }`}
-        >
-          <Filter size={22} className={advancedFilters ? 'fill-orange-500/20' : ''} />
-        </button>
-      </Header>
-      <main className="max-w-2xl mx-auto px-4 py-6 pb-28">
+      <Header />
+      <main className="max-w-2xl mx-auto px-4 py-6 pb-32 animate-in fade-in duration-700">
         
-        {/* 1. リスト・マップ切り替えトグル (最上部) */}
-        <div className="flex justify-center mb-6">
-          <div className="flex bg-gray-100/80 rounded-full p-1 w-full max-w-[240px]">
+        {/* 1. プレミアム・リスト/マップ切り替えトグル */}
+        <div className="flex justify-center mb-8 mt-2">
+          <div className="flex bg-gray-200/50 backdrop-blur-md rounded-2xl p-1 w-full max-w-[280px] shadow-inner border border-gray-100">
             <button
               onClick={() => setViewMode('list')}
-              className={`flex-1 py-1.5 text-[12px] font-bold rounded-full transition-all ${
+              className={`flex-1 py-2.5 text-[13px] font-black rounded-[14px] transition-all duration-300 ${
                 viewMode === 'list'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-white text-gray-900 shadow-lg shadow-black/5 ring-1 ring-black/5 scale-[1.02]'
+                  : 'text-gray-400 hover:text-gray-600'
               }`}
             >
               リスト
             </button>
             <button
               onClick={() => setViewMode('map')}
-              className={`flex-1 py-1.5 text-[12px] font-bold rounded-full transition-all ${
+              className={`flex-1 py-2.5 text-[13px] font-black rounded-[14px] transition-all duration-300 ${
                 viewMode === 'map'
-                  ? 'bg-white text-gray-900 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'bg-white text-gray-900 shadow-lg shadow-black/5 ring-1 ring-black/5 scale-[1.02]'
+                  : 'text-gray-400 hover:text-gray-600'
               }`}
             >
               マップ
@@ -185,40 +174,50 @@ export default function PostsPage() {
           </div>
         </div>
 
-        {/* 2. 検索バー */}
-        <div className="mb-6">
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+        {/* 2. プレミアム検索バー & フィルターボタン */}
+        <div className="mb-8 flex gap-3">
+          <div className="relative group flex-1">
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-orange-500 transition-colors" size={20} />
             <input
               type="text"
               placeholder="何を食べたい？どこに行きたい？"
               value={keyword}
               onChange={(e) => updateFilter({ keyword: e.target.value })}
-              className="w-full bg-white border border-gray-100 py-3.5 pl-11 pr-4 rounded-2xl text-sm font-bold placeholder:text-gray-300 focus:outline-none focus:ring-4 focus:ring-orange-500/5 transition-all shadow-sm"
+              className="w-full bg-white border border-gray-100/80 py-4 pl-14 pr-6 rounded-[2rem] text-[15px] font-bold placeholder:text-gray-300 focus:outline-none focus:ring-4 focus:ring-orange-500/5 focus:border-orange-500/20 transition-all shadow-sm"
             />
           </div>
+          <button 
+            onClick={() => setIsFilterModalOpen(true)}
+            className={`aspect-square w-[58px] rounded-[1.5rem] flex items-center justify-center transition-all ${
+              advancedFilters 
+                ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' 
+                : 'bg-white border border-gray-100/80 text-gray-500 shadow-sm hover:border-orange-200 hover:bg-orange-50/30'
+            }`}
+          >
+            <Filter size={22} className={advancedFilters ? 'fill-white/20' : ''} />
+          </button>
         </div>
 
-        {/* 3. グループフィルターチップス */}
+        {/* 3. グループフィルターチップス (プレミアム版) */}
         {(joinedGroups.length > 0 || ownPostsCache.length > 0) && (
-          <div className="flex gap-2 overflow-x-auto no-scrollbar pb-4 mb-2">
+          <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-6 mb-2">
             <button
               onClick={() => toggleGroup('all')}
-              className={`px-3 py-1.5 rounded-xl text-[12px] font-black whitespace-nowrap transition-all shadow-sm ${activeGroups.includes('all') ? 'bg-indigo-500 text-white border border-indigo-600' : 'bg-white border border-gray-100 text-gray-500 hover:bg-gray-50'}`}
+              className={`px-5 py-2.5 rounded-full text-[13px] font-black whitespace-nowrap transition-all shadow-sm ${activeGroups.includes('all') ? 'bg-orange-500 text-white border border-orange-600 shadow-orange-500/20' : 'bg-white border border-gray-100 text-gray-500 hover:bg-gray-50 hover:border-orange-200'}`}
             >
               🌍 すべて
             </button>
             <button
               onClick={() => toggleGroup('mine')}
-              className={`px-3 py-1.5 rounded-xl text-[12px] font-black whitespace-nowrap transition-all shadow-sm flex items-center gap-1 ${activeGroups.includes('mine') ? 'bg-indigo-500 text-white border border-indigo-600' : 'bg-white border border-gray-100 text-gray-500 hover:bg-gray-50'}`}
+              className={`px-5 py-2.5 rounded-full text-[13px] font-black whitespace-nowrap transition-all shadow-sm flex items-center gap-2 ${activeGroups.includes('mine') ? 'bg-indigo-500 text-white border border-indigo-600 shadow-indigo-500/20' : 'bg-white border border-gray-100 text-gray-500 hover:bg-gray-50 hover:border-indigo-200'}`}
             >
-              👤 自分の記録
+              👤 自分
             </button>
             {joinedGroups.map(g => (
               <button
                 key={g.id}
                 onClick={() => toggleGroup(g.id)}
-                className={`px-3 py-1.5 rounded-xl text-[12px] font-black whitespace-nowrap transition-all shadow-sm flex items-center gap-1 ${activeGroups.includes(g.id) ? 'bg-indigo-500 text-white border border-indigo-600' : 'bg-white border border-gray-100 text-gray-500 hover:bg-gray-50'}`}
+                className={`px-5 py-2.5 rounded-full text-[13px] font-black whitespace-nowrap transition-all shadow-sm flex items-center gap-2 ${activeGroups.includes(g.id) ? 'bg-indigo-500 text-white border border-indigo-600 shadow-indigo-500/20' : 'bg-white border border-gray-100 text-gray-500 hover:bg-gray-50 hover:border-indigo-200'}`}
               >
                 👥 {g.name}
               </button>

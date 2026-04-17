@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { UtensilsCrossed, LogOut, User, Navigation, Users, Tag, Settings } from 'lucide-react';
+import { UtensilsCrossed, User, ChevronLeft } from 'lucide-react';
 
 type Props = {
   children?: React.ReactNode;
 };
 
-export function Header({ children }: Props) {
+export function Header({ children, title, showBackButton }: { children?: React.ReactNode, title?: string, showBackButton?: boolean }) {
   const router = useRouter();
   const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -25,40 +25,55 @@ export function Header({ children }: Props) {
       .finally(() => setLoading(false));
   }, []);
 
-  const handleSignOut = async () => {
-    router.push('/api/auth/logout');
-  };
-
   return (
-    <header className="sticky top-0 z-50 bg-white/70 backdrop-blur-2xl border-b border-gray-100/50 h-16 transition-all duration-300">
-      <div className="max-w-2xl mx-auto px-4 h-full flex items-center justify-between">
-        <div className="flex items-center gap-8">
-          <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center shadow-xl shadow-orange-500/20 group-hover:rotate-6 group-hover:scale-110 transition-all duration-300">
-              <UtensilsCrossed size={18} className="text-white" />
-            </div>
-            <span className="font-black text-gray-900 text-xl tracking-tighter transition-colors group-hover:text-orange-500">モグレコ</span>
-          </Link>
+    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-100/50 h-14 transition-all duration-300">
+      <div className="max-w-2xl mx-auto px-4 h-full flex items-center justify-between relative">
+        {/* Left Side: Logo or Back Button */}
+        <div className="flex items-center z-10">
+          {showBackButton ? (
+            <button 
+              onClick={() => router.back()}
+              className="w-9 h-9 bg-gray-100/80 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+            >
+              <ChevronLeft size={20} className="text-gray-900" />
+            </button>
+          ) : (
+            <Link href="/posts" className="flex items-center gap-2 group">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center shadow-lg shadow-orange-500/20 group-hover:rotate-6 transition-all duration-300">
+                <UtensilsCrossed size={16} className="text-white" />
+              </div>
+              <span className="font-black text-gray-900 text-[18px] tracking-tighter hidden xs:block">モグレコ</span>
+            </Link>
+          )}
         </div>
 
-        <div className="flex items-center gap-1">
+        {/* Center Title (Absolute) */}
+        {title && (
+          <div className="absolute inset-x-0 flex justify-center items-center pointer-events-none">
+            <h1 className="font-bold text-gray-900 tracking-wide text-[16px]">
+              {title}
+            </h1>
+          </div>
+        )}
+
+        {/* Right Side: Actions/User */}
+        <div className="flex items-center gap-2 z-10">
           {children}
           
           {!loading && user && (
             <Link
-              href="/settings"
-              className="p-2 text-gray-600 hover:text-orange-500 hover:bg-orange-50/50 rounded-xl transition-colors"
+              href="/mypage"
+              className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-orange-50 hover:text-orange-500 transition-all"
             >
-              <Settings size={22} className="text-gray-500" />
+              <User size={20} />
             </Link>
           )}
           {!loading && !user && (
             <Link
               href="/login"
-              className="flex items-center gap-2 text-orange-500 hover:text-orange-400 transition-colors px-3 py-2 rounded-lg hover:bg-orange-500/5 text-sm font-bold"
+              className="text-orange-500 font-bold text-sm px-3 py-1.5 bg-orange-50 rounded-full hover:bg-orange-100 transition-colors"
             >
-              <User size={16} />
-              <span>ログイン</span>
+              ログイン
             </Link>
           )}
         </div>

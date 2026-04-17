@@ -1,15 +1,13 @@
 import { prisma } from '@/lib/prisma';
 import { Header } from '@/components/Header';
-import { StarDisplay } from '@/components/StarRating';
-import { DeleteButton } from '@/components/DeleteButton';
-import { ShareButton } from '@/components/ShareButton';
 import { formatDate } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { ChevronLeft, Store, Calendar, Pencil, MapPin, Hash, Globe, Lock } from 'lucide-react';
+import { User, ChevronDown, Camera, Pencil, MapPin, MoreHorizontal } from 'lucide-react';
 import type { Metadata } from 'next';
-import { cookies } from 'next/headers';
+import { DeleteButton } from '@/components/DeleteButton';
+import { ShareButton } from '@/components/ShareButton';
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -24,13 +22,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function PostDetailPage({ params }: Props) {
   const { id } = await params;
-  // Get current user from session cookie
-  const cookieStore = await cookies();
-  const idToken = cookieStore.get('idToken')?.value;
-  
-  // Note: For simplicity in server components, we can manually verify or use a helper
-  // In a real app, withAuth wrapper or a dedicated server-only auth helper is better.
-  // Here we just fetch the post and check access.
   
   const post = await prisma.post.findUnique({
     where: { id },
@@ -46,139 +37,150 @@ export default async function PostDetailPage({ params }: Props) {
 
   if (!post) notFound();
 
-  // Simple ownership check if needed (or public access)
-  // For now let's assume we need to verify the user to show owner-only buttons
-  // I'll skip complex verification here and just check the sub if available
-  const isOwner = false; // We'd need to verify the JWT to be sure
-
   return (
-    <>
-      <Header />
-      <main className="max-w-2xl mx-auto pb-24 animate-fade-in bg-white min-h-screen">
-        {/* 戻るリンクと公開設定バッジ */}
-        <div className="px-4 py-4 flex items-center justify-between sticky top-14 z-40 bg-white/90 backdrop-blur-md">
-          <Link
-            href="/posts"
-            className="inline-flex items-center gap-1 text-sm font-bold text-gray-500 hover:text-orange-500 transition-colors"
-          >
-            <ChevronLeft size={18} />
-            戻る
-          </Link>
-        </div>
+    <main className="w-full max-w-md mx-auto bg-white min-h-screen pb-32 shadow-sm border-x border-gray-50 relative">
+      {/* 1. Updated Global Header for SubPage */}
+      <Header title={post.store_name || post.title} showBackButton>
+        <Link 
+          href={`/posts/${post.id}/edit`} 
+          className="w-9 h-9 bg-gray-100/80 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+        >
+          <MoreHorizontal size={20} className="text-gray-900" />
+        </Link>
+      </Header>
 
-        {/* ヒーロー画像またはバッジのみ */}
-        {post.image_url ? (
-          <div className="relative w-full aspect-square sm:aspect-[16/10] bg-gray-50 overflow-hidden">
-            <Image
-              src={post.image_url}
-              alt={post.title || ''}
-              fill
-              className="object-cover"
-              priority
-            />
-            {/* ステータスバッジ */}
-            <div className="absolute bottom-4 left-4">
-              <span className={`px-5 py-2 rounded-2xl text-[11px] font-black shadow-xl backdrop-blur-xl ${
-                post.status === 'visited' ? 'bg-orange-500 text-white' : 'bg-blue-600 text-white'
-              }`}>
-                {post.status === 'visited' ? '行った' : '行きたい'}
-              </span>
-            </div>
-          </div>
-        ) : (
-          <div className="px-6 pt-4">
-            <span className={`inline-block px-5 py-2 rounded-2xl text-[11px] font-black shadow-sm ${
-              post.status === 'visited' ? 'bg-orange-500 text-white' : 'bg-blue-600 text-white'
-            }`}>
-              {post.status === 'visited' ? '行った' : '行きたい'}
-            </span>
+      {/* 2. 画像エリア */}
+      {post.image_url && (
+        <div className="relative w-full aspect-square">
+          <Image
+            src={post.image_url}
+            alt={post.title || ''}
+            fill
+            className="object-cover"
+            priority
+          />
+        </div>
+      )}
+
+      {/* 3. 写真追加とインジケーター */}
+      <div className="bg-gray-50 flex items-center justify-between pr-4 relative">
+        <Link href={`/posts/${post.id}/edit`} className="relative z-10 w-[80px] h-[80px] bg-white border-y border-r border-gray-100 flex flex-col items-center justify-center shadow-[0_4px_10px_rgba(0,0,0,0.02)]">
+          <Camera size={26} className="text-gray-600 mb-1" strokeWidth={1.5} />
+          <span className="text-[10px] text-gray-500 font-bold tracking-tight">写真追加</span>
+        </Link>
+        {post.image_url && (
+          <div className="flex-1 flex justify-center items-center">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#5d4037]"></div>
           </div>
         )}
+        <div className="w-[80px]"></div> {/* spacer for centering */}
+      </div>
 
-        {/* 詳細情報 */}
-        <div className="px-6 pt-8 space-y-8">
-          {/* タイトルと評価 */}
-          <div className="space-y-3">
-            <h1 className="text-3xl font-black text-gray-900 leading-tight tracking-tight">
-              {post.title || `${post.store_name}での記録`}
-            </h1>
-            <div className="flex items-center gap-3 bg-gray-50 inline-flex px-4 py-2 rounded-2xl border border-gray-100">
-              <StarDisplay rating={post.rating} size="lg" />
-              <span className="text-gray-900 text-sm font-black">{post.rating}.0</span>
-            </div>
+      {/* 4. ユーザー情報と評価 */}
+      <div className="px-4 py-4 flex items-center justify-between border-b border-gray-100">
+        <div className="flex items-center gap-3">
+          <div className="w-[34px] h-[34px] rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
+            <User size={18} />
           </div>
-
-          {/* メタ情報カード */}
-          <div className="grid grid-cols-1 gap-4">
-            {post.store_name && (
-              <div className="flex items-center gap-4 bg-white border border-gray-100 rounded-3xl p-5 shadow-sm">
-                <div className="p-3 rounded-2xl bg-orange-50 text-orange-600">
-                  <Store size={22} />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-0.5">Shop Name</span>
-                  <span className="text-base text-gray-900 font-bold">{post.store_name}</span>
-                </div>
-              </div>
-            )}
-            <div className="flex items-center gap-4 bg-white border border-gray-100 rounded-3xl p-5 shadow-sm">
-              <div className="p-3 rounded-2xl bg-blue-50 text-blue-600">
-                <Calendar size={22} />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-0.5">Date</span>
-                <span className="text-base text-gray-900 font-bold">{formatDate(post.visited_at.toISOString())}</span>
-              </div>
-            </div>
-            {post.address && (
-              <div className="flex items-center gap-4 bg-white border border-gray-100 rounded-3xl p-5 shadow-sm">
-                <div className="p-3 rounded-2xl bg-green-50 text-green-600">
-                  <MapPin size={22} />
-                </div>
-                <div className="flex flex-col overflow-hidden">
-                  <span className="text-[10px] text-gray-400 font-black uppercase tracking-widest mb-0.5">Address</span>
-                  <span className="text-sm text-gray-900 font-bold leading-relaxed">{post.address}</span>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* タグ */}
-          {post.tags && post.tags.length > 0 && (
-            <div className="flex flex-wrap gap-2.5">
-              {post.tags.map((pt: any) => (
-                <span key={pt.tag.id} className="inline-flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-gray-50 border border-gray-100 text-xs font-bold text-gray-600 hover:bg-white hover:text-orange-500 hover:border-orange-200 transition-all shadow-sm">
-                  <Hash size={14} className="opacity-50" />
-                  {pt.tag.name}
-                </span>
-              ))}
-            </div>
-          )}
-
-          {/* コメント */}
-          {post.comment && (
-            <div className="bg-gray-50 border border-gray-100 rounded-[2.5rem] p-7 relative overflow-hidden group shadow-inner">
-              <div className="absolute top-0 left-0 w-1.5 h-full bg-orange-500 opacity-30" />
-              <p className="text-gray-900 text-base leading-relaxed whitespace-pre-wrap font-medium">{post.comment}</p>
-            </div>
-          )}
-
-          {/* 操作ボタン */}
-          <div className="flex flex-col sm:flex-row gap-4 pt-8 border-t border-gray-100">
-            <Link
-              href={`/posts/${post.id}/edit`}
-              className="flex-1 flex items-center justify-center gap-2 px-6 py-4 rounded-2xl bg-gray-900 text-white text-base font-black hover:bg-black transition-all shadow-lg shadow-gray-200"
-            >
-              <Pencil size={20} />
-              編集する
-            </Link>
-            <DeleteButton postId={post.id} />
-            <div className="flex-none">
-              <ShareButton post={post as any} />
-            </div>
-          </div>
+          <span className="text-sm text-gray-800">{post.user?.name || 'ゲスト'}</span>
         </div>
-      </main>
-    </>
+        <div className="flex items-center gap-1.5 text-orange-500">
+          <div className="flex text-lg tracking-widest gap-0.5">
+            {'★★★★★'.split('').map((star, i) => (
+               <span key={i} className={i < Math.floor(post.rating) ? 'text-orange-500' : 'text-orange-200'}>★</span>
+            ))}
+          </div>
+          <span className="text-gray-900 font-black text-sm ml-1">{post.rating.toFixed(1)}</span>
+          <ChevronDown size={14} className="text-gray-600 font-bold ml-0.5" />
+        </div>
+      </div>
+
+      {/* 5. 訪問日、メモ、タグ */}
+      <div className="divide-y divide-gray-100/50">
+        <div className="px-5 py-4 flex justify-between items-center bg-gray-50/20">
+           <div className="flex items-center gap-5">
+             <span className="font-bold text-[15px] text-gray-900 tracking-widest">訪問日</span>
+             <span className="text-gray-500 text-[13.5px]">{formatDate(post.visited_at.toISOString())}</span>
+           </div>
+           <Link href={`/posts/${post.id}/edit`}><Pencil size={18} strokeWidth={1.5} className="text-gray-500 hover:text-orange-500 transition-colors" /></Link>
+        </div>
+        
+        <div className="px-5 py-4 bg-gray-50/20">
+           <div className="flex justify-between items-center mb-3">
+             <span className="font-bold text-[15px] text-gray-900 tracking-widest">メモ</span>
+             <Link href={`/posts/${post.id}/edit`}><Pencil size={18} strokeWidth={1.5} className="text-gray-500 hover:text-orange-500 transition-colors" /></Link>
+           </div>
+           <p className="text-gray-500 text-[13.5px] leading-relaxed w-[95%]">
+             {post.comment || '食べたメニューやおすすめメニュー、お店での体験を記録してみよう。(500文字以内)'}
+           </p>
+        </div>
+
+        <div className="px-5 py-4 bg-gray-50/20">
+           <div className="flex justify-between items-center">
+             <span className="font-bold text-[15px] text-gray-900 tracking-widest">タグ</span>
+             <Link href={`/posts/${post.id}/edit`}><Pencil size={18} strokeWidth={1.5} className="text-gray-500 hover:text-orange-500 transition-colors" /></Link>
+           </div>
+           {post.tags && post.tags.length > 0 && (
+             <div className="mt-4 flex flex-wrap gap-2">
+                {post.tags.map((t: any) => (
+                  <span key={t.tag.id} className="text-xs bg-gray-100 text-gray-600 px-3 py-1.5 rounded-md font-medium">#{t.tag.name}</span>
+                ))}
+             </div>
+           )}
+        </div>
+      </div>
+
+      {/* 6. 店舗情報 */}
+      <div className="mt-2">
+        <div className="bg-[#a68c7e] text-white px-5 py-3 font-bold text-sm tracking-widest">
+           店舗情報
+        </div>
+        
+        <div className="w-full aspect-[2/1] relative bg-[#e3e8da] overflow-hidden flex flex-col justify-center items-center group cursor-pointer hover:opacity-90 transition-opacity">
+           {/* 簡易的なマップモック表現 */}
+           <div className="absolute inset-0 opacity-40 mix-blend-multiply" style={{ backgroundImage: 'radial-gradient(circle at center, #bcd8b1 0%, #e3e8da 100%)' }}></div>
+           
+           {/* ピンと住所 */}
+           <div className="relative z-10 flex flex-col items-center">
+             <div className="bg-white/90 backdrop-blur-sm text-[#4d7f55] border border-green-200 font-bold px-3 py-1.5 rounded-lg shadow-sm text-xs flex items-center gap-1.5 whitespace-nowrap">
+                <MapPin size={14} className="fill-[#9ecea5] text-green-700" />
+                {post.store_name || "店舗位置"}
+             </div>
+             <p className="mt-2 font-black text-gray-600 tracking-widest text-[#5d7f55] text-xl opacity-60">岩田町</p>
+           </div>
+
+           <div className="absolute bottom-2 left-2 flex items-center gap-1 opacity-70">
+              <span className="font-xl font-bold">🍎</span><span className="font-bold text-[11px] font-sans">マップ</span>
+           </div>
+           <div className="absolute bottom-2 left-20 opacity-60">
+             <span className="text-[10px] underline">法律に基づく情報</span>
+           </div>
+        </div>
+
+        <div className="bg-[#f9f9f9] px-4 py-5 flex justify-center border-b border-gray-200/50">
+           <a 
+             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(post.store_name + ' ' + (post.address || ''))}`}
+             target="_blank"
+             rel="noreferrer"
+             className="w-full sm:w-[85%] mx-auto py-3.5 border border-[#5d4037] text-[#5d4037] rounded-md text-[13px] tracking-wide flex justify-center items-center bg-white shadow-sm hover:bg-[#5d4037] hover:text-white transition-all"
+           >
+             <span className="font-black mr-1">Google</span> の店舗詳細ページを見る
+           </a>
+        </div>
+        
+        {post.address && (
+          <div className="px-5 pt-6 pb-20 flex items-start gap-4">
+            <MapPin className="text-[#5d4037] mt-0.5 min-w-[20px] fill-[#5d4037] text-white" size={24} />
+            <span className="text-gray-500 font-medium tracking-wide text-sm leading-relaxed pt-1">{post.address}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Delete / View Actions hidden logically at the bottom if needed but edit is via pencil */}
+      <div className="px-5 mt-4 mb-20">
+         <DeleteButton postId={post.id} />
+      </div>
+
+    </main>
   );
 }
