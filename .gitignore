@@ -34,3 +34,5 @@ tmp_migrate.ts
 setup_db.cjs
 find_user.ts
 find_id.cjs
+
+/src/generated/prisma

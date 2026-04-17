@@ -1,0 +1,109 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String           @id @default(uuid()) @db.Uuid
+  cognito_sub      String           @unique @db.VarChar(255)
+  name            String           @db.VarChar(50)
+  email           String           @db.VarChar(255)
+  avatar_url       String?          
+  created_at       DateTime         @default(now()) 
+  updated_at       DateTime         @updatedAt 
+  posts           Post[]
+  tags            Tag[]
+  group_members    GroupMember[]
+  groups_created   Group[]          @relation("GroupsCreated")
+
+  @@map("users")
+}
+
+model Group {
+  id          String        @id @default(uuid()) @db.Uuid
+  name        String        @db.VarChar(100)
+  description String?
+  created_by   String        @db.Uuid
+  invite_code  String        @unique @db.VarChar(50)
+  created_at   DateTime      @default(now()) 
+  creator     User          @relation("GroupsCreated", fields: [created_by], references: [id])
+  members     GroupMember[]
+  posts       PostGroup[]
+
+  @@map("groups")
+}
+
+model GroupMember {
+  id        String   @id @default(uuid()) @db.Uuid
+  group_id  String   @db.Uuid
+  user_id   String   @db.Uuid
+  role      String   @default("member") @db.VarChar(20)
+  joined_at DateTime @default(now()) 
+  group     Group    @relation(fields: [group_id], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([group_id, user_id])
+  @@map("group_members")
+}
+
+model Post {
+  id          String      @id @default(uuid()) @db.Uuid
+  user_id     String      @db.Uuid
+  title       String
+  store_name  String?     
+  comment     String?
+  rating      Int
+  image_url   String?      
+  image_urls  String[]    @default([])
+  visited_at  DateTime    @db.Date
+  status      String      @default("visited")
+  address     String?
+  google_place_id String?
+  latitude    Float?
+  longitude   Float?
+  created_at  DateTime    @default(now()) 
+  is_favorite Boolean     @default(false) 
+  is_mine_only Boolean    @default(false)
+  user        User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  tags        PostTag[]
+  groups      PostGroup[]
+
+  @@map("posts")
+}
+
+model Tag {
+  id         String    @id @default(uuid()) @db.Uuid
+  user_id    String    @db.Uuid
+  name       String
+  sort_order Int       @default(0) 
+  user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  posts      PostTag[]
+
+  @@unique([user_id, name])
+  @@map("tags")
+}
+
+model PostTag {
+  post_id String @db.Uuid
+  tag_id  String @db.Uuid
+  post    Post   @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  tag     Tag    @relation(fields: [tag_id], references: [id], onDelete: Cascade)
+
+  @@id([post_id, tag_id])
+  @@map("post_tags")
+}
+
+model PostGroup {
+  post_id   String   @db.Uuid
+  group_id  String   @db.Uuid
+  shared_at DateTime @default(now()) 
+  post      Post     @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  group     Group    @relation(fields: [group_id], references: [id], onDelete: Cascade)
+
+  @@id([post_id, group_id])
+  @@map("post_groups")
+}

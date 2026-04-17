@@ -3,30 +3,38 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 4000",
     "build": "next build",
     "start": "next start",
     "lint": "next lint"
   },
   "dependencies": {
+    "@aws-sdk/client-cognito-identity": "^3.1000.0",
+    "@aws-sdk/client-s3": "^3.1000.0",
+    "@aws-sdk/s3-request-presigner": "^3.1000.0",
+    "@prisma/client": "^6.3.1",
     "@react-google-maps/api": "^2.20.8",
     "@supabase/ssr": "^0.3.0",
     "@supabase/supabase-js": "^2.39.8",
+    "aws-jwt-verify": "^4.0.1",
     "exif-js": "^2.3.0",
     "lucide-react": "^0.363.0",
-    "next": "14.2.29",
-    "react": "^18",
-    "react-dom": "^18"
+    "next": "15.1.7",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
-    "@types/node": "^20",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "autoprefixer": "^10.0.1",
-    "eslint": "^8",
-    "eslint-config-next": "14.2.29",
-    "postcss": "^8",
-    "tailwindcss": "^3.4.1",
-    "typescript": "^5"
+    "@types/node": "^20.17.16",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "@types/uuid": "^10.0.0",
+    "autoprefixer": "^10.4.27",
+    "eslint": "^9.18.0",
+    "eslint-config-next": "15.1.7",
+    "postcss": "^8.5.1",
+    "prisma": "^6.3.1",
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.7.3"
   }
 }

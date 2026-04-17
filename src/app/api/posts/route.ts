@@ -1,0 +1,117 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { withAuth } from '@/lib/auth';
+
+/**
+ * GET /api/posts
+ * Fetch posts for the current user with optional filters.
+ */
+export async function GET(request: NextRequest) {
+  return withAuth(request, async (auth) => {
+    try {
+      const { searchParams } = new URL(request.url);
+      const keyword = searchParams.get('keyword');
+      const status = searchParams.get('status');
+      const isFavoriteParam = searchParams.get('is_favorite');
+      const tagId = searchParams.get('tag_id');
+
+      const posts = await prisma.post.findMany({
+        where: {
+          user_id: auth.userId,
+          ...(status ? { status } : {}),
+          ...(isFavoriteParam === 'true' ? { is_favorite: true } : {}),
+          ...(keyword ? { title: { contains: keyword, mode: 'insensitive' } } : {}),
+          ...(tagId ? { tags: { some: { tag_id: tagId } } } : {}),
+        },
+        include: {
+          user: {
+            select: { id: true, name: true, avatar_url: true }
+          },
+          tags: {
+            include: {
+              tag: true,
+            },
+          },
+        },
+        orderBy: {
+          visited_at: 'desc',
+        },
+      });
+
+      // Flatten tags for easier consumption
+      const result = posts.map((post: any) => ({
+        ...post,
+        tags: post.tags.map((pt: any) => pt.tag),
+      }));
+
+      return NextResponse.json({ success: true, data: result });
+    } catch (e: any) {
+      console.error('[GET /api/posts] Error:', e);
+      return NextResponse.json({ success: false, error: e.message }, { status: 500 });
+    }
+  });
+}
+
+/**
+ * POST /api/posts
+ * Create a new post.
+ */
+export async function POST(request: NextRequest) {
+  return withAuth(request, async (auth) => {
+    try {
+      const { title, store_name, comment, rating, image_url, image_urls, visited_at, status, address, google_place_id, latitude, longitude, is_mine_only, tagNames } = await request.json();
+
+      const post = await prisma.post.create({
+        data: {
+          user_id: auth.userId,
+          title,
+          store_name,
+          comment,
+          rating,
+          image_url,
+          image_urls: image_urls || [],
+          visited_at: new Date(visited_at),
+          status: status || 'visited',
+          address,
+          google_place_id,
+          latitude,
+          longitude,
+          is_mine_only: is_mine_only || false,
+        },
+      });
+
+      if (tagNames && tagNames.length > 0) {
+        // Sync tags
+        const tags = await Promise.all(
+          tagNames.map(async (name: string) => {
+            return prisma.tag.upsert({
+              where: {
+                user_id_name: {
+                  user_id: auth.userId,
+                  name: name.trim(),
+                },
+              },
+              update: {},
+              create: {
+                user_id: auth.userId,
+                name: name.trim(),
+              },
+            });
+          })
+        );
+
+        await prisma.postTag.createMany({
+          data: tags.map((tag) => ({
+            post_id: post.id,
+            tag_id: tag.id,
+          })),
+        });
+      }
+
+      return NextResponse.json({ success: true, data: post });
+    } catch (e: any) {
+      console.error('[POST /api/posts] Error:', e);
+      return NextResponse.json({ success: false, error: e.message }, { status: 500 });
+    }
+  });
+}

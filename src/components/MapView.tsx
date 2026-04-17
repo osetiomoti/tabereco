@@ -1,0 +1,217 @@
+'use client';
+
+import { useCallback, useState } from 'react';
+import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
+import type { Post } from '@/lib/types';
+import Link from 'next/link';
+import { Star, MapPin } from 'lucide-react';
+
+const containerStyle = {
+  width: '100%',
+  height: '100%',
+};
+
+
+type Props = {
+  posts: Post[];
+  center: { lat: number; lng: number };
+  zoom?: number;
+  tempMarker?: { lat: number, lng: number, placeId?: string, name?: string, address?: string } | null;
+  setTempMarker?: React.Dispatch<React.SetStateAction<{ lat: number, lng: number, placeId?: string, name?: string, address?: string } | null>>;
+};
+
+export default function MapView({ posts, center, zoom = 14, tempMarker, setTempMarker }: Props) {
+  const apiKey = (process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '').trim();
+
+  const { isLoaded, loadError } = useJsApiLoader({
+    id: 'google-map-script-ja',
+    googleMapsApiKey: apiKey,
+    language: 'ja',
+    region: 'JP',
+  });
+
+  const [map, setMap] = useState<google.maps.Map | null>(null);
+  const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+
+  const onLoad = useCallback((map: google.maps.Map) => {
+    if (posts.length > 0) {
+      const bounds = new window.google.maps.LatLngBounds();
+      posts.forEach(p => {
+        if (p.latitude && p.longitude) {
+          bounds.extend({ lat: p.latitude, lng: p.longitude });
+        }
+      });
+      map.fitBounds(bounds);
+    }
+    setMap(map);
+  }, [posts]);
+
+  const onUnmount = useCallback(() => {
+    setMap(null);
+  }, []);
+
+  const handleMapClick = (e: google.maps.MapMouseEvent) => {
+    if (!e.latLng || !setTempMarker) return;
+    const lat = e.latLng.lat();
+    const lng = e.latLng.lng();
+    const placeId = (e as any).placeId; // google.maps.IconMouseEvent interface has placeId
+
+    // 1. 初期の仮ピンを立てる
+    setTempMarker({ lat, lng, placeId });
+
+    // 2. Geocoderで逆ジオコーディング
+    const geocoder = new window.google.maps.Geocoder();
+    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+      if (status === 'OK' && results && results[0]) {
+        // format address roughly by removing country code
+        let address = results[0].formatted_address.replace(/^日本、/, '');
+        setTempMarker((prev) => prev ? { ...prev, address } : null);
+
+        // If placeId is present, we could optionally fetch Place details (requires PlacesService)
+        // However, we avoid initializing PlacesService here unless absolutely needed since Geocoder address + POI click usually gives enough.
+      }
+    });
+  };
+
+  if (loadError) {
+    return (
+      <div className="w-full h-full bg-white rounded-3xl flex flex-col items-center justify-center border border-red-100 p-8 text-center bg-red-50/30">
+        <MapPin className="text-red-500 mb-4" size={48} />
+        <h2 className="text-xl font-bold text-gray-900 mb-2">Google Maps の読み込みエラー</h2>
+        <p className="text-red-500 text-sm max-w-xs">{loadError.message}</p>
+        <p className="text-gray-400 text-[10px] mt-4">APIキー、支払い設定、またはAPIの有効化を確認してください</p>
+      </div>
+    );
+  }
+
+  if (!apiKey) {
+    return (
+      <div className="w-full h-full bg-white rounded-3xl flex flex-col items-center justify-center border border-gray-100 p-8 text-center">
+        <MapPin className="text-orange-500 mb-4 animate-bounce" size={48} />
+        <h2 className="text-xl font-bold text-gray-900 mb-2">API キーが未設定です</h2>
+        <p className="text-gray-400 text-sm max-w-xs">.env.local を確認してください</p>
+      </div>
+    );
+  }
+
+  return isLoaded ? (
+    <div className="w-full h-full rounded-2xl sm:rounded-3xl overflow-hidden border border-gray-100 shadow-xl relative">
+      <GoogleMap
+        mapContainerStyle={containerStyle}
+        center={center}
+        zoom={zoom}
+        onLoad={onLoad}
+        onUnmount={onUnmount}
+        onClick={handleMapClick}
+        options={{
+          zoomControl: true,
+          streetViewControl: true,
+          mapTypeControl: true,
+          fullscreenControl: true,
+          gestureHandling: 'greedy',
+        }}
+      >
+        {posts.map((post) => (
+          post.latitude && post.longitude && (
+            <Marker
+              key={post.id}
+              position={{ lat: post.latitude, lng: post.longitude }}
+              onClick={() => setSelectedPost(post)}
+              icon={{
+                url: post.status === 'visited' 
+                  ? 'http://maps.google.com/mapfiles/ms/icons/orange-dot.png' 
+                  : 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
+              }}
+            />
+          )
+        ))}
+
+        {selectedPost && selectedPost.latitude && selectedPost.longitude && (
+          <InfoWindow
+            position={{ lat: selectedPost.latitude, lng: selectedPost.longitude }}
+            onCloseClick={() => setSelectedPost(null)}
+          >
+            <div className="p-1 min-w-[200px]">
+              {selectedPost.image_url && (
+                <div className="relative aspect-video rounded-lg overflow-hidden mb-2 bg-gray-100">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={selectedPost.image_url} alt={selectedPost.title} className="object-cover w-full h-full" />
+                </div>
+              )}
+              <h3 className="font-bold text-gray-900 text-sm leading-tight">{selectedPost.title}</h3>
+              <p className="text-xs text-gray-500 mt-1 mb-2">{selectedPost.store_name || '店舗名なし'}</p>
+              <div className="flex items-center gap-1 mb-3">
+                {[1, 2, 3, 4, 5].map((s) => (
+                  <Star key={s} size={11} fill={s <= (selectedPost.rating || 0) ? '#f59e0b' : 'none'} className={s <= (selectedPost.rating || 0) ? 'text-amber-500' : 'text-gray-200'} />
+                ))}
+              </div>
+              <Link 
+                href={`/posts/${selectedPost.id}`}
+                className="block w-full text-center py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-lg transition-colors"
+                onClick={(e) => {
+                  // Next.js Link handles this, but ensuring InfoWindow closing doesn't block it
+                }}
+              >
+                詳細を表示
+              </Link>
+            </div>
+          </InfoWindow>
+        )}
+
+        {/* Temporary Marker from Click or Search */}
+        {tempMarker && tempMarker.lat && tempMarker.lng && (
+          <Marker
+            position={{ lat: tempMarker.lat, lng: tempMarker.lng }}
+            icon={{
+              url: 'http://maps.google.com/mapfiles/ms/icons/pink-dot.png'
+            }}
+          />
+        )}
+      </GoogleMap>
+
+      {/* Modern Bottom Sheet for Temporary Marker overlaying the Map */}
+      {tempMarker && tempMarker.lat && tempMarker.lng && (
+        <div className="absolute bottom-6 left-4 right-4 sm:fixed sm:bottom-8 sm:left-1/2 sm:-translate-x-1/2 sm:w-[500px] z-[100] animate-in slide-in-from-bottom-8 duration-500">
+          <div className="bg-white/95 backdrop-blur-xl rounded-[2rem] p-5 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] border border-gray-100/50 flex flex-col items-center">
+            <div className="w-10 h-1.5 bg-gray-200 rounded-full mb-4" /> {/* Drag handle aesthetic */}
+            
+            <div className="flex flex-col items-center text-center mb-5 w-full">
+              <h3 className="font-black text-gray-900 text-lg leading-tight mb-2 flex items-center justify-center gap-1.5 w-full">
+                <MapPin className="text-pink-500 flex-shrink-0" size={20} />
+                <span className="truncate max-w-[85%]">{tempMarker.name || '選択した地点'}</span>
+              </h3>
+              {tempMarker.address && (
+                <p className="text-xs text-gray-500 font-bold bg-gray-50/80 px-3 py-1.5 rounded-full truncate max-w-full">
+                  {tempMarker.address}
+                </p>
+              )}
+            </div>
+            
+            <div className="w-full flex flex-col gap-2">
+              <div className="flex items-center gap-2 mb-1 px-1">
+                <span className="text-gray-800 font-black text-sm">ここに記録を追加</span>
+                <div className="flex-1 h-px bg-gray-100" />
+              </div>
+              <Link 
+                href={`/posts/new?lat=${tempMarker.lat}&lng=${tempMarker.lng}${tempMarker.placeId ? `&placeId=${tempMarker.placeId}` : ''}${tempMarker.name ? `&name=${encodeURIComponent(tempMarker.name)}` : ''}${tempMarker.address ? `&address=${encodeURIComponent(tempMarker.address)}` : ''}`}
+                className="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-400 hover:from-pink-400 hover:to-rose-300 text-white text-[15px] font-black rounded-[1.5rem] transition-all shadow-xl shadow-pink-500/25 flex items-center justify-center gap-2 active:scale-[0.98]"
+              >
+                <span className="text-lg leading-none">🍽️</span> このお店を記録する
+              </Link>
+              <button
+                onClick={() => setTempMarker?.(null)}
+                className="w-full py-3.5 bg-white border border-gray-100 hover:bg-gray-50 text-gray-400 text-sm font-bold rounded-[1.5rem] transition-colors mt-1 active:scale-[0.98]"
+              >
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  ) : (
+    <div className="w-full h-full bg-gray-50 animate-pulse rounded-2xl sm:rounded-3xl flex items-center justify-center border border-gray-100">
+      <MapPin className="text-gray-200 animate-bounce" size={48} />
+    </div>
+  );
+}
