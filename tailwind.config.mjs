@@ -1,6 +1,5 @@
-import type { Config } from 'tailwindcss';
-
-const config: Config = {
+/** @type {import('tailwindcss').Config} */
+export default {
   content: [
     './src/pages/**/*.{js,ts,jsx,tsx,mdx}',
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
@@ -9,10 +8,8 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: '#0a0a0a',
-        card: '#141414',
-        elevated: '#1a1a1a',
-        'card-border': '#222222',
+        background: '#fcfcfc',
+        card: '#ffffff',
         accent: {
           DEFAULT: '#f97316',
           hover: '#ea6c10',
@@ -45,5 +42,3 @@ const config: Config = {
   },
   plugins: [],
 };
-
-export default config;
