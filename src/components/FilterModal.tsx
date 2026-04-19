@@ -13,6 +13,7 @@ type FilterState = {
   status: 'all' | 'want_to_go' | 'visited';
   is_favorite: boolean;
   is_mine_only: boolean;
+  activeGroups: string[];
 };
 
 type Props = {
@@ -38,16 +39,29 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
     status: 'all',
     is_favorite: false,
     is_mine_only: false,
+    activeGroups: ['all'],
   });
 
   const [userTags, setUserTags] = useState<Tag[]>(initialTags || []);
+  const [joinedGroups, setJoinedGroups] = useState<any[]>([]);
   const [isTagSelectorOpen, setIsTagSelectorOpen] = useState(false);
 
   useEffect(() => {
-    if (isOpen && !initialTags) {
-      loadTags();
+    if (isOpen) {
+      if (!initialTags) loadTags();
+      loadGroups();
     }
   }, [isOpen, initialTags]);
+
+  const loadGroups = async () => {
+    try {
+      const { getJoinedGroups } = await import('@/lib/api/groups');
+      const data = await getJoinedGroups();
+      setJoinedGroups(data);
+    } catch (err) {
+      console.error('Failed to load groups:', err);
+    }
+  };
 
   const loadTags = async () => {
     try {
@@ -70,6 +84,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
       status: 'all',
       is_favorite: false,
       is_mine_only: false,
+      activeGroups: ['all'],
     });
   };
 
@@ -174,6 +189,61 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
               selectedTags={filters.tag ? [filters.tag] : []}
               onSelect={(tags) => toggleFilter('tag', tags[0] || '')}
             />
+          </section>
+
+          {/* Groups */}
+          <section className="space-y-4">
+            <label className="text-sm font-black text-gray-600 ml-1 block">表示するグループ</label>
+            <div className="flex flex-wrap gap-2.5">
+              <button
+                onClick={() => toggleFilter('activeGroups', ['all'])}
+                className={`px-5 py-2.5 rounded-2xl text-[13px] font-black transition-all border ${
+                  filters.activeGroups.includes('all')
+                    ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-500/20'
+                    : 'bg-white border-gray-100 text-gray-400 hover:border-orange-200'
+                }`}
+              >
+                🌍 すべて
+              </button>
+              <button
+                onClick={() => {
+                  let next = filters.activeGroups.filter(x => x !== 'all');
+                  if (next.includes('mine')) next = next.filter(x => x !== 'mine');
+                  else next.push('mine');
+                  if (next.length === 0) next = ['all'];
+                  toggleFilter('activeGroups', next);
+                }}
+                className={`px-5 py-2.5 rounded-2xl text-[13px] font-black transition-all border ${
+                  filters.activeGroups.includes('mine')
+                    ? 'bg-indigo-500 border-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                    : 'bg-white border-gray-100 text-gray-400 hover:border-indigo-200'
+                }`}
+              >
+                👤 自分
+              </button>
+              {joinedGroups.map(g => {
+                const isSelected = filters.activeGroups.includes(g.id);
+                return (
+                  <button
+                    key={g.id}
+                    onClick={() => {
+                      let next = filters.activeGroups.filter(x => x !== 'all');
+                      if (next.includes(g.id)) next = next.filter(x => x !== g.id);
+                      else next.push(g.id);
+                      if (next.length === 0) next = ['all'];
+                      toggleFilter('activeGroups', next);
+                    }}
+                    className={`px-5 py-2.5 rounded-2xl text-[13px] font-black transition-all border ${
+                      isSelected
+                        ? 'bg-indigo-500 border-indigo-500 text-white shadow-lg shadow-indigo-500/20'
+                        : 'bg-white border-gray-100 text-gray-400 hover:border-indigo-200'
+                    }`}
+                  >
+                    👥 {g.name}
+                  </button>
+                );
+              })}
+            </div>
           </section>
 
           {/* Period */}

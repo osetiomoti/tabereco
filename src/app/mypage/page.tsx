@@ -60,6 +60,19 @@ export default function MyPage() {
         </div>
       </div>
 
+      {/* New record button (A. Request) */}
+      <div className="px-4 mb-8">
+        <Link 
+          href="/posts/new"
+          className="w-full py-4.5 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-3xl font-black text-lg flex items-center justify-center gap-3 shadow-lg shadow-orange-500/30 hover:scale-[1.02] active:scale-98 transition-all"
+        >
+          <div className="p-1 bg-white/20 rounded-lg">
+             <Plus size={24} strokeWidth={3} />
+          </div>
+          <span>新しく記録する</span>
+        </Link>
+      </div>
+
       {/* Filter Row */}
       <div className="px-4 mb-4 flex items-center gap-2">
         <div className="flex-1 relative">

@@ -124,19 +124,6 @@ export default function PostsPage() {
     setPosts(result.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
   }, [activeGroups, activeTab, keyword, advancedFilters, ownPostsCache, groupPostsCache]);
 
-  const toggleGroup = (id: string) => {
-    let next = [...activeGroups];
-    if (id === 'all') {
-      next = ['all'];
-    } else {
-      next = next.filter(x => x !== 'all');
-      if (next.includes(id)) next = next.filter(x => x !== id);
-      else next.push(id);
-      if (next.length === 0) next = ['all'];
-    }
-    updateFilter({ activeGroups: next });
-  };
-
   const removeFilter = (key: string) => {
     const next = { ...advancedFilters };
     delete next[key];
@@ -198,34 +185,7 @@ export default function PostsPage() {
           </button>
         </div>
 
-        {/* 3. グループフィルターチップス (プレミアム版) */}
-        {(joinedGroups.length > 0 || ownPostsCache.length > 0) && (
-          <div className="flex gap-2.5 overflow-x-auto no-scrollbar pb-6 mb-2">
-            <button
-              onClick={() => toggleGroup('all')}
-              className={`px-5 py-2.5 rounded-full text-[13px] font-black whitespace-nowrap transition-all shadow-sm ${activeGroups.includes('all') ? 'bg-orange-500 text-white border border-orange-600 shadow-orange-500/20' : 'bg-white border border-gray-100 text-gray-500 hover:bg-gray-50 hover:border-orange-200'}`}
-            >
-              🌍 すべて
-            </button>
-            <button
-              onClick={() => toggleGroup('mine')}
-              className={`px-5 py-2.5 rounded-full text-[13px] font-black whitespace-nowrap transition-all shadow-sm flex items-center gap-2 ${activeGroups.includes('mine') ? 'bg-indigo-500 text-white border border-indigo-600 shadow-indigo-500/20' : 'bg-white border border-gray-100 text-gray-500 hover:bg-gray-50 hover:border-indigo-200'}`}
-            >
-              👤 自分
-            </button>
-            {joinedGroups.map(g => (
-              <button
-                key={g.id}
-                onClick={() => toggleGroup(g.id)}
-                className={`px-5 py-2.5 rounded-full text-[13px] font-black whitespace-nowrap transition-all shadow-sm flex items-center gap-2 ${activeGroups.includes(g.id) ? 'bg-indigo-500 text-white border border-indigo-600 shadow-indigo-500/20' : 'bg-white border border-gray-100 text-gray-500 hover:bg-gray-50 hover:border-indigo-200'}`}
-              >
-                👥 {g.name}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* 適用中のフィルタチップ */}
+        {/* 3. 適用中のフィルタチップ */}
         <FilterChips filters={advancedFilters} onRemove={removeFilter} />
 
         {/* 一覧機能 / マップ表示切り替え */}
@@ -256,8 +216,17 @@ export default function PostsPage() {
       <FilterModal 
         isOpen={isFilterModalOpen}
         onClose={() => setIsFilterModalOpen(false)}
-        onApply={(f) => updateFilter({ advancedFilters: f })}
-        initialFilters={advancedFilters}
+        onApply={(f) => {
+          const { activeGroups, ...rest } = f as any;
+          updateFilter({ 
+            activeGroups: activeGroups || ['all'],
+            advancedFilters: rest
+          });
+        }}
+        initialFilters={{
+          ...(advancedFilters || {}),
+          activeGroups: activeGroups
+        } as any}
       />
 
     </>
