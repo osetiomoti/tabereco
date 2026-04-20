@@ -7,7 +7,7 @@ import type { Tag } from '@/lib/types';
 import { TagSelector } from './TagSelector';
 
 type FilterState = {
-  tag: string;
+  tags: string[];
   period: string;
   registrantUserId: string;
   status: 'all' | 'visited';
@@ -36,7 +36,7 @@ const PERIOD_OPTIONS = [
 ];
 
 const DEFAULT: FilterState = {
-  tag: '',
+  tags: [],
   period: 'all',
   registrantUserId: '',
   status: 'all',
@@ -70,10 +70,16 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
 
   useEffect(() => {
     if (!isOpen) return;
-    const ids = filters.activeGroups.filter(g => g !== 'all' && g !== 'mine');
+    let ids = filters.activeGroups.filter(g => g !== 'all' && g !== 'mine');
+    
+    // If 'all' is selected, include all joined groups
+    if (filters.activeGroups.includes('all')) {
+      ids = joinedGroups.map(g => g.id);
+    }
+    
     if (ids.length) loadMembers(ids);
     else setMembers([]);
-  }, [filters.activeGroups, isOpen]);
+  }, [filters.activeGroups, isOpen, joinedGroups]);
 
   /* ── click-outside ── */
   useEffect(() => {
@@ -146,7 +152,8 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
     return members.find(m => m.id === filters.registrantUserId)?.name ?? '選択中';
   };
 
-  const hasFilter = filters.activeGroups.filter(x => x !== 'all' && x !== 'mine').length > 0;
+  // Remove hasFilter restriction so dropdown is always enabled
+  const memberOptionsEnabled = members.length > 0;
 
   if (!isOpen) return null;
 
@@ -229,8 +236,8 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
           {/* ── Member Combobox ── */}
           <section className="space-y-2">
             <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">投稿者</label>
-            {!hasFilter ? (
-              <p className="text-[13px] text-gray-400 italic">グループを選択するとメンバーで絞り込めます</p>
+            {!memberOptionsEnabled ? (
+              <p className="text-[13px] text-gray-400 italic">グループにメンバーがいません</p>
             ) : (
               <div className="relative" ref={memberRef}>
                 <button
@@ -297,46 +304,55 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
           <section className="space-y-3">
             <div className="flex items-center justify-between">
               <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">タグ</label>
-              {filters.tag && (
-                <button onClick={() => set('tag', '')} className="text-[11px] text-red-400 hover:text-red-500 font-medium">クリア</button>
+              {filters.tags.length > 0 && (
+                <button onClick={() => set('tags', [])} className="text-[11px] text-red-400 hover:text-red-500 font-medium">すべてクリア</button>
               )}
             </div>
-            {filters.tag ? (
-              <div className="inline-flex items-center gap-2 bg-orange-50 text-orange-600 border border-orange-200 px-4 py-2 rounded-xl text-[13px] font-medium">
-                <Hash size={14} />
-                <span>{filters.tag}</span>
-                <X size={14} className="cursor-pointer opacity-60 hover:opacity-100" onClick={() => set('tag', '')} />
-              </div>
-            ) : (
-              <button
-                type="button"
-                onClick={() => setIsTagSelectorOpen(true)}
-                className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-gray-200 text-gray-400 rounded-xl text-[13px] font-medium hover:border-orange-300 hover:text-orange-500 transition-all"
-              >
-                <Plus size={16} />
-                タグを選択
-              </button>
-            )}
+            
             <div className="flex flex-wrap gap-2">
-              {userTags.slice(0, 12).map(tag => (
-                <button
-                  key={tag.id}
-                  onClick={() => set('tag', tag.name)}
-                  className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all ${
-                    filters.tag === tag.name
-                      ? 'bg-orange-100 text-orange-700 border border-orange-300'
-                      : 'bg-gray-50 text-gray-500 border border-gray-100 hover:bg-gray-100'
-                  }`}
-                >
-                  #{tag.name}
-                </button>
+              {filters.tags.map(tag => (
+                <div key={tag} className="inline-flex items-center gap-1.5 bg-orange-50 text-orange-600 border border-orange-200 px-3 py-1.5 rounded-[10px] text-[13px] font-medium animate-in zoom-in">
+                  <Hash size={14} />
+                  <span>{tag}</span>
+                  <X size={14} className="cursor-pointer opacity-60 hover:opacity-100" onClick={() => set('tags', filters.tags.filter(t => t !== tag))} />
+                </div>
               ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setIsTagSelectorOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 border-2 border-dashed border-gray-200 text-gray-400 rounded-xl text-[13px] font-medium hover:border-orange-300 hover:text-orange-500 transition-all mt-1"
+            >
+              <Plus size={16} />
+              タグを追加する
+            </button>
+            <div className="flex flex-wrap gap-2 mt-4">
+              {userTags.slice(0, 12).map(tag => {
+                const isSelected = filters.tags.includes(tag.name);
+                return (
+                  <button
+                    key={tag.id}
+                    onClick={() => {
+                      if (isSelected) set('tags', filters.tags.filter(t => t !== tag.name));
+                      else set('tags', [...filters.tags, tag.name]);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all ${
+                      isSelected
+                        ? 'bg-orange-100 text-orange-700 border border-orange-300'
+                        : 'bg-gray-50 text-gray-500 border border-gray-100 hover:bg-gray-100'
+                    }`}
+                  >
+                    #{tag.name}
+                  </button>
+                );
+              })}
             </div>
             <TagSelector
               isOpen={isTagSelectorOpen}
               onClose={() => setIsTagSelectorOpen(false)}
-              selectedTags={filters.tag ? [filters.tag] : []}
-              onSelect={tags => set('tag', tags[0] || '')}
+              selectedTags={filters.tags}
+              onSelect={tags => set('tags', tags)}
             />
           </section>
 

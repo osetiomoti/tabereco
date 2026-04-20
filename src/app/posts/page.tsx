@@ -112,8 +112,8 @@ export default function PostsPage() {
     }
 
     // Advanced filters
-    if (advancedFilters?.tag) {
-      result = result.filter(p => p.tags?.some((t: any) => t.name === advancedFilters.tag));
+    if (advancedFilters?.tags && advancedFilters.tags.length > 0) {
+      result = result.filter(p => advancedFilters.tags.every((tag: string) => p.tags?.some((t: any) => t.name === tag)));
     }
     if (advancedFilters?.is_favorite) {
       result = result.filter(p => p.is_favorite);
@@ -128,17 +128,22 @@ export default function PostsPage() {
     setPosts(result.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
   }, [activeGroups, activeTab, keyword, advancedFilters, ownPostsCache, groupPostsCache]);
 
-  const removeFilter = (key: string) => {
+  const removeFilter = (key: string | string[]) => {
     const next = { ...advancedFilters };
-    delete next[key];
+    if (Array.isArray(key)) {
+      if (key.length === 0) delete next.tags;
+      else next.tags = key;
+    } else {
+      delete next[key];
+    }
     updateFilter({ advancedFilters: Object.keys(next).length > 0 ? next : null });
   };
 
   // Count active filters for badge
   const activeFilterCount = advancedFilters
     ? Object.entries(advancedFilters).filter(([k, v]) =>
-        v && v !== 'all' && v !== '' && v !== false && k !== 'activeGroups'
-      ).length + (activeGroups.filter(x => x !== 'all').length > 0 ? 1 : 0)
+        v && v !== 'all' && v !== '' && v !== false && k !== 'activeGroups' && k !== 'tags'
+      ).length + (advancedFilters.tags?.length || 0) + (activeGroups.filter(x => x !== 'all').length > 0 ? 1 : 0)
     : activeGroups.filter(x => x !== 'all').length;
 
   return (
@@ -164,7 +169,7 @@ export default function PostsPage() {
         
         {/* 1. プレミアム・リスト/マップ切り替えトグル */}
         <div className="flex justify-center mb-8 mt-2">
-          <div className="flex bg-gray-200/50 backdrop-blur-md rounded-2xl p-1 w-full max-w-[280px] shadow-inner border border-gray-100">
+          <div className="inline-flex bg-gray-100/60 backdrop-blur-md rounded-[18px] p-1 w-[240px] shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] border border-black/5">
             <button
               onClick={() => setViewMode('list')}
               className={`flex-1 py-2.5 text-[13px] font-black rounded-[14px] transition-all duration-300 ${

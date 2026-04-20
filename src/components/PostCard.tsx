@@ -4,7 +4,7 @@ import type { Post } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Bookmark, CheckCircle2, Calendar, Hash, User, MoreHorizontal, Star } from 'lucide-react';
+import { Bookmark, CheckCircle2, Calendar, Hash, User, MoreHorizontal, Star, MapPin } from 'lucide-react';
 import { useState, useRef } from 'react';
 
 type Props = { 
@@ -259,8 +259,10 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
 
       {/* Title / Store Name */}
       <div className="px-4 mb-4">
-        <p className="text-gray-900 font-medium text-[16px] leading-relaxed tracking-wide">
-          「<span className="font-bold underline decoration-gray-400 underline-offset-4 decoration-2">{post.store_name}</span>」に行きました！
+        <h2 className="text-[16px] font-black leading-snug text-gray-900 mb-1">{post.title}</h2>
+        <p className="text-gray-500 font-medium text-[13px] tracking-wide inline-flex items-center gap-1">
+          <MapPin size={12} className="text-orange-500" />
+          <span className="font-bold underline decoration-gray-200 underline-offset-4 decoration-2">{post.store_name}</span>
         </p>
       </div>
 
@@ -352,8 +354,12 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
 export function FilterChips({ filters, onRemove }: { filters: any, onRemove: (key: string) => void }) {
   if (!filters) return null;
 
-  const activeChips = [];
-  if (filters.tag) activeChips.push({ key: 'tag', label: `#${filters.tag}`, color: 'bg-pink-50 text-pink-500' });
+  const activeChips: Array<{ key: string, label: string, color: string, isTag?: boolean, tagValue?: string }> = [];
+  if (filters.tags && filters.tags.length > 0) {
+    filters.tags.forEach((t: string) => {
+      activeChips.push({ key: `tag-${t}`, label: `#${t}`, color: 'bg-pink-50 text-pink-500', isTag: true, tagValue: t });
+    });
+  }
   if (filters.period !== 'all') activeChips.push({ key: 'period', label: `🗓️ ${filters.period}`, color: 'bg-orange-50 text-orange-500' });
   if (filters.is_favorite) activeChips.push({ key: 'is_favorite', label: '❤️ お気に入り', color: 'bg-red-50 text-red-500' });
 
@@ -367,7 +373,17 @@ export function FilterChips({ filters, onRemove }: { filters: any, onRemove: (ke
           className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black shadow-sm ${chip.color} animate-in zoom-in`}
         >
           {chip.label}
-          <button onClick={() => onRemove(chip.key)} className="hover:opacity-60 transition-opacity">
+          <button 
+            onClick={() => {
+              if (chip.isTag) {
+                const newTags = filters.tags.filter((t: string) => t !== chip.tagValue);
+                onRemove(newTags as any); // hacky way to pass tags update if your hook supports it, but PostsPage logic receives the key.
+              } else {
+                onRemove(chip.key);
+              }
+            }} 
+            className="hover:opacity-60 transition-opacity ml-1"
+          >
             <span className="text-[14px]">×</span>
           </button>
         </span>
