@@ -134,9 +134,32 @@ export default function PostsPage() {
     updateFilter({ advancedFilters: Object.keys(next).length > 0 ? next : null });
   };
 
+  // Count active filters for badge
+  const activeFilterCount = advancedFilters
+    ? Object.entries(advancedFilters).filter(([k, v]) =>
+        v && v !== 'all' && v !== '' && v !== false && k !== 'activeGroups'
+      ).length + (activeGroups.filter(x => x !== 'all').length > 0 ? 1 : 0)
+    : activeGroups.filter(x => x !== 'all').length;
+
   return (
     <>
-      <Header />
+      <Header>
+        <button
+          onClick={() => setIsFilterModalOpen(true)}
+          className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+            activeFilterCount > 0
+              ? 'bg-orange-500 text-white shadow-sm'
+              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+          }`}
+        >
+          <Filter size={18} />
+          {activeFilterCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-white text-orange-500 text-[9px] font-black rounded-full flex items-center justify-center border border-orange-200">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+      </Header>
       <main className="max-w-2xl mx-auto px-4 py-6 pb-32 animate-in fade-in duration-700">
         
         {/* 1. プレミアム・リスト/マップ切り替えトグル */}
@@ -165,28 +188,16 @@ export default function PostsPage() {
           </div>
         </div>
 
-        {/* 2. プレミアム検索バー & フィルターボタン */}
-        <div className="mb-8 flex gap-3">
-          <div className="relative group flex-1">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300 group-focus-within:text-orange-500 transition-colors" size={20} />
-            <input
-              type="text"
-              placeholder="何を食べたい？どこに行きたい？"
-              value={keyword}
-              onChange={(e) => updateFilter({ keyword: e.target.value })}
-              className="w-full bg-white border border-gray-100/80 py-4 pl-14 pr-6 rounded-[2rem] text-[15px] font-bold placeholder:text-gray-300 focus:outline-none focus:ring-4 focus:ring-orange-500/5 focus:border-orange-500/20 transition-all shadow-sm"
-            />
-          </div>
-          <button 
-            onClick={() => setIsFilterModalOpen(true)}
-            className={`aspect-square w-[58px] rounded-[1.5rem] flex items-center justify-center transition-all ${
-              advancedFilters 
-                ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20' 
-                : 'bg-white border border-gray-100/80 text-gray-500 shadow-sm hover:border-orange-200 hover:bg-orange-50/30'
-            }`}
-          >
-            <Filter size={22} className={advancedFilters ? 'fill-white/20' : ''} />
-          </button>
+        {/* Search bar */}
+        <div className="relative mb-6">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+          <input
+            type="text"
+            placeholder="お店や料理を検索..."
+            value={keyword}
+            onChange={e => updateFilter({ keyword: e.target.value })}
+            className="w-full bg-white border border-gray-100 py-3.5 pl-11 pr-4 rounded-2xl text-[14px] font-medium placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-300 transition-all shadow-sm"
+          />
         </div>
 
         {/* 3. 適用中のフィルタチップ */}

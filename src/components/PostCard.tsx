@@ -38,9 +38,6 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
           <div className="flex-1 ml-5 py-1 flex flex-col justify-between min-w-0">
             <div className="space-y-1.5 overflow-hidden">
               <div className="flex items-center gap-2 mb-1">
-                {post.status === 'want_to_go' && (
-                  <span className="text-[9px] font-black bg-blue-500 text-white px-2 py-0.5 rounded-full uppercase tracking-wider">Plan</span>
-                )}
                 <h3 className="text-base font-black text-gray-900 group-hover:text-orange-500 transition-colors leading-none truncate">
                   {post.title}
                 </h3>
@@ -346,18 +343,6 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
           </div>
         )}
 
-        {/* Favorite Action Button */}
-        <div className="flex justify-center mb-2">
-          <button 
-            onClick={handleFavorite}
-            className={`w-[260px] max-w-[90%] py-3.5 rounded-full font-bold text-[15px] transition-all border flex items-center justify-center gap-2 shadow-sm active:scale-95
-              ${post.is_favorite 
-                ? 'border-orange-500/20 bg-orange-50 text-orange-500 pointer-events-none' 
-                : 'border-gray-400 bg-white text-gray-700 hover:bg-gray-50'}`}
-          >
-            {post.is_favorite ? '✅ 行きたいに追加済み' : '行きたいに追加する'}
-          </button>
-        </div>
       </div>
     </div>
   );
