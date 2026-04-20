@@ -4,9 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 4000",
+    "dev:clean": "Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue; next dev -p 4000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "clean": "Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity": "^3.1000.0",

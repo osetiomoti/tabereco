@@ -1,5 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Disable strict mode to avoid double-render in development
+  // (helps with HMR stability and chunk hash consistency)
+  reactStrictMode: false,
+
   images: {
     remotePatterns: [
       {

@@ -6,9 +6,8 @@ import { PostCard, FilterChips } from '@/components/PostCard';
 import { FilterModal } from '@/components/FilterModal';
 import { getPosts } from '@/lib/api/posts';
 import { getJoinedGroups, getGroupPosts } from '@/lib/api/groups';
-import type { Post, PostStatus } from '@/lib/types';
-import Link from 'next/link';
-import { UtensilsCrossed, Search, Filter, Lock, MapPin } from 'lucide-react';
+import type { Post } from '@/lib/types';
+import { UtensilsCrossed, Search, Filter, MapPin } from 'lucide-react';
 import { useSharedFilter } from '@/hooks/useSharedFilter';
 import dynamic from 'next/dynamic';
 
