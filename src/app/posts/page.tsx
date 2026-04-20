@@ -21,7 +21,6 @@ const MapView = dynamic(() => import('@/components/MapView'), {
   ),
 });
 
-type TabType = 'all' | 'want_to_go' | 'visited';
 
 export default function PostsPage() {
   const { filterState, updateFilter } = useSharedFilter();
@@ -113,12 +112,18 @@ export default function PostsPage() {
       );
     }
 
-    // Advanced filters (Tag)
+    // Advanced filters
     if (advancedFilters?.tag) {
-      result = result.filter(p => p.tags?.some(t => t.name === advancedFilters.tag));
+      result = result.filter(p => p.tags?.some((t: any) => t.name === advancedFilters.tag));
     }
     if (advancedFilters?.is_favorite) {
       result = result.filter(p => p.is_favorite);
+    }
+    if (advancedFilters?.status && advancedFilters.status !== 'all') {
+      result = result.filter(p => p.status === advancedFilters.status);
+    }
+    if (advancedFilters?.registrantUserId) {
+      result = result.filter(p => (p as any).user_id === advancedFilters.registrantUserId);
     }
 
     setPosts(result.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
@@ -217,15 +222,15 @@ export default function PostsPage() {
         isOpen={isFilterModalOpen}
         onClose={() => setIsFilterModalOpen(false)}
         onApply={(f) => {
-          const { activeGroups, ...rest } = f as any;
+          const { activeGroups: newGroups, ...rest } = f as any;
           updateFilter({ 
-            activeGroups: activeGroups || ['all'],
-            advancedFilters: rest
+            activeGroups: newGroups || ['all'],
+            advancedFilters: Object.keys(rest).some(k => rest[k] && rest[k] !== 'all' && rest[k] !== '' && rest[k] !== false) ? rest : null
           });
         }}
         initialFilters={{
           ...(advancedFilters || {}),
-          activeGroups: activeGroups
+          activeGroups: activeGroups,
         } as any}
       />
 
