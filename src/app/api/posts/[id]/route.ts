@@ -67,7 +67,7 @@ export async function PATCH(
       if (values.image_urls) {
         const oldPost = await prisma.post.findUnique({ where: { id, user_id: auth.userId } });
         if (oldPost) {
-          const removedUrls = oldPost.image_urls.filter(url => !values.image_urls.includes(url));
+          const removedUrls = oldPost.image_urls.filter((url: string) => !values.image_urls.includes(url));
           if (removedUrls.length > 0) {
             deleteS3Objects(removedUrls, auth.idToken).catch(console.error);
           }
