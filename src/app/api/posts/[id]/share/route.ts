@@ -2,6 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
 
+// Post sharing API
+// Build trigger: update sharing logic
+
 /**
  * POST /api/posts/[id]/share
  * Update group sharing for a specific post.
