@@ -117,7 +117,7 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
             <div className="absolute top-3 left-3 flex flex-col gap-2">
               {post.is_favorite && (
                 <div className="bg-pink-500 text-white p-1.5 rounded-full shadow-lg">
-                  <Bookmark size={14} className="fill-white" />
+                  <Heart size={14} className="fill-white" />
                 </div>
               )}
             </div>

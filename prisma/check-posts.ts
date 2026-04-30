@@ -8,6 +8,6 @@ async function main() {
     orderBy: { created_at: 'desc' },
     take: 12,
   });
-  posts.forEach((post, i) => console.log(`  ${i+1}. ${post.store_name} | ${post.status} | lat: ${post.latitude}`));
+  posts.forEach((post: any, i: number) => console.log(`  ${i+1}. ${post.store_name} | ${post.status} | lat: ${post.latitude}`));
 }
 main().catch(console.error).finally(() => p.$disconnect());
