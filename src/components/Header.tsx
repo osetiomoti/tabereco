@@ -47,9 +47,9 @@ export function Header({ children, title, showBackButton, hideSettings }: Header
           ) : (
             <Link href="/" className="flex items-center gap-2 group">
               <div className="w-8 h-8 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/20 group-hover:rotate-6 transition-all duration-300 overflow-hidden">
-                <img src="/icon-192.png" alt="モグレコ ロゴ" className="w-full h-full object-cover" />
+                <img src="/icon-192.png" alt="食べレコ ロゴ" className="w-full h-full object-cover" />
               </div>
-              <span className="font-black text-gray-900 text-[18px] tracking-tighter hidden xs:block">モグレコ</span>
+              <span className="font-black text-gray-900 text-[18px] tracking-tighter hidden xs:block">食べレコ</span>
             </Link>
           )}
         </div>

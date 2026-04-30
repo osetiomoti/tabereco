@@ -53,10 +53,10 @@ export default function LoginPage() {
         <div className="bg-white border border-gray-100 rounded-[2.5rem] p-10 shadow-2xl shadow-orange-500/5">
           {/* ロゴ */}
           <div className="text-center mb-10">
-            <div className="w-20 h-20 rounded-[1.8rem] bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center mx-auto mb-5 shadow-xl shadow-orange-500/20 group hover:scale-105 transition-transform duration-300">
-              <UtensilsCrossed size={36} className="text-white" />
+            <div className="w-20 h-20 rounded-[1.8rem] flex items-center justify-center mx-auto mb-5 shadow-xl shadow-orange-500/20 group hover:scale-105 transition-transform duration-300 overflow-hidden">
+              <img src="/icon-192.png" alt="モグレコ ロゴ" className="w-full h-full object-cover" />
             </div>
-            <h1 className="text-3xl font-black text-gray-900 tracking-tight">モグレコ</h1>
+            <h1 className="text-3xl font-black text-gray-900 tracking-tight">食べレコ</h1>
             <p className="text-gray-400 text-sm mt-2 font-medium">美味しいを、もっと身近に。</p>
           </div>
 

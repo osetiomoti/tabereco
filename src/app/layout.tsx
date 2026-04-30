@@ -17,7 +17,7 @@ const notoSansJP = Noto_Sans_JP({
 });
 
 export const metadata: Metadata = {
-  title: 'モグレコ | 食事記録アプリ',
+  title: '食べレコ | 食事記録アプリ',
   description: 'あなたの食の記録を、もっと楽しく。食事の写真・評価・コメントを記録しよう。',
   icons: {
     icon: [

@@ -1,6 +1,6 @@
 {
-  "name": "モグレコ",
-  "short_name": "モグレコ",
+  "name": "食べレコ",
+  "short_name": "食べレコ",
   "description": "あなたの食の記録を、もっと楽しく。",
   "start_url": "/posts",
   "display": "standalone",
