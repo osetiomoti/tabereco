@@ -114,6 +114,15 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
               placeholder="タグを検索..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && searchQuery.trim()) {
+                  const tagName = searchQuery.trim().replace(/^#/, '');
+                  if (tagName && !tempSelected.includes(tagName)) {
+                    setTempSelected(prev => [...prev, tagName]);
+                    setSearchQuery('');
+                  }
+                }
+              }}
               className="w-full bg-gray-100 border-none rounded-2xl py-3.5 pl-12 pr-4 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-orange-500/20 transition-all text-base"
             />
           </div>
@@ -139,8 +148,8 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
 
           {/* Tag Cloud */}
           <div className="flex flex-wrap gap-2.5">
-            {/* Quick Add Input Chip — visible only when user has typed something */}
-            {searchQuery.trim() && (
+            {/* Quick Add Input Chip — visible only when user has typed something and it's not exactly in the list */}
+            {searchQuery.trim() && !filteredTags.some(t => t === searchQuery.trim().replace(/^#/, '')) && (
               <button
                 type="button"
                 onClick={() => {
@@ -152,11 +161,18 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
                     setSearchQuery('');
                   }
                 }}
-                className="flex items-center gap-1.5 px-4 py-2.5 rounded-full border border-orange-400 bg-orange-50 text-orange-600 transition-all duration-300 active:scale-95 shadow-sm"
+                className="w-full flex items-center justify-between gap-3 px-5 py-4 rounded-2xl border-2 border-dashed border-orange-300 bg-orange-50/50 text-orange-600 transition-all duration-300 active:scale-[0.98] mb-2 group hover:border-orange-400 hover:bg-orange-50"
               >
-                <Hash size={14} className="text-orange-400" />
-                <span className="text-sm font-bold">{searchQuery.trim().replace(/^#/, '')}</span>
-                <span className="text-orange-500 text-sm font-black ml-2">追加 +</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
+                    <Plus size={18} strokeWidth={3} />
+                  </div>
+                  <div className="flex flex-col items-start">
+                    <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest">新しいタグを追加</span>
+                    <span className="text-base font-black italic">#{searchQuery.trim().replace(/^#/, '')}</span>
+                  </div>
+                </div>
+                <div className="px-3 py-1 bg-white border border-orange-200 rounded-lg text-[10px] font-black shadow-sm">Enter</div>
               </button>
             )}
 

@@ -6,49 +6,55 @@ import { getPosts } from '@/lib/api/posts';
 import { getJoinedGroups, getGroupPosts } from '@/lib/api/groups';
 import type { Post } from '@/lib/types';
 
+import useSWR from 'swr';
+
+const fetcher = (url: string) => fetch(url).then(res => res.json());
+
 export function useFilteredPosts() {
   const { filterState, updateFilter } = useSharedFilter();
   const { activeTab, keyword, activeGroups, advancedFilters, activeMapTag } = filterState;
 
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [joinedGroups, setJoinedGroups] = useState<any[]>([]);
-  const [ownPostsCache, setOwnPostsCache] = useState<Post[]>([]);
-  const [groupPostsCache, setGroupPostsCache] = useState<{groupId: string, posts: Post[]}[]>([]);
+  // 1. Fetch own posts
+  const { data: ownPostsData, isLoading: ownLoading } = useSWR('/api/posts', fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 10000,
+  });
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const [ownData, groups] = await Promise.all([
-          getPosts({}), 
-          getJoinedGroups()
-        ]);
-        
-        setJoinedGroups(groups || []);
+  // 2. Fetch joined groups
+  const { data: groupsData, isLoading: groupsLoading } = useSWR('/api/groups', fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 60000,
+  });
 
-        const groupDataArrays = await Promise.all(
-          (groups || []).map(async (g: any) => {
-            const p = await getGroupPosts(g.id);
-            const postsWithGroup = p.map((post: any) => ({ ...post, __group_name: g.name, __is_mine: false }));
-            return { groupId: g.id, posts: postsWithGroup };
-          })
-        );
+  // 3. Fetch group posts for each group
+  // We need to fetch multiple groups. SWR doesn't support multiple keys easily, 
+  // but we can map over groupsData if it exists.
+  // For simplicity, we'll use a combined fetcher or just fetch sequentially if needed.
+  // Actually, we can fetch all group posts in one go if the API supports it, or use a custom key.
+  
+  const joinedGroups = groupsData || [];
+  
+  // Custom fetcher for all group posts
+  const groupPostsKey = joinedGroups.length > 0 ? ['/api/groups/posts', joinedGroups.map((g: any) => g.id).join(',')] : null;
+  const { data: groupPostsData, isLoading: groupPostsLoading } = useSWR(groupPostsKey, async () => {
+    const results = await Promise.all(
+      joinedGroups.map(async (g: any) => {
+        const p = await getGroupPosts(g.id);
+        return { groupId: g.id, posts: p.map((post: any) => ({ ...post, __group_name: g.name, __is_mine: false })) };
+      })
+    );
+    return results;
+  }, {
+    revalidateOnFocus: false,
+    dedupingInterval: 10000,
+  });
 
-        setOwnPostsCache(ownData.map((post: any) => ({ ...post, __is_mine: true })));
-        setGroupPostsCache(groupDataArrays);
-      } catch (err) {
-        console.error('Failed to load posts or groups:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    const timer = setTimeout(load, 100);
-    return () => clearTimeout(timer);
-  }, []);
+  const loading = ownLoading || groupsLoading || groupPostsLoading;
+  const ownPostsCache = useMemo(() => (ownPostsData || []).map((p: any) => ({ ...p, __is_mine: true })), [ownPostsData]);
+  const groupPostsCache = groupPostsData || [];
 
   // Compute displayed posts locally
-  useEffect(() => {
+  const posts = useMemo(() => {
     let combinedMap = new Map();
 
     if (activeGroups.includes('all')) {
@@ -94,10 +100,7 @@ export function useFilteredPosts() {
       result = result.filter(p => (p as any).user_id === advancedFilters.registrantUserId);
     }
     
-    // activeMapTag is only applied on the map, but we can compute it here if needed or let the map component handle it.
-    // We'll let MapPage handle activeMapTag to keep the base filtered list pure for other pages.
-
-    setPosts(result.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+    return result.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [activeGroups, activeTab, keyword, advancedFilters, ownPostsCache, groupPostsCache]);
 
   const removeFilter = (key: string | string[]) => {

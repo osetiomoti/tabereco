@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import useSWR from 'swr';
 import { Settings, Hash, ArrowDownUp, Plus, MapPin, Calendar, User, Search } from 'lucide-react';
 import { Header } from '@/components/Header';
 import Image from 'next/image';
@@ -16,10 +17,14 @@ export default function MyPage() {
   const router = useRouter();
   const { updateFilter } = useSharedFilter();
   const [activeTab, setActiveTab] = useState<'all' | 'visited' | 'want_to_go'>('all');
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
-  const [friendsCount, setFriendsCount] = useState(0);
+  const { data: userData } = useSWR('/api/profiles/me', (url) => fetch(url).then(r => r.json()));
+  const { data: postsData, isLoading: postsLoading } = useSWR('/api/posts?is_mine=true', (url) => fetch(url).then(r => r.json()));
+  const { data: friendsData } = useSWR('/api/friends', () => import('@/lib/api/friends').then(m => m.getFriends()));
+
+  const user = userData?.data || null;
+  const posts = postsData || [];
+  const loading = postsLoading;
+  const friendsCount = friendsData?.length || 0;
 
   const [sortField, setSortField] = useState<'date' | 'rating'>('date');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
@@ -27,21 +32,6 @@ export default function MyPage() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isTagSelectorOpen, setIsTagSelectorOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
-
-  useEffect(() => {
-    fetch('/api/profiles/me').then(r => r.json()).then(j => { if (j.success) setUser(j.data); });
-    import('@/lib/api/friends').then(m => m.getFriends()).then(f => setFriendsCount(f?.length || 0));
-  }, []);
-
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      const data = await getPosts({ is_mine: true });
-      if (data) setPosts(data);
-      setLoading(false);
-    }
-    load();
-  }, []);
 
   const visitedCount = posts.filter(p => p.status === 'visited').length;
   const wantCount = posts.filter(p => p.is_favorite || p.status === 'want_to_go').length;
@@ -111,8 +101,12 @@ export default function MyPage() {
         <div className="flex-1 flex justify-around ml-6">
           <StatBox count={visitedCount} label="行った" />
           <StatBox count={wantCount} label="行きたい" />
-          <StatBox count={friendsCount} label="ともだち" />
-          <StatBox count={user?.groups_joined || 0} label="グループ" />
+          <Link href="/groups" className="hover:scale-105 transition-transform">
+            <StatBox count={friendsCount} label="ともだち" />
+          </Link>
+          <Link href="/groups" className="hover:scale-105 transition-transform">
+            <StatBox count={user?.groups_joined || 0} label="グループ" />
+          </Link>
         </div>
       </div>
 

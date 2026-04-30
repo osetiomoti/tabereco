@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Clock, Users, User, Calendar, Trophy, MapPin } from 'lucide-react';
+import { Clock, User, Trophy, MapPin, Home } from 'lucide-react';
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -16,15 +16,15 @@ export function BottomNav() {
     <>
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-2xl border-t border-gray-100 shadow-[0_-5px_20px_rgba(0,0,0,0.02)] pb-safe">
         <nav className="max-w-md mx-auto px-2 h-16 flex items-center justify-between">
+          <NavItem href="/" icon={<Home size={22} />} label="ホーム" isActive={pathname === '/'} />
+          
           <NavItem href="/posts" icon={<Clock size={22} />} label="タイムライン" isActive={pathname === '/posts'} />
           
           <NavItem href="/map" icon={<MapPin size={22} />} label="マップ" isActive={pathname === '/map'} />
 
-          <NavItem href="/mypage" icon={<User size={22} />} label="マイページ" isActive={pathname.startsWith('/mypage')} />
-
           <NavItem href="/rankings" icon={<Trophy size={22} />} label="ランキング" isActive={pathname.startsWith('/rankings')} />
-          
-          <NavItem href="/groups" icon={<Users size={22} />} label="ともだち" isActive={pathname === '/groups' || pathname.startsWith('/groups')} />
+
+          <NavItem href="/mypage" icon={<User size={22} />} label="マイページ" isActive={pathname.startsWith('/mypage')} />
         </nav>
       </div>
     </>

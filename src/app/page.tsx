@@ -16,6 +16,7 @@ import {
   Star,
   Filter
 } from 'lucide-react';
+import { FloatingActionButton } from '@/components/FloatingActionButton';
 
 export default function HomePage() {
   const [visitedPosts, setVisitedPosts] = useState<Post[]>([]);
@@ -64,19 +65,29 @@ export default function HomePage() {
       <main className="max-w-2xl mx-auto px-4 py-8 pb-32 animate-in fade-in duration-700">
         
         {/* プレミアム・統計サマリー (クリーン版) */}
-        <div className="grid grid-cols-3 gap-3 mb-8 overflow-x-auto pb-2 scrollbar-hide">
-          <div className="min-w-[100px] bg-white border border-gray-100 p-4 rounded-[1.5rem] shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md">
-            <span className="text-[10px] font-black text-gray-400 mb-1">合計記録</span>
-            <span className="text-2xl font-black text-gray-800">{stats.total}</span>
-          </div>
-          <div className="min-w-[100px] bg-orange-50 border border-orange-100 p-4 rounded-[1.5rem] shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md">
-            <span className="text-[10px] font-black text-orange-400 mb-1">お気に入り</span>
-            <span className="text-2xl font-black text-orange-500">{stats.favorites}</span>
-          </div>
-          <div className="min-w-[100px] bg-white border border-gray-100 p-4 rounded-[1.5rem] shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md">
-            <span className="text-[10px] font-black text-gray-400 mb-1">今月の新規</span>
-            <span className="text-2xl font-black text-blue-500">{stats.thisMonth}</span>
-          </div>
+        <div className="flex gap-3 mb-8 overflow-x-auto pb-2 scrollbar-hide snap-x">
+          {loading ? (
+            <>
+              <div className="flex-shrink-0 w-[110px] h-[86px] bg-gray-50 animate-pulse rounded-[1.5rem] border border-gray-100" />
+              <div className="flex-shrink-0 w-[110px] h-[86px] bg-gray-50 animate-pulse rounded-[1.5rem] border border-gray-100" />
+              <div className="flex-shrink-0 w-[110px] h-[86px] bg-gray-50 animate-pulse rounded-[1.5rem] border border-gray-100" />
+            </>
+          ) : (
+            <>
+              <div className="flex-shrink-0 w-[110px] bg-white border border-gray-100 p-4 rounded-[1.5rem] shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md snap-start">
+                <span className="text-[10px] font-black text-gray-400 mb-1">合計記録</span>
+                <span className="text-2xl font-black text-gray-800">{stats.total}</span>
+              </div>
+              <div className="flex-shrink-0 w-[110px] bg-orange-50 border border-orange-100 p-4 rounded-[1.5rem] shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md snap-start">
+                <span className="text-[10px] font-black text-orange-400 mb-1">お気に入り</span>
+                <span className="text-2xl font-black text-orange-500">{stats.favorites}</span>
+              </div>
+              <div className="flex-shrink-0 w-[110px] bg-white border border-gray-100 p-4 rounded-[1.5rem] shadow-sm flex flex-col items-center justify-center text-center transition-all hover:shadow-md snap-start">
+                <span className="text-[10px] font-black text-gray-400 mb-1">今月の新規</span>
+                <span className="text-2xl font-black text-blue-500">{stats.thisMonth}</span>
+              </div>
+            </>
+          )}
         </div>
 
         {/* ヒーローセクション/クイックリンク */}
@@ -171,6 +182,7 @@ export default function HomePage() {
         </section>
 
       </main>
+      <FloatingActionButton />
     </>
   );
 }

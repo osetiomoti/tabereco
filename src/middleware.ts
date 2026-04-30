@@ -1,13 +1,59 @@
 import { NextResponse, type NextRequest } from 'next/server';
 
+/** JWTの有効期限を確認（検証なし・期限チェックのみ） */
+function isTokenExpiredOrMissing(token: string | undefined): boolean {
+  if (!token) return true;
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const exp = payload.exp as number;
+    return Date.now() / 1000 > exp - 30; // 30秒のバッファ
+  } catch {
+    return true;
+  }
+}
+
+/** Cognitoのリフレッシュトークンで新しいアクセストークンを取得 */
+async function refreshAccessToken(refreshToken: string): Promise<{ access_token: string; id_token?: string; expires_in: number } | null> {
+  const domain = process.env.COGNITO_DOMAIN || process.env.NEXT_PUBLIC_COGNITO_DOMAIN;
+  const clientId = process.env.COGNITO_CLIENT_ID;
+  const clientSecret = process.env.COGNITO_CLIENT_SECRET;
+
+  if (!domain || !clientId) return null;
+
+  const tokenEndpoint = `https://${domain}/oauth2/token`;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/x-www-form-urlencoded',
+  };
+  if (clientSecret) {
+    const credentials = btoa(`${clientId}:${clientSecret}`);
+    headers['Authorization'] = `Basic ${credentials}`;
+  }
+
+  try {
+    const res = await fetch(tokenEndpoint, {
+      method: 'POST',
+      headers,
+      body: new URLSearchParams({
+        grant_type: 'refresh_token',
+        client_id: clientId,
+        refresh_token: refreshToken,
+      }),
+    });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Middleware to protect routes using Cognito session cookies.
  */
 export async function middleware(request: NextRequest) {
-  const accessToken = request.cookies.get('access_token')?.value;
-  const devToken = process.env.NODE_ENV !== 'production' ? request.cookies.get('dev_token')?.value : null;
-
   const { pathname } = request.nextUrl;
+  const accessToken = request.cookies.get('access_token')?.value;
+  const refreshToken = request.cookies.get('refresh_token')?.value;
+  const devToken = process.env.NODE_ENV !== 'production' ? request.cookies.get('dev_token')?.value : null;
 
   // Paths that don't require authentication
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/api/auth');
@@ -15,19 +61,46 @@ export async function middleware(request: NextRequest) {
   const isSetupPage = pathname.startsWith('/api/setup');
   const isStaticFile = pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|ico)$/);
 
-  if (!accessToken && !devToken && !isAuthPage && !isDevPage && !isSetupPage && !isStaticFile) {
-    const url = request.nextUrl.clone();
-    url.pathname = '/login';
-    return NextResponse.redirect(url);
+  // 1. 公開ページや静的ファイルはスルー
+  if (isAuthPage || isDevPage || isSetupPage || isStaticFile) {
+    // ログイン済みなら /login から /posts へリダイレクト
+    if ((accessToken || devToken) && pathname === '/login') {
+      return NextResponse.redirect(new URL('/posts', request.url));
+    }
+    return NextResponse.next();
   }
 
-  if ((accessToken || devToken) && isAuthPage && pathname === '/login') {
-    const url = request.nextUrl.clone();
-    url.pathname = '/posts';
-    return NextResponse.redirect(url);
+  // 2. 開発用トークンまたは有効なアクセストークンがあればスルー
+  if (devToken || (accessToken && !isTokenExpiredOrMissing(accessToken))) {
+    return NextResponse.next();
   }
 
-  return NextResponse.next();
+  // 3. アクセストークンがない/期限切れの場合、リフレッシュを試みる
+  if (refreshToken) {
+    const newTokens = await refreshAccessToken(refreshToken);
+    if (newTokens?.access_token) {
+      const response = NextResponse.next();
+      const cookieOptions = (maxAge: number) => ({
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax' as const,
+        maxAge,
+        path: '/',
+      });
+
+      response.cookies.set('access_token', newTokens.access_token, cookieOptions(newTokens.expires_in));
+      if (newTokens.id_token) {
+        response.cookies.set('id_token', newTokens.id_token, cookieOptions(newTokens.expires_in));
+      }
+      return response;
+    }
+  }
+
+  // 4. 未認証ならログインへ
+  const url = request.nextUrl.clone();
+  url.pathname = '/login';
+  url.searchParams.set('redirect', pathname);
+  return NextResponse.redirect(url);
 }
 
 export const config = {

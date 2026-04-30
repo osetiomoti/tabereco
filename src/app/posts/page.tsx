@@ -8,6 +8,7 @@ import { FilterModal } from '@/components/FilterModal';
 import { useFilteredPosts } from '@/hooks/useFilteredPosts';
 import { Filter, Search, UtensilsCrossed, List, Map as MapIcon } from 'lucide-react';
 import dynamic from 'next/dynamic';
+import { FloatingActionButton } from '@/components/FloatingActionButton';
 
 const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
 
@@ -121,6 +122,7 @@ export default function PostsPage() {
           status: activeTab,
         } as any}
       />
+      <FloatingActionButton />
     </>
   );
 }

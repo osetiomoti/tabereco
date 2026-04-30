@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Pencil, Camera, Tag, LogOut, ChevronRight, User, Check, X, Loader2 } from 'lucide-react';
+import { Pencil, Camera, Tag, LogOut, ChevronRight, User, Check, X, Loader2, Users } from 'lucide-react';
 import Image from 'next/image';
 import { Header } from '@/components/Header';
 import { useUpload } from '@/hooks/useUpload';
@@ -147,7 +147,17 @@ export default function SettingsPage() {
 
         {/* Menu List */}
         <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
-          <MenuItem icon={<span className="text-yellow-500"><Tag size={20} fill="currentColor" fillOpacity={0.2} /></span>} label="タグ管理" href="/tags" isLast />
+          <MenuItem 
+            icon={<span className="text-orange-500"><Users size={20} fill="currentColor" fillOpacity={0.2} /></span>} 
+            label="ともだち・グループ" 
+            href="/groups" 
+          />
+          <MenuItem 
+            icon={<span className="text-yellow-500"><Tag size={20} fill="currentColor" fillOpacity={0.2} /></span>} 
+            label="タグ管理" 
+            href="/tags" 
+            isLast 
+          />
         </div>
 
         {/* Logout Button */}
