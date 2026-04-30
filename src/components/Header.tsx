@@ -21,8 +21,12 @@ export function Header({ children, title, showBackButton, hideSettings }: Header
     fetch('/api/profiles/me')
       .then(res => res.json())
       .then(json => {
-        if (json.success) setUser(json.data);
-        else setUser(null);
+        if (json.success) {
+          setUser(json.data);
+        } else {
+          console.error('[Header] Auth check failed:', json);
+          setUser(null);
+        }
       })
       .catch(() => setUser(null))
       .finally(() => setLoading(false));
@@ -42,8 +46,8 @@ export function Header({ children, title, showBackButton, hideSettings }: Header
             </button>
           ) : (
             <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center shadow-lg shadow-orange-500/20 group-hover:rotate-6 transition-all duration-300">
-                <UtensilsCrossed size={16} className="text-white" />
+              <div className="w-8 h-8 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/20 group-hover:rotate-6 transition-all duration-300 overflow-hidden">
+                <img src="/icon-192.png" alt="モグレコ ロゴ" className="w-full h-full object-cover" />
               </div>
               <span className="font-black text-gray-900 text-[18px] tracking-tighter hidden xs:block">モグレコ</span>
             </Link>

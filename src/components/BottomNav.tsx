@@ -7,6 +7,11 @@ import { Clock, Users, User, Calendar, Trophy, MapPin } from 'lucide-react';
 export function BottomNav() {
   const pathname = usePathname();
 
+  // ログイン画面では下部メニューを非表示にする
+  if (pathname === '/login') {
+    return null;
+  }
+
   return (
     <>
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-2xl border-t border-gray-100 shadow-[0_-5px_20px_rgba(0,0,0,0.02)] pb-safe">

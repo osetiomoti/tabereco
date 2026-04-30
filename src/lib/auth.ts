@@ -77,22 +77,31 @@ export async function withAuth(
   }
 
   // 3. User Sync (Cognito -> Database)
-  let user = await prisma.user.findUnique({
-    where: { cognito_sub: cognitoPayload.sub },
-    include: { group_members: { select: { group_id: true }, take: 1 } },
-  });
-
-  if (!user) {
-    const email = cognitoPayload.email || '';
-    const name = email.split('@')[0] || 'User';
-    user = await prisma.user.create({
-      data: {
-        cognito_sub: cognitoPayload.sub,
-        email,
-        name,
-      },
+  let user;
+  try {
+    user = await prisma.user.findUnique({
+      where: { cognito_sub: cognitoPayload.sub },
       include: { group_members: { select: { group_id: true }, take: 1 } },
     });
+
+    if (!user) {
+      const email = cognitoPayload.email || '';
+      const name = email.split('@')[0] || 'User';
+      user = await prisma.user.create({
+        data: {
+          cognito_sub: cognitoPayload.sub,
+          email,
+          name,
+        },
+        include: { group_members: { select: { group_id: true }, take: 1 } },
+      });
+    }
+  } catch (dbError: any) {
+    console.error('[Auth] Database sync failed:', dbError);
+    return NextResponse.json(
+      { success: false, error: 'Database connection failed: ' + dbError.message, code: 'DB_ERROR' },
+      { status: 500 }
+    );
   }
 
   const authContext: AuthContext = {
