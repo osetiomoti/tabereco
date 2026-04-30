@@ -22,7 +22,7 @@ function LoginForm() {
   return (
     <>
       {/* キャラクターアイコン */}
-      <div className="mb-2 animate-in zoom-in duration-700">
+      <div className="mb-2 animate-bounce-slow">
         <img
           src="/icon-512.png"
           alt="食べレコ ロゴ"

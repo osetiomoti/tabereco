@@ -27,6 +27,7 @@ export default {
         'fade-in': 'fadeIn 0.4s ease-out',
         'slide-up': 'slideUp 0.4s ease-out',
         'float': 'float 6s ease-in-out infinite',
+        'bounce-slow': 'bounceSlow 3s ease-in-out infinite',
       },
       keyframes: {
         fadeIn: {
@@ -40,6 +41,10 @@ export default {
         float: {
           '0%, 100%': { transform: 'translateY(0px)' },
           '50%': { transform: 'translateY(-20px)' },
+        },
+        bounceSlow: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-10px)' },
         },
       },
     },
