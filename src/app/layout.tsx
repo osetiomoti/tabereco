@@ -19,6 +19,17 @@ const notoSansJP = Noto_Sans_JP({
 export const metadata: Metadata = {
   title: 'モグレコ | 食事記録アプリ',
   description: 'あなたの食の記録を、もっと楽しく。食事の写真・評価・コメントを記録しよう。',
+  icons: {
+    icon: [
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+  },
+  manifest: '/manifest.json',
+  themeColor: '#fcfcfc',
 };
 
 export default function RootLayout({
