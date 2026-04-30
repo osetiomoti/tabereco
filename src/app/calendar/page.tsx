@@ -2,34 +2,23 @@
 
 import { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
-import { getPosts } from '@/lib/api/posts';
-import type { Post } from '@/lib/types';
-import { ChevronLeft, ChevronRight, Plus, UtensilsCrossed, Calendar as CalendarIcon } from 'lucide-react';
+import { useFilteredPosts } from '@/hooks/useFilteredPosts';
+import { Filter, ChevronLeft, ChevronRight, Plus, UtensilsCrossed, Calendar as CalendarIcon } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, getDay, isToday } from 'date-fns';
 import { ja } from 'date-fns/locale';
-
+import { MonthPickerModal } from '@/components/MonthPickerModal';
+import { FilterModal } from '@/components/FilterModal';
+import { FilterChips } from '@/components/PostCard';
 export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { posts, loading, filterState, updateFilter, activeFilterCount, removeFilter } = useFilteredPosts();
+  const { activeGroups, advancedFilters, activeTab, keyword } = filterState;
 
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const data = await getPosts({});
-        setPosts(data);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
-  }, []);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
 
   const daysInMonth = eachDayOfInterval({
     start: startOfMonth(currentDate),
@@ -45,7 +34,23 @@ export default function CalendarPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-32">
-      <Header title="マイカレンダー" />
+      <Header title="マイカレンダー">
+        <button
+          onClick={() => setIsFilterModalOpen(true)}
+          className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+            activeFilterCount > 0
+              ? 'bg-orange-500 text-white shadow-sm'
+              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+          }`}
+        >
+          <Filter size={18} />
+          {activeFilterCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-white text-orange-500 text-[9px] font-black rounded-full flex items-center justify-center border border-orange-200">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
+      </Header>
       
       <main className="max-w-2xl mx-auto animate-in fade-in duration-700">
         {/* 1. Monthly Switcher */}
@@ -53,12 +58,22 @@ export default function CalendarPage() {
           <button onClick={prevMonth} className="p-2 hover:bg-white rounded-full transition-colors shadow-sm bg-white/50 border border-gray-100">
             <ChevronLeft size={20} />
           </button>
-          <h2 className="text-xl font-black text-gray-900 tracking-tight">
+          
+          <button 
+            onClick={() => setIsMonthPickerOpen(true)}
+            className="text-xl font-black text-gray-900 tracking-tight flex items-center gap-1 hover:opacity-80 active:scale-95 transition-all"
+          >
             {format(currentDate, 'yyyy年 M月', { locale: ja })}
-          </h2>
+            <span className="text-[10px] text-gray-400">▼</span>
+          </button>
+
           <button onClick={nextMonth} className="p-2 hover:bg-white rounded-full transition-colors shadow-sm bg-white/50 border border-gray-100">
             <ChevronRight size={20} />
           </button>
+        </div>
+        
+        <div className="px-4">
+           <FilterChips filters={advancedFilters} onRemove={removeFilter} />
         </div>
 
         {/* 2. Calendar Grid */}
@@ -77,37 +92,35 @@ export default function CalendarPage() {
               const dayPosts = posts.filter(p => isSameDay(new Date(p.visited_at), date));
               const isSelected = isSameDay(date, selectedDate);
               const isTodayDate = isToday(date);
+              const hasImage = dayPosts.length > 0 && !!dayPosts[0].image_url;
+              const dIndex = getDay(date);
 
               return (
                 <button
                   key={date.toISOString()}
                   onClick={() => setSelectedDate(date)}
-                  className={`relative aspect-square flex flex-col items-center justify-center rounded-xl transition-all ${
-                    isSelected ? 'ring-2 ring-orange-500 z-10' : 'hover:bg-gray-50'
+                  className={`relative aspect-square flex flex-col items-center justify-center rounded-2xl transition-all overflow-hidden ${
+                    isSelected ? 'ring-2 ring-blue-400 ring-offset-1 z-10' : 'hover:bg-gray-50'
                   }`}
                 >
-                  <span className={`text-sm font-bold ${
-                    isSelected ? 'text-orange-600' : isTodayDate ? 'text-orange-500' : 'text-gray-900'
-                  }`}>
+                  <span className={`text-[15px] font-black z-10 ${
+                    dIndex === 0 ? 'text-red-400' : dIndex === 6 ? 'text-blue-500' : 'text-gray-800'
+                  }`} style={hasImage ? { textShadow: '0 1px 4px rgba(255,255,255,0.9), 0 0 10px white' } : {}}>
                     {format(date, 'd')}
                   </span>
                   
-                  {/* Thumbnail / Indicators */}
-                  <div className="mt-0.5 flex gap-0.5 h-1">
+                  {/* Indicators */}
+                  <div className="mt-0.5 flex gap-0.5 h-1 z-10">
                     {dayPosts.length > 0 && (
-                      <div className="w-1 h-1 rounded-full bg-orange-400" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#e35688] shadow-[0_0_4px_white]" />
                     )}
                   </div>
 
-                  {/* Thumbnail Image (Premium feel if available) */}
-                  {dayPosts.length > 0 && dayPosts[0].image_url && (
-                    <div className="absolute inset-0.5 rounded-lg overflow-hidden -z-10 opacity-20">
-                       <Image src={dayPosts[0].image_url} alt="" fill className="object-cover" />
-                    </div>
-                  )}
-                  {dayPosts.length > 0 && dayPosts[0].image_url && isSelected && (
-                    <div className="absolute inset-0 rounded-lg overflow-hidden border border-orange-500">
-                       <Image src={dayPosts[0].image_url} alt="" fill className="object-cover" />
+                  {/* Thumbnail Image */}
+                  {hasImage && (
+                    <div className="absolute inset-0 -z-10">
+                       <Image src={dayPosts[0].image_url!} alt="" fill className="object-cover" />
+                       <div className="absolute inset-0 bg-white/20" />
                     </div>
                   )}
                 </button>
@@ -170,6 +183,32 @@ export default function CalendarPage() {
           </div>
         </section>
       </main>
+
+      <MonthPickerModal
+        isOpen={isMonthPickerOpen}
+        onClose={() => setIsMonthPickerOpen(false)}
+        currentDate={currentDate}
+        onSelect={(newDate) => {
+          setCurrentDate(newDate);
+          setSelectedDate(newDate);
+        }}
+      />
+
+      <FilterModal 
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onApply={(f) => {
+          const { activeGroups: newGroups, ...rest } = f as any;
+          updateFilter({ 
+            activeGroups: newGroups || ['all'],
+            advancedFilters: Object.keys(rest).some(k => rest[k] && rest[k] !== 'all' && rest[k] !== '' && rest[k] !== false) ? rest : null
+          });
+        }}
+        initialFilters={{
+          ...(advancedFilters || {}),
+          activeGroups: activeGroups,
+        } as any}
+      />
     </div>
   );
 }

@@ -1,154 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { PostCard, FilterChips } from '@/components/PostCard';
+import { PostCardSkeleton } from '@/components/Skeleton';
 import { FilterModal } from '@/components/FilterModal';
-import { getPosts } from '@/lib/api/posts';
-import { getJoinedGroups, getGroupPosts } from '@/lib/api/groups';
-import type { Post } from '@/lib/types';
-import { UtensilsCrossed, Search, Filter, MapPin } from 'lucide-react';
-import { useSharedFilter } from '@/hooks/useSharedFilter';
+import { useFilteredPosts } from '@/hooks/useFilteredPosts';
+import { Filter, Search, UtensilsCrossed, List, Map as MapIcon } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
-const MapView = dynamic(() => import('@/components/MapView'), {
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-[60vh] bg-gray-50 animate-pulse rounded-3xl flex items-center justify-center border border-gray-100">
-      <MapPin className="text-gray-200 animate-bounce" size={48} />
-    </div>
-  ),
-});
-
+const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
 
 export default function PostsPage() {
-  const { filterState, updateFilter } = useSharedFilter();
+  const { posts, loading, filterState, updateFilter, activeFilterCount, removeFilter } = useFilteredPosts();
   const { activeTab, keyword, activeGroups, advancedFilters } = filterState;
-
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
-  const [center, setCenter] = useState<{ lat: number, lng: number }>({ lat: 35.681236, lng: 139.767125 });
-  const [tempMarker, setTempMarker] = useState<any>(null);
-
-  // Group filter states
-  const [joinedGroups, setJoinedGroups] = useState<any[]>([]);
-  const [ownPostsCache, setOwnPostsCache] = useState<Post[]>([]);
-  const [groupPostsCache, setGroupPostsCache] = useState<{groupId: string, posts: Post[]}[]>([]);
-
-  useEffect(() => {
-    async function load() {
-      setLoading(true);
-      try {
-        const [ownData, groups] = await Promise.all([
-          getPosts({}), 
-          getJoinedGroups()
-        ]);
-        
-        setJoinedGroups(groups);
-
-        const groupDataArrays = await Promise.all(
-          groups.map(async (g: any) => {
-            const p = await getGroupPosts(g.id);
-            const postsWithGroup = p.map((post: any) => ({ ...post, __group_name: g.name, __is_mine: false }));
-            return { groupId: g.id, posts: postsWithGroup };
-          })
-        );
-
-        setOwnPostsCache(ownData.map((post: any) => ({ ...post, __is_mine: true })));
-        setGroupPostsCache(groupDataArrays);
-      } catch (err) {
-        console.error(err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    const timer = setTimeout(load, 100);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Map location init when switched
-  useEffect(() => {
-    if (viewMode === 'map' && navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        (err) => console.log('Location error:', err)
-      );
-    }
-  }, [viewMode]);
-
-  // Compute displayed posts locally
-  useEffect(() => {
-    let combinedMap = new Map();
-
-    if (activeGroups.includes('all')) {
-      ownPostsCache.forEach(p => combinedMap.set(p.id, p));
-      groupPostsCache.forEach(g => g.posts.forEach(p => combinedMap.set(p.id, p)));
-    } else {
-      if (activeGroups.includes('mine')) {
-        ownPostsCache.forEach(p => combinedMap.set(p.id, p));
-      }
-      groupPostsCache.forEach(g => {
-        if (activeGroups.includes(g.groupId)) {
-          g.posts.forEach(p => combinedMap.set(p.id, p));
-        }
-      });
-    }
-
-    let result = Array.from(combinedMap.values()) as Post[];
-
-    if (activeTab !== 'all') {
-      result = result.filter(p => p.status === activeTab);
-    }
-    
-    if (keyword) {
-      const lowerReq = keyword.toLowerCase();
-      result = result.filter(p => 
-        p.title?.toLowerCase().includes(lowerReq) ||
-        p.store_name?.toLowerCase().includes(lowerReq) ||
-        p.comment?.toLowerCase().includes(lowerReq)
-      );
-    }
-
-    // Advanced filters
-    if (advancedFilters?.tags && advancedFilters.tags.length > 0) {
-      result = result.filter(p => advancedFilters.tags.every((tag: string) => p.tags?.some((t: any) => t.name === tag)));
-    }
-    if (advancedFilters?.is_favorite) {
-      result = result.filter(p => p.is_favorite);
-    }
-    if (advancedFilters?.status && advancedFilters.status !== 'all') {
-      result = result.filter(p => p.status === advancedFilters.status);
-    }
-    if (advancedFilters?.registrantUserId) {
-      result = result.filter(p => (p as any).user_id === advancedFilters.registrantUserId);
-    }
-
-    setPosts(result.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
-  }, [activeGroups, activeTab, keyword, advancedFilters, ownPostsCache, groupPostsCache]);
-
-  const removeFilter = (key: string | string[]) => {
-    const next = { ...advancedFilters };
-    if (Array.isArray(key)) {
-      if (key.length === 0) delete next.tags;
-      else next.tags = key;
-    } else {
-      delete next[key];
-    }
-    updateFilter({ advancedFilters: Object.keys(next).length > 0 ? next : null });
-  };
-
-  // Count active filters for badge
-  const activeFilterCount = advancedFilters
-    ? Object.entries(advancedFilters).filter(([k, v]) =>
-        v && v !== 'all' && v !== '' && v !== false && k !== 'activeGroups' && k !== 'tags'
-      ).length + (advancedFilters.tags?.length || 0) + (activeGroups.filter(x => x !== 'all').length > 0 ? 1 : 0)
-    : activeGroups.filter(x => x !== 'all').length;
 
   return (
     <>
-      <Header>
+      <Header title="タイムライン">
         <button
           onClick={() => setIsFilterModalOpen(true)}
           className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-all ${
@@ -165,90 +35,92 @@ export default function PostsPage() {
           )}
         </button>
       </Header>
-      <main className="max-w-2xl mx-auto px-4 py-6 pb-32 animate-in fade-in duration-700">
-        
-        {/* 1. プレミアム・リスト/マップ切り替えトグル */}
-        <div className="flex justify-center mb-8 mt-2">
-          <div className="inline-flex bg-gray-100/60 backdrop-blur-md rounded-[18px] p-1 w-[240px] shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] border border-black/5">
+
+      <main className="max-w-2xl mx-auto w-full px-4 py-6 pb-32 animate-in fade-in duration-700">
+        <div className="mb-6">
+          {/* Tabs for Timeline: All, Visited, Want */}
+          <div className="flex bg-gray-100/80 rounded-[14px] p-1 mb-6 border border-black/5 shadow-inner">
             <button
-              onClick={() => setViewMode('list')}
-              className={`flex-1 py-2.5 text-[13px] font-black rounded-[14px] transition-all duration-300 ${
-                viewMode === 'list'
-                  ? 'bg-white text-gray-900 shadow-lg shadow-black/5 ring-1 ring-black/5 scale-[1.02]'
-                  : 'text-gray-400 hover:text-gray-600'
-              }`}
+              onClick={() => updateFilter({ activeTab: 'all' })}
+              className={`flex-1 py-2 text-[12px] font-black rounded-[10px] transition-all duration-300 ${activeTab === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
             >
-              リスト
+              すべて
             </button>
             <button
-              onClick={() => setViewMode('map')}
-              className={`flex-1 py-2.5 text-[13px] font-black rounded-[14px] transition-all duration-300 ${
-                viewMode === 'map'
-                  ? 'bg-white text-gray-900 shadow-lg shadow-black/5 ring-1 ring-black/5 scale-[1.02]'
-                  : 'text-gray-400 hover:text-gray-600'
-              }`}
+              onClick={() => updateFilter({ activeTab: 'visited' })}
+              className={`flex-1 py-2 text-[12px] font-black rounded-[10px] transition-all duration-300 ${activeTab === 'visited' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
             >
-              マップ
+              行った
+            </button>
+            <button
+              onClick={() => updateFilter({ activeTab: 'want_to_go' })}
+              className={`flex-1 py-2 text-[12px] font-black rounded-[10px] transition-all duration-300 ${activeTab === 'want_to_go' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              行きたい
             </button>
           </div>
-        </div>
 
-        {/* Search bar */}
-        <div className="relative mb-6">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-          <input
-            type="text"
-            placeholder="お店や料理を検索..."
-            value={keyword}
-            onChange={e => updateFilter({ keyword: e.target.value })}
-            className="w-full bg-white border border-gray-100 py-3.5 pl-11 pr-4 rounded-2xl text-[14px] font-medium placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-100 focus:border-orange-300 transition-all shadow-sm"
+          {/* Search bar */}
+          <div className="relative mb-2">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+            <input
+              type="text"
+              placeholder="お店、料理、場所を検索..."
+              className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-orange-100 transition-all font-medium text-gray-800 placeholder:text-gray-300"
+              value={keyword}
+              onChange={(e) => updateFilter({ keyword: e.target.value })}
+            />
+          </div>
+
+          {/* 適用中のフィルタチップ */}
+          <FilterChips 
+            filters={{ ...(advancedFilters || {}), status: activeTab }} 
+            onRemove={removeFilter} 
           />
         </div>
 
-        {/* 3. 適用中のフィルタチップ */}
-        <FilterChips filters={advancedFilters} onRemove={removeFilter} />
-
-        {/* 一覧機能 / マップ表示切り替え */}
-        {loading ? (
-          <div className="py-20 flex justify-center">
-            <div className="w-10 h-10 border-4 border-gray-100 border-t-orange-500 rounded-full animate-spin" />
-          </div>
-        ) : posts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-            <div className="w-20 h-20 bg-gray-50 rounded-[2rem] flex items-center justify-center text-gray-200">
-              <UtensilsCrossed size={40} />
+        {/* List View */}
+        <div>
+          {loading ? (
+            <div className="space-y-1">
+              <PostCardSkeleton />
+              <PostCardSkeleton />
+              <PostCardSkeleton />
             </div>
-            <p className="text-gray-400 font-bold">条件に合う記録が見つかりませんでした</p>
-          </div>
-        ) : viewMode === 'map' ? (
-          <div className="w-full h-[60vh] rounded-[2rem] overflow-hidden shadow-sm border border-gray-100 relative animate-in fade-in duration-500">
-            <MapView posts={posts} center={center} tempMarker={tempMarker} setTempMarker={setTempMarker} />
-          </div>
-        ) : (
-          <div className="space-y-1 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            {posts.map((post) => (
-              <PostCard key={post.id} post={post} />
-            ))}
-          </div>
-        )}
+          ) : posts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+              <div className="w-20 h-20 bg-gray-50 rounded-[2rem] flex items-center justify-center text-gray-200">
+                <UtensilsCrossed size={40} />
+              </div>
+              <p className="text-gray-400 font-bold">条件に合う記録が見つかりませんでした</p>
+            </div>
+          ) : (
+            <div className="space-y-1 animate-in fade-in slide-in-from-bottom-4 duration-700">
+              {posts.map((post) => (
+                <PostCard key={post.id} post={post} />
+              ))}
+            </div>
+          )}
+        </div>
       </main>
 
       <FilterModal 
         isOpen={isFilterModalOpen}
         onClose={() => setIsFilterModalOpen(false)}
         onApply={(f) => {
-          const { activeGroups: newGroups, ...rest } = f as any;
+          const { activeGroups: newGroups, status: newStatus, ...rest } = f as any;
           updateFilter({ 
             activeGroups: newGroups || ['all'],
+            activeTab: newStatus || 'all',
             advancedFilters: Object.keys(rest).some(k => rest[k] && rest[k] !== 'all' && rest[k] !== '' && rest[k] !== false) ? rest : null
           });
         }}
         initialFilters={{
           ...(advancedFilters || {}),
           activeGroups: activeGroups,
+          status: activeTab,
         } as any}
       />
-
     </>
   );
 }

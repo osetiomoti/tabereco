@@ -9,6 +9,9 @@ import type { Metadata } from 'next';
 import { DeleteButton } from '@/components/DeleteButton';
 import { ShareButton } from '@/components/ShareButton';
 
+import { PostMenu } from '@/components/PostMenu';
+import { FavoriteToggle } from '@/components/FavoriteToggle';
+
 type Props = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -40,13 +43,11 @@ export default async function PostDetailPage({ params }: Props) {
   return (
     <main className="w-full max-w-md mx-auto bg-white min-h-screen pb-32 shadow-sm border-x border-gray-50 relative">
       {/* 1. Updated Global Header for SubPage */}
-      <Header title={post.store_name || post.title} showBackButton>
-        <Link 
-          href={`/posts/${post.id}/edit`} 
-          className="w-9 h-9 bg-gray-100/80 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
-        >
-          <MoreHorizontal size={20} className="text-gray-900" />
-        </Link>
+      <Header title={post.store_name || post.title} showBackButton hideSettings>
+        <div className="flex items-center gap-2">
+          <FavoriteToggle postId={post.id} initialValue={post.is_favorite} />
+          <PostMenu postId={post.id} />
+        </div>
       </Header>
 
       {/* 2. 画像エリア */}
@@ -102,13 +103,11 @@ export default async function PostDetailPage({ params }: Props) {
              <span className="font-bold text-[15px] text-gray-900 tracking-widest">訪問日</span>
              <span className="text-gray-500 text-[13.5px]">{formatDate(post.visited_at.toISOString())}</span>
            </div>
-           <Link href={`/posts/${post.id}/edit`}><Pencil size={18} strokeWidth={1.5} className="text-gray-500 hover:text-orange-500 transition-colors" /></Link>
         </div>
         
         <div className="px-5 py-4 bg-gray-50/20">
            <div className="flex justify-between items-center mb-3">
              <span className="font-bold text-[15px] text-gray-900 tracking-widest">メモ</span>
-             <Link href={`/posts/${post.id}/edit`}><Pencil size={18} strokeWidth={1.5} className="text-gray-500 hover:text-orange-500 transition-colors" /></Link>
            </div>
            <p className="text-gray-500 text-[13.5px] leading-relaxed w-[95%]">
              {post.comment || '食べたメニューやおすすめメニュー、お店での体験を記録してみよう。(500文字以内)'}
@@ -118,7 +117,6 @@ export default async function PostDetailPage({ params }: Props) {
         <div className="px-5 py-4 bg-gray-50/20">
            <div className="flex justify-between items-center">
              <span className="font-bold text-[15px] text-gray-900 tracking-widest">タグ</span>
-             <Link href={`/posts/${post.id}/edit`}><Pencil size={18} strokeWidth={1.5} className="text-gray-500 hover:text-orange-500 transition-colors" /></Link>
            </div>
            {post.tags && post.tags.length > 0 && (
              <div className="mt-4 flex flex-wrap gap-2">
@@ -174,11 +172,6 @@ export default async function PostDetailPage({ params }: Props) {
             <span className="text-gray-500 font-medium tracking-wide text-sm leading-relaxed pt-1">{post.address}</span>
           </div>
         )}
-      </div>
-
-      {/* Delete / View Actions hidden logically at the bottom if needed but edit is via pencil */}
-      <div className="px-5 mt-4 mb-20">
-         <DeleteButton postId={post.id} />
       </div>
 
     </main>

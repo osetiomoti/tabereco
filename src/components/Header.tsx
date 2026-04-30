@@ -3,13 +3,16 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { UtensilsCrossed, User, ChevronLeft } from 'lucide-react';
+import { UtensilsCrossed, Settings, ChevronLeft } from 'lucide-react';
 
-type Props = {
+type HeaderProps = {
   children?: React.ReactNode;
+  title?: string;
+  showBackButton?: boolean;
+  hideSettings?: boolean;
 };
 
-export function Header({ children, title, showBackButton }: { children?: React.ReactNode, title?: string, showBackButton?: boolean }) {
+export function Header({ children, title, showBackButton, hideSettings }: HeaderProps) {
   const router = useRouter();
   const [user, setUser] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
@@ -38,7 +41,7 @@ export function Header({ children, title, showBackButton }: { children?: React.R
               <ChevronLeft size={20} className="text-gray-900" />
             </button>
           ) : (
-            <Link href="/posts" className="flex items-center gap-2 group">
+            <Link href="/" className="flex items-center gap-2 group">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-orange-500 to-pink-500 flex items-center justify-center shadow-lg shadow-orange-500/20 group-hover:rotate-6 transition-all duration-300">
                 <UtensilsCrossed size={16} className="text-white" />
               </div>
@@ -56,19 +59,18 @@ export function Header({ children, title, showBackButton }: { children?: React.R
           </div>
         )}
 
-        {/* Right Side: Actions/User */}
+        {/* Right Side: Actions/Settings */}
         <div className="flex items-center gap-2 z-10">
           {children}
           
-          {!loading && user && (
+          {!loading && user && !hideSettings ? (
             <Link
-              href="/mypage"
+              href="/settings"
               className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-orange-50 hover:text-orange-500 transition-all"
             >
-              <User size={20} />
+              <Settings size={18} />
             </Link>
-          )}
-          {!loading && !user && (
+          ) : !loading && !user && !hideSettings && (
             <Link
               href="/login"
               className="text-orange-500 font-bold text-sm px-3 py-1.5 bg-orange-50 rounded-full hover:bg-orange-100 transition-colors"

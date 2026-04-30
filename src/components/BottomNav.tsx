@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Clock, Users, User, Calendar, PieChart } from 'lucide-react';
+import { Clock, Users, User, Calendar, Trophy, MapPin } from 'lucide-react';
 
 export function BottomNav() {
   const pathname = usePathname();
@@ -13,13 +13,13 @@ export function BottomNav() {
         <nav className="max-w-md mx-auto px-2 h-16 flex items-center justify-between">
           <NavItem href="/posts" icon={<Clock size={22} />} label="タイムライン" isActive={pathname === '/posts'} />
           
-          <NavItem href="/groups" icon={<Users size={22} />} label="ともだち" isActive={pathname === '/groups' || pathname.startsWith('/groups')} />
+          <NavItem href="/map" icon={<MapPin size={22} />} label="マップ" isActive={pathname === '/map'} />
 
           <NavItem href="/mypage" icon={<User size={22} />} label="マイページ" isActive={pathname.startsWith('/mypage')} />
 
-          <NavItem href="/calendar" icon={<Calendar size={22} />} label="カレンダー" isActive={pathname === '/calendar'} />
+          <NavItem href="/rankings" icon={<Trophy size={22} />} label="ランキング" isActive={pathname.startsWith('/rankings')} />
           
-          <NavItem href="/analytics" icon={<PieChart size={22} />} label="分析" isActive={pathname === '/analytics'} />
+          <NavItem href="/groups" icon={<Users size={22} />} label="ともだち" isActive={pathname === '/groups' || pathname.startsWith('/groups')} />
         </nav>
       </div>
     </>

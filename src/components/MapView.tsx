@@ -1,16 +1,26 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useRef } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
 import type { Post } from '@/lib/types';
 import Link from 'next/link';
-import { Star, MapPin } from 'lucide-react';
+import { Star, MapPin, Navigation, Layers, Plus, Minus } from 'lucide-react';
 
 const containerStyle = {
   width: '100%',
   height: '100%',
 };
 
+const createMarkerIcon = (color: string) => `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(`
+<svg width="36" height="46" viewBox="0 0 36 46" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M18 0C8.05887 0 0 8.05887 0 18C0 31.5 18 46 18 46C18 46 36 31.5 36 18C36 8.05887 27.9411 0 18 0Z" fill="${color}" stroke="white" stroke-width="2"/>
+  <circle cx="18" cy="18" r="8" fill="white"/>
+</svg>
+`)}`;
+
+const VISITED_ICON = createMarkerIcon('#f43f5e'); // rose-500
+const WANT_ICON = createMarkerIcon('#fb923c'); // orange-400
+const TEMP_ICON = createMarkerIcon('#8b5cf6'); // violet-500
 
 type Props = {
   posts: Post[];
@@ -30,10 +40,12 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
     region: 'JP',
   });
 
-  const [map, setMap] = useState<google.maps.Map | null>(null);
+  const mapRef = useRef<google.maps.Map | null>(null);
+  const [mapTypeId, setMapTypeId] = useState<string>('roadmap');
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
   const onLoad = useCallback((map: google.maps.Map) => {
+    mapRef.current = map;
     if (posts.length > 0) {
       const bounds = new window.google.maps.LatLngBounds();
       posts.forEach(p => {
@@ -43,34 +55,57 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
       });
       map.fitBounds(bounds);
     }
-    setMap(map);
   }, [posts]);
 
   const onUnmount = useCallback(() => {
-    setMap(null);
+    mapRef.current = null;
   }, []);
 
   const handleMapClick = (e: google.maps.MapMouseEvent) => {
     if (!e.latLng || !setTempMarker) return;
     const lat = e.latLng.lat();
     const lng = e.latLng.lng();
-    const placeId = (e as any).placeId; // google.maps.IconMouseEvent interface has placeId
+    const placeId = (e as any).placeId;
 
-    // 1. 初期の仮ピンを立てる
     setTempMarker({ lat, lng, placeId });
 
-    // 2. Geocoderで逆ジオコーディング
     const geocoder = new window.google.maps.Geocoder();
     geocoder.geocode({ location: { lat, lng } }, (results, status) => {
       if (status === 'OK' && results && results[0]) {
-        // format address roughly by removing country code
         let address = results[0].formatted_address.replace(/^日本、/, '');
         setTempMarker((prev) => prev ? { ...prev, address } : null);
-
-        // If placeId is present, we could optionally fetch Place details (requires PlacesService)
-        // However, we avoid initializing PlacesService here unless absolutely needed since Geocoder address + POI click usually gives enough.
       }
     });
+  };
+
+  const toggleMapType = () => {
+    setMapTypeId(prev => prev === 'roadmap' ? 'satellite' : 'roadmap');
+  };
+
+  const handleZoomIn = () => {
+    if (mapRef.current) {
+      mapRef.current.setZoom((mapRef.current.getZoom() || 0) + 1);
+    }
+  };
+
+  const handleZoomOut = () => {
+    if (mapRef.current) {
+      mapRef.current.setZoom((mapRef.current.getZoom() || 0) - 1);
+    }
+  };
+
+  const handleCurrentLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          if (mapRef.current) {
+            mapRef.current.panTo({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+            mapRef.current.setZoom(16);
+          }
+        },
+        (err) => console.log('Location error:', err)
+      );
+    }
   };
 
   if (loadError) {
@@ -103,11 +138,12 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
         onLoad={onLoad}
         onUnmount={onUnmount}
         onClick={handleMapClick}
+        mapTypeId={mapTypeId}
         options={{
-          zoomControl: true,
-          streetViewControl: true,
-          mapTypeControl: true,
-          fullscreenControl: true,
+          zoomControl: false,
+          streetViewControl: false,
+          mapTypeControl: false,
+          fullscreenControl: false,
           gestureHandling: 'greedy',
         }}
       >
@@ -118,9 +154,9 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
               position={{ lat: post.latitude, lng: post.longitude }}
               onClick={() => setSelectedPost(post)}
               icon={{
-                url: post.status === 'visited' 
-                  ? 'http://maps.google.com/mapfiles/ms/icons/orange-dot.png' 
-                  : 'http://maps.google.com/mapfiles/ms/icons/blue-dot.png'
+                url: post.status === 'visited' ? VISITED_ICON : WANT_ICON,
+                scaledSize: new window.google.maps.Size(36, 46),
+                anchor: new window.google.maps.Point(18, 46),
               }}
             />
           )
@@ -148,9 +184,6 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
               <Link 
                 href={`/posts/${selectedPost.id}`}
                 className="block w-full text-center py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-lg transition-colors"
-                onClick={(e) => {
-                  // Next.js Link handles this, but ensuring InfoWindow closing doesn't block it
-                }}
               >
                 詳細を表示
               </Link>
@@ -158,22 +191,55 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
           </InfoWindow>
         )}
 
-        {/* Temporary Marker from Click or Search */}
         {tempMarker && tempMarker.lat && tempMarker.lng && (
           <Marker
             position={{ lat: tempMarker.lat, lng: tempMarker.lng }}
             icon={{
-              url: 'http://maps.google.com/mapfiles/ms/icons/pink-dot.png'
+              url: TEMP_ICON,
+              scaledSize: new window.google.maps.Size(36, 46),
+              anchor: new window.google.maps.Point(18, 46),
             }}
           />
         )}
       </GoogleMap>
 
-      {/* Modern Bottom Sheet for Temporary Marker overlaying the Map */}
+      {/* Custom Map Controls (Vertical stack on right) */}
+      <div className="absolute right-3 top-24 flex flex-col gap-2 z-10">
+        <button
+          onClick={toggleMapType}
+          className="w-10 h-10 bg-white rounded-xl shadow-lg flex items-center justify-center text-gray-600 hover:bg-gray-50 active:scale-95 transition-all border border-gray-100"
+          title="航空写真切り替え"
+        >
+          <Layers size={20} className={mapTypeId === 'satellite' ? 'text-orange-500' : ''} />
+        </button>
+        <button
+          onClick={handleCurrentLocation}
+          className="w-10 h-10 bg-white rounded-xl shadow-lg flex items-center justify-center text-gray-600 hover:bg-gray-50 active:scale-95 transition-all border border-gray-100"
+          title="現在地"
+        >
+          <Navigation size={20} />
+        </button>
+        <button
+          onClick={handleZoomIn}
+          className="w-10 h-10 bg-white rounded-xl shadow-lg flex items-center justify-center text-gray-600 hover:bg-gray-50 active:scale-95 transition-all border border-gray-100 font-bold text-xl"
+          title="拡大"
+        >
+          <Plus size={20} />
+        </button>
+        <button
+          onClick={handleZoomOut}
+          className="w-10 h-10 bg-white rounded-xl shadow-lg flex items-center justify-center text-gray-600 hover:bg-gray-50 active:scale-95 transition-all border border-gray-100 font-bold text-xl"
+          title="縮小"
+        >
+          <Minus size={20} />
+        </button>
+      </div>
+
+      {/* Modern Bottom Sheet for Temporary Marker */}
       {tempMarker && tempMarker.lat && tempMarker.lng && (
         <div className="absolute bottom-6 left-4 right-4 sm:fixed sm:bottom-8 sm:left-1/2 sm:-translate-x-1/2 sm:w-[500px] z-[100] animate-in slide-in-from-bottom-8 duration-500">
           <div className="bg-white/95 backdrop-blur-xl rounded-[2rem] p-5 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] border border-gray-100/50 flex flex-col items-center">
-            <div className="w-10 h-1.5 bg-gray-200 rounded-full mb-4" /> {/* Drag handle aesthetic */}
+            <div className="w-10 h-1.5 bg-gray-200 rounded-full mb-4" />
             
             <div className="flex flex-col items-center text-center mb-5 w-full">
               <h3 className="font-black text-gray-900 text-lg leading-tight mb-2 flex items-center justify-center gap-1.5 w-full">
@@ -188,10 +254,6 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
             </div>
             
             <div className="w-full flex flex-col gap-2">
-              <div className="flex items-center gap-2 mb-1 px-1">
-                <span className="text-gray-800 font-black text-sm">ここに記録を追加</span>
-                <div className="flex-1 h-px bg-gray-100" />
-              </div>
               <Link 
                 href={`/posts/new?lat=${tempMarker.lat}&lng=${tempMarker.lng}${tempMarker.placeId ? `&placeId=${tempMarker.placeId}` : ''}${tempMarker.name ? `&name=${encodeURIComponent(tempMarker.name)}` : ''}${tempMarker.address ? `&address=${encodeURIComponent(tempMarker.address)}` : ''}`}
                 className="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-400 hover:from-pink-400 hover:to-rose-300 text-white text-[15px] font-black rounded-[1.5rem] transition-all shadow-xl shadow-pink-500/25 flex items-center justify-center gap-2 active:scale-[0.98]"

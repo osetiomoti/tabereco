@@ -1,33 +1,36 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, Search, Hash, ArrowDownUp, Plus } from 'lucide-react';
+import { Settings, Hash, ArrowDownUp, Plus, MapPin, Calendar, User, Search } from 'lucide-react';
+import { Header } from '@/components/Header';
 import Image from 'next/image';
 import Link from 'next/link';
-import { getPosts, getUserTags } from '@/lib/api/posts';
-import type { Post, Tag } from '@/lib/types';
+import { getPosts } from '@/lib/api/posts';
+import type { Post } from '@/lib/types';
 import { TagSelector } from '@/components/TagSelector';
 import { formatDate } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
+import { useSharedFilter } from '@/hooks/useSharedFilter';
 
 export default function MyPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'visited' | 'want'>('visited');
+  const { updateFilter } = useSharedFilter();
+  const [activeTab, setActiveTab] = useState<'all' | 'visited' | 'want_to_go'>('all');
   const [posts, setPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<any>(null);
-  
-  const [keyword, setKeyword] = useState('');
+  const [friendsCount, setFriendsCount] = useState(0);
+
+  const [sortField, setSortField] = useState<'date' | 'rating'>('date');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+  const [showSortMenu, setShowSortMenu] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isTagSelectorOpen, setIsTagSelectorOpen] = useState(false);
+  const [keyword, setKeyword] = useState('');
 
   useEffect(() => {
-    fetch('/api/profiles/me')
-      .then(r => r.json())
-      .then(j => {
-        if (j.success) setUser(j.data);
-      });
+    fetch('/api/profiles/me').then(r => r.json()).then(j => { if (j.success) setUser(j.data); });
+    import('@/lib/api/friends').then(m => m.getFriends()).then(f => setFriendsCount(f?.length || 0));
   }, []);
 
   useEffect(() => {
@@ -41,49 +44,58 @@ export default function MyPage() {
   }, []);
 
   const visitedCount = posts.filter(p => p.status === 'visited').length;
-  // Previously we used 'want' or is_favorite, let's just count is_favorite as "want to go" for now
-  const wantCount = posts.filter(p => p.is_favorite).length;
+  const wantCount = posts.filter(p => p.is_favorite || p.status === 'want_to_go').length;
 
   let filteredPosts = posts.filter(p => {
     if (activeTab === 'visited') return p.status === 'visited';
-    if (activeTab === 'want') return p.is_favorite;
+    if (activeTab === 'want_to_go') return p.status === 'want_to_go' || p.is_favorite;
     return true;
   });
 
   if (keyword) {
-    const k = keyword.toLowerCase();
+    const lower = keyword.toLowerCase();
     filteredPosts = filteredPosts.filter(p => 
-      p.title?.toLowerCase().includes(k) || 
-      p.store_name?.toLowerCase().includes(k) ||
-      p.comment?.toLowerCase().includes(k)
+      p.title?.toLowerCase().includes(lower) || 
+      p.store_name?.toLowerCase().includes(lower) ||
+      p.comment?.toLowerCase().includes(lower)
     );
   }
 
   if (selectedTags.length > 0) {
-    filteredPosts = filteredPosts.filter(p => 
+    filteredPosts = filteredPosts.filter(p =>
       selectedTags.every(tag => p.tags?.some(t => t.name === tag))
     );
   }
 
   filteredPosts.sort((a, b) => {
-    const tA = new Date(a.visited_at || a.created_at).getTime();
-    const tB = new Date(b.visited_at || b.created_at).getTime();
-    return sortOrder === 'desc' ? tB - tA : tA - tB;
+    if (sortField === 'date') {
+      const tA = new Date(a.visited_at || a.created_at).getTime();
+      const tB = new Date(b.visited_at || b.created_at).getTime();
+      return sortOrder === 'desc' ? tB - tA : tA - tB;
+    } else {
+      const rA = a.rating || 0;
+      const rB = b.rating || 0;
+      return sortOrder === 'desc' ? rB - rA : rA - rB;
+    }
   });
+
+  const goToMap = () => {
+    updateFilter({ activeGroups: ['mine'] });
+    router.push('/map');
+  };
+
+  const goToCalendar = () => {
+    updateFilter({ activeGroups: ['mine'] });
+    router.push('/calendar');
+  };
 
   return (
     <div className="min-h-screen bg-white pb-[100px]">
-      {/* Header */}
-      <header className="relative flex items-center justify-center h-14 bg-white px-4 border-b border-gray-100">
-        <h1 className="font-black text-lg tracking-wide">{user ? user.name : 'OO'}</h1>
-        <Link href="/settings" className="absolute right-4 w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors">
-          <Settings size={22} className="text-gray-700" />
-        </Link>
-      </header>
+      <Header title={user?.name || 'マイページ'} />
 
       {/* Profile Info */}
       <div className="px-6 py-6 flex items-center justify-between">
-        <div className="relative">
+        <div className="relative shrink-0">
           <div className="w-[84px] h-[84px] rounded-full bg-gray-100 flex items-center justify-center border-2 border-white shadow-sm overflow-hidden relative">
             {user?.avatar_url ? (
               <Image src={user.avatar_url} alt="User" fill className="object-cover" />
@@ -95,55 +107,60 @@ export default function MyPage() {
             <Plus size={16} strokeWidth={3} />
           </button>
         </div>
-        
-        <div className="flex-1 flex justify-around ml-4 mt-2">
+
+        <div className="flex-1 flex justify-around ml-6">
           <StatBox count={visitedCount} label="行った" />
           <StatBox count={wantCount} label="行きたい" />
-          <StatBox count={user?.groups_joined || 0} label="ともだち" />
+          <StatBox count={friendsCount} label="ともだち" />
+          <StatBox count={user?.groups_joined || 0} label="グループ" />
         </div>
       </div>
 
       {/* New record button */}
-      <div className="px-4 mb-8">
-        <Link 
+      <div className="px-4 mb-6">
+        <Link
           href="/posts/new"
           className="w-full py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl font-black text-lg flex items-center justify-center gap-3 shadow-lg shadow-orange-500/20 hover:scale-[1.01] active:scale-98 transition-all"
         >
-          <div className="p-1.5 bg-white/20 rounded-[10px]">
-             <Plus size={22} strokeWidth={3} />
-          </div>
+          <div className="p-1.5 bg-white/20 rounded-[10px]"><Plus size={22} strokeWidth={3} /></div>
           <span>新しく記録する</span>
         </Link>
       </div>
 
-      {/* Filter Row */}
-      <div className="px-4 mb-4 flex items-center gap-2">
-        <div className="flex-1 relative group">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500 transition-colors" strokeWidth={2.5} />
-          <input 
-            className="w-full bg-white border border-gray-200 py-3 pl-10 pr-3 rounded-xl text-[14px] font-bold placeholder:text-gray-400 focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all outline-none"
-            placeholder="記録したお店を検索"
-            value={keyword}
-            onChange={e => setKeyword(e.target.value)}
-          />
-        </div>
-        <button 
-          onClick={() => setIsTagSelectorOpen(true)}
-          className={`w-[46px] h-[46px] shrink-0 border rounded-xl flex items-center justify-center transition-all ${
-            selectedTags.length > 0 ? 'bg-orange-500 border-orange-500 text-white shadow-md shadow-orange-500/20' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
-          }`}
-        >
-          <Hash size={20} strokeWidth={2.5} />
+      {/* Action Row */}
+      <div className="px-4 mb-5 grid grid-cols-4 gap-2">
+        <button onClick={() => setIsTagSelectorOpen(true)} className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+          <Hash size={20} strokeWidth={2.5} className="mb-0.5" />
+          <span className="text-[9px] font-black tracking-wider">タグ</span>
         </button>
-        <button 
-          onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
-          className="w-[46px] h-[46px] shrink-0 bg-white border border-gray-200 rounded-xl flex items-center justify-center text-gray-500 hover:bg-gray-50 transition-colors"
-        >
-          <ArrowDownUp size={20} strokeWidth={2.5} className={sortOrder === 'asc' ? 'rotate-180 transition-transform' : 'transition-transform'} />
+        <div className="relative col-span-1">
+          <button onClick={() => setShowSortMenu(!showSortMenu)} className="w-full h-[56px] flex flex-col bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+            <ArrowDownUp size={20} className="mb-0.5" strokeWidth={2.5} />
+            <span className="text-[9px] font-black tracking-wider">並び替え</span>
+          </button>
+          
+          {showSortMenu && (
+            <div className="absolute top-16 left-1/2 -translate-x-1/2 w-[160px] bg-white border border-gray-100 shadow-2xl rounded-2xl overflow-hidden z-20 animate-in fade-in zoom-in-95 duration-200">
+              <div className="py-2">
+                <SortOption label="日付 (新しい順)" active={sortField === 'date' && sortOrder === 'desc'} onClick={() => { setSortField('date'); setSortOrder('desc'); setShowSortMenu(false); }} />
+                <SortOption label="日付 (古い順)" active={sortField === 'date' && sortOrder === 'asc'} onClick={() => { setSortField('date'); setSortOrder('asc'); setShowSortMenu(false); }} />
+                <SortOption label="評価 (高い順)" active={sortField === 'rating' && sortOrder === 'desc'} onClick={() => { setSortField('rating'); setSortOrder('desc'); setShowSortMenu(false); }} />
+                <SortOption label="評価 (低い順)" active={sortField === 'rating' && sortOrder === 'asc'} onClick={() => { setSortField('rating'); setSortOrder('asc'); setShowSortMenu(false); }} />
+              </div>
+            </div>
+          )}
+        </div>
+        <button onClick={goToMap} className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+          <MapPin size={20} strokeWidth={2.5} className="mb-0.5" />
+          <span className="text-[9px] font-black tracking-wider">マップ</span>
+        </button>
+        <button onClick={goToCalendar} className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+          <Calendar size={20} strokeWidth={2.5} className="mb-0.5" />
+          <span className="text-[9px] font-black tracking-wider">カレンダー</span>
         </button>
       </div>
 
-      {/* Tags Chips in MyPage */}
+      {/* Tags Chips */}
       {selectedTags.length > 0 && (
         <div className="px-4 mb-4 flex gap-2 flex-wrap">
           {selectedTags.map(t => (
@@ -155,73 +172,96 @@ export default function MyPage() {
         </div>
       )}
 
+      {/* Search bar */}
+      <div className="px-4 mb-4">
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+          <input
+            type="text"
+            placeholder="記録を検索..."
+            className="w-full pl-11 pr-4 py-3 bg-gray-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-orange-100 transition-all font-medium text-gray-800 placeholder:text-gray-300"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+          />
+        </div>
+      </div>
+
       {/* Tabs */}
       <div className="px-4 mb-6">
-        <div className="flex bg-gray-100/80 rounded-full p-1 border border-black/5 shadow-inner">
+        <div className="flex bg-gray-100/80 rounded-[14px] p-1 border border-black/5 shadow-inner">
+          <TabBtn active={activeTab === 'all'} onClick={() => setActiveTab('all')} label="すべて" />
           <TabBtn active={activeTab === 'visited'} onClick={() => setActiveTab('visited')} label="行った" />
-          <TabBtn active={activeTab === 'want'} onClick={() => setActiveTab('want')} label="行きたい" />
+          <TabBtn active={activeTab === 'want_to_go'} onClick={() => setActiveTab('want_to_go')} label="行きたい" />
         </div>
       </div>
 
       {/* Tab Content (Grid) */}
       {loading ? (
-        <div className="py-20 flex justify-center">
-          <div className="w-10 h-10 border-4 border-gray-100 border-t-orange-500 rounded-full animate-spin" />
+        <div className="px-0.5 grid grid-cols-3 gap-0.5">
+          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => (
+            <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />
+          ))}
         </div>
       ) : filteredPosts.length === 0 ? (
-        <div className="py-20 text-center text-gray-400 font-bold text-[14px]">
-          記録が見つかりません
-        </div>
+        <div className="py-20 text-center text-gray-400 font-bold text-[14px]">記録が見つかりません</div>
       ) : (
-        <div className="px-1 grid grid-cols-2 gap-1 animate-in fade-in duration-500">
+        <div className="px-0.5 grid grid-cols-3 gap-0.5 animate-in fade-in duration-500">
           {filteredPosts.map(post => (
-            <Link href={`/posts/${post.id}/edit`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
+            <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
               {post.image_url ? (
-                <Image 
-                  src={post.image_url} 
-                  alt={post.title} 
-                  fill 
-                  className="object-cover transition-transform duration-500 group-hover:scale-105"
-                  sizes="50vw"
-                />
+                <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-orange-50 transition-transform duration-500 group-hover:scale-105">
-                  <span className="text-4xl opacity-50">🍽️</span>
+                <div className="w-full h-full flex items-center justify-center bg-orange-50 transition-transform duration-500 group-hover:scale-110">
+                  <span className="text-2xl opacity-50">🍽️</span>
                 </div>
               )}
-              {/* Dark gradient for text readability */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-90 pointer-events-none" />
               
-              {/* Rating Badge */}
-              {post.rating ? (
-                <div className="absolute top-2 left-2 bg-white/95 backdrop-blur-sm text-orange-500 pl-1.5 pr-2 py-0.5 rounded-lg text-[11px] font-black flex items-center gap-0.5 shadow-sm">
-                  <span>★</span>{post.rating.toFixed(1)}
-                </div>
-              ) : null}
+              {/* Text Overlays for 3-column grid */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
               
-              {/* Store Name / Date */}
-              <div className="absolute bottom-2 left-2 right-2 flex flex-col">
-                <span className="text-white font-black text-[14px] leading-tight drop-shadow-md truncate tracking-wide">
-                  {post.title}
-                </span>
-                <span className="text-gray-300 font-medium text-[10px] drop-shadow-md truncate mt-0.5">
-                  {post.store_name} • {formatDate(post.visited_at).replace(/-/g, '/')}
+              <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
+                <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
+                <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate mt-0.5 opacity-80">
+                  {post.store_name} • {formatDate(post.visited_at).split('-').slice(1).join('/')}
                 </span>
               </div>
+
+              {post.rating && (
+                <div className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur-sm text-orange-500 px-1 py-0.5 rounded flex items-center gap-0.5 shadow-sm scale-75 origin-top-left">
+                   <span className="text-[10px] font-black">★</span>
+                   <span className="text-[10px] font-black">{post.rating.toFixed(1)}</span>
+                </div>
+              )}
+
+              {post.is_favorite && (
+                <div className="absolute top-1.5 right-1.5 bg-pink-500/90 text-white w-4 h-4 rounded-full flex items-center justify-center shadow-sm scale-75 origin-top-right">
+                   <span className="text-[10px] font-black">♥</span>
+                </div>
+              )}
             </Link>
           ))}
         </div>
       )}
 
       {/* Tag Selector Modal */}
-      <TagSelector 
-        isOpen={isTagSelectorOpen} 
-        onClose={() => setIsTagSelectorOpen(false)} 
-        selectedTags={selectedTags} 
-        onSelect={tags => setSelectedTags(tags)} 
+      <TagSelector
+        isOpen={isTagSelectorOpen}
+        onClose={() => setIsTagSelectorOpen(false)}
+        selectedTags={selectedTags}
+        onSelect={tags => setSelectedTags(tags)}
       />
-
     </div>
+  );
+}
+
+function SortOption({ label, active, onClick }: { label: string, active: boolean, onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full text-left px-4 py-3 text-[12px] font-bold hover:bg-gray-50 transition-colors ${active ? 'text-orange-500 bg-orange-50/50' : 'text-gray-700'}`}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -236,17 +276,17 @@ function UserPlaceholder() {
 function StatBox({ count, label }: { count: number, label: string }) {
   return (
     <div className="flex flex-col items-center justify-center relative -top-1">
-      <span className="text-[18px] font-black text-gray-900 leading-none">{count}</span>
-      <span className="text-[11px] text-gray-500 font-bold mt-1.5">{label}</span>
+      <span className="text-[17px] font-black text-gray-900 leading-none">{count}</span>
+      <span className="text-[10px] text-gray-400 font-black mt-1.5">{label}</span>
     </div>
   );
 }
 
 function TabBtn({ active, onClick, label }: { active: boolean, onClick: () => void, label: string }) {
   return (
-    <button 
+    <button
       onClick={onClick}
-      className={`flex-1 py-2 text-[13px] font-black rounded-[14px] transition-all duration-300 ${active ? 'bg-white text-gray-900 shadow-[0_2px_8px_rgba(0,0,0,0.06)]' : 'text-gray-400 hover:text-gray-600'}`}
+      className={`flex-1 py-2 text-[12px] font-black rounded-[10px] transition-all duration-300 ${active ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
     >
       {label}
     </button>

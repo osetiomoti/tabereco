@@ -9,7 +9,7 @@ import { useUpload } from '@/hooks/useUpload';
 import { todayString } from '@/lib/utils';
 import { getExifGPS } from '@/lib/exif';
 import type { Post, PostFormValues, PostStatus } from '@/lib/types';
-import { Loader2, MapPin, Globe, Lock, Hash, Check, Tag as TagIcon, Plus, X, Users } from 'lucide-react';
+import { Loader2, MapPin, Globe, Lock, Hash, Check, Tag as TagIcon, Plus, X, Users, Heart } from 'lucide-react';
 
 import { PlaceAutocomplete } from './PlaceAutocomplete';
 import { TagSelector } from './TagSelector';
@@ -39,7 +39,7 @@ export function PostForm({ post }: Props) {
     comment: post?.comment ?? '',
     rating: post?.rating ?? 3,
     visited_at: post?.visited_at ?? todayString(),
-    images: [],
+    images: [] as File[],
     image_urls: post?.image_urls ?? (post?.image_url ? [post.image_url] : []),
     status: post?.status ?? 'visited',
     is_public: post?.is_public ?? false,
@@ -60,6 +60,7 @@ export function PostForm({ post }: Props) {
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [extractingGps, setExtractingGps] = useState(false);
+  const [orderedImages, setOrderedImages] = useState<(File | string)[]>([...(post?.image_urls ?? (post?.image_url ? [post.image_url] : []))]);
 
   useEffect(() => {
     async function loadGroups() {
@@ -104,19 +105,14 @@ export function PostForm({ post }: Props) {
     }
   }, [addressLanguage]);
 
-  // 画像が選択された時に EXIF から位置情報を抽出
-  const handleImagesChange = async (files: File[], removedUrls?: string[]) => {
-    set('images', files);
-    
-    // 既存画像の削除処理 (編集時)
-    if (removedUrls && removedUrls.length > 0) {
-      set('image_urls', values.image_urls.filter(url => !removedUrls.includes(url)));
-    }
+  // 画像が選択・並び替えられた時の処理
+  const handleImagesChange = async (items: (File | string)[]) => {
+    setOrderedImages(items);
 
-    // 最初のファイルからEXIF情報を取得 (必要に応じて)
-    if (files.length > 0 && files[0]) {
+    // 最初のアイテムがファイルの場合にEXIF情報を取得
+    if (items.length > 0 && items[0] instanceof File) {
       setExtractingGps(true);
-      const coords = await getExifGPS(files[0]);
+      const coords = await getExifGPS(items[0]);
       if (coords) {
         set('latitude', coords.latitude);
         set('longitude', coords.longitude);
@@ -168,16 +164,18 @@ export function PostForm({ post }: Props) {
 
     setLoading(true);
     try {
-      let uploadedUrls: string[] = [];
+      // 並び順を保持しつつ、ファイルだけをアップロードする
+      const finalImageUrls = await Promise.all(
+        orderedImages.map(async (item) => {
+          if (typeof item === 'string') {
+            return item;
+          } else {
+            const uploadedUrl = await uploadFile(item);
+            return uploadedUrl;
+          }
+        })
+      ).then(urls => urls.filter((url): url is string => url !== null));
 
-      if (values.images.length > 0) {
-        const uploadPromises = values.images.map(file => uploadFile(file));
-        const results = await Promise.all(uploadPromises);
-        uploadedUrls = results.filter((url): url is string => url !== null);
-      }
-
-      // 新しくアップロードした画像と、既存の保持された画像を結合
-      const finalImageUrls = [...values.image_urls, ...uploadedUrls];
       const primaryImageUrl = finalImageUrls.length > 0 ? finalImageUrls[0] : null;
 
       const postData = {
@@ -222,23 +220,22 @@ export function PostForm({ post }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-10 pb-20 sm:pb-10">
+    <form onSubmit={handleSubmit} className="space-y-6 pb-20 sm:pb-10">
       {/* 1. 写真と基本ステータス */}
-      <section className="space-y-6">
+      <section className="space-y-4">
         <ImageUpload
-          values={values.images}
-          previewUrls={post?.image_urls ?? (post?.image_url ? [post.image_url] : [])}
+          items={orderedImages}
           onChange={handleImagesChange}
           maxFiles={5}
         />
 
-        <div className="flex p-1.5 bg-gray-100/80 backdrop-blur-sm border border-gray-100 rounded-2xl shadow-inner mx-1">
+        <div className="flex p-1 bg-gray-100/80 backdrop-blur-sm border border-gray-100 rounded-xl shadow-inner mx-1">
           <button
             type="button"
             onClick={() => set('status', 'visited')}
-            className={`flex-1 py-3 text-[13.5px] font-black rounded-[14px] transition-all duration-300 ${
+            className={`flex-1 py-2 text-[12px] font-black rounded-[10px] transition-all duration-300 ${
               values.status === 'visited'
-                ? 'bg-white text-orange-600 shadow-lg shadow-black/5 ring-1 ring-black/5 scale-[1.02]'
+                ? 'bg-white text-orange-600 shadow-sm ring-1 ring-black/5'
                 : 'text-gray-400 hover:text-gray-600'
             }`}
           >
@@ -247,9 +244,9 @@ export function PostForm({ post }: Props) {
           <button
             type="button"
             onClick={() => set('status', 'want_to_go')}
-            className={`flex-1 py-3 text-[13.5px] font-black rounded-[14px] transition-all duration-300 ${
+            className={`flex-1 py-2 text-[12px] font-black rounded-[10px] transition-all duration-300 ${
               values.status === 'want_to_go'
-                ? 'bg-white text-orange-600 shadow-lg shadow-black/5 ring-1 ring-black/5 scale-[1.02]'
+                ? 'bg-white text-orange-600 shadow-sm ring-1 ring-black/5'
                 : 'text-gray-400 hover:text-gray-600'
             }`}
           >
@@ -259,102 +256,93 @@ export function PostForm({ post }: Props) {
       </section>
 
       {/* 2. お店・場所の情報 */}
-      <section className="bg-white border-y sm:border border-gray-100 sm:rounded-[2.5rem] overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-        <div className="bg-[#a68c7e] text-white px-6 py-3.5 text-[13px] font-black tracking-widest uppercase">
-          Shop & Place
-        </div>
-        <div className="p-6 space-y-7">
-          <div className="space-y-2">
-            <label className="text-[11px] font-black text-gray-400 tracking-widest uppercase ml-1 block">Shop Name *</label>
+      <section className="bg-white border-y sm:border border-gray-100 sm:rounded-3xl overflow-hidden shadow-sm">
+        <div className="p-4 space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-gray-400 tracking-widest ml-1 block">店名・スポット名 *</label>
             <PlaceAutocomplete
               onPlaceSelected={handlePlaceSelected}
               defaultValue={values.store_name}
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-[11px] font-black text-gray-400 tracking-widest uppercase ml-1 block">Address</label>
-            <div className="relative">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-gray-400 tracking-widest ml-1 block">住所</label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={values.address}
+                  onChange={(e) => set('address', e.target.value)}
+                  placeholder="住所を入力"
+                  className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-2.5 text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500/10 focus:bg-white transition-all text-sm font-bold shadow-inner"
+                />
+                {extractingGps && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <Loader2 size={16} className="text-orange-500 animate-spin" />
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-gray-400 tracking-widest ml-1 block">食事・メニュー名</label>
               <input
                 type="text"
-                value={values.address}
-                onChange={(e) => set('address', e.target.value)}
-                placeholder="住所を入力（店名から自動取得も可）"
-                className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-4 focus:ring-orange-500/5 focus:bg-white transition-all text-sm font-bold shadow-inner"
+                value={values.title}
+                onChange={(e) => set('title', e.target.value)}
+                placeholder="例：伝説の唐揚げ"
+                className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-2.5 text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500/10 focus:bg-white transition-all text-sm font-bold shadow-inner"
               />
-              {extractingGps && (
-                <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                  <Loader2 size={20} className="text-orange-500 animate-spin" />
-                </div>
-              )}
-              {values.latitude && !extractingGps && (
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-green-500">
-                  <Check size={20} />
-                </div>
-              )}
             </div>
-          </div>
-
-          <div className="space-y-2 pt-2">
-            <label className="text-[11px] font-black text-gray-400 tracking-widest uppercase ml-1 block">Meal Name</label>
-            <input
-              type="text"
-              value={values.title}
-              onChange={(e) => set('title', e.target.value)}
-              placeholder="例：伝説の唐揚げ"
-              className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-4 focus:ring-orange-500/5 focus:bg-white transition-all text-sm font-bold shadow-inner"
-            />
           </div>
         </div>
       </section>
 
       {/* 3. 記録の詳細 */}
-      <section className="bg-white border-y sm:border border-gray-100 sm:rounded-[2.5rem] overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-        <div className="bg-[#a68c7e] text-white px-6 py-3.5 text-[13px] font-black tracking-widest uppercase">
-          Rating & Review
-        </div>
-        <div className="p-6 space-y-8">
-          <div className="grid grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-[11px] font-black text-gray-400 tracking-widest uppercase ml-1 block">Visit Date</label>
+      <section className="bg-white border-y sm:border border-gray-100 sm:rounded-3xl overflow-hidden shadow-sm">
+        <div className="p-4 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+            <div className="space-y-1.5 flex-1">
+              <label className="text-[10px] font-black text-gray-400 tracking-widest ml-1 block">訪問日</label>
               <input
                 type="date"
                 value={values.visited_at}
                 onChange={(e) => set('visited_at', e.target.value)}
-                className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 focus:outline-none focus:ring-4 focus:ring-orange-500/5 focus:bg-white transition-all text-sm font-bold shadow-inner [color-scheme:light]"
+                className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-2.5 text-gray-900 focus:outline-none focus:ring-2 focus:ring-orange-500/10 focus:bg-white transition-all text-sm font-bold shadow-inner [color-scheme:light]"
               />
             </div>
-            <div className="space-y-2">
-              <label className="text-[11px] font-black text-gray-400 tracking-widest uppercase ml-1 block text-right">Rating</label>
-              <div className="flex justify-end">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-black text-gray-400 tracking-widest ml-1 block sm:text-right">評価</label>
+              <div className="flex sm:justify-end">
                 <StarInput value={values.rating} onChange={(r) => set('rating', r)} />
               </div>
             </div>
           </div>
 
-          <div className="space-y-2">
-            <label className="text-[11px] font-black text-gray-400 tracking-widest uppercase ml-1 block">Memo</label>
+          <div className="space-y-1.5">
+            <label className="text-[10px] font-black text-gray-400 tracking-widest ml-1 block">メモ</label>
             <textarea
               value={values.comment}
               onChange={(e) => set('comment', e.target.value)}
-              placeholder="味の感想、おすすめポイントなど..."
-              rows={4}
-              className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-4 focus:ring-orange-500/5 focus:bg-white transition-all text-sm font-bold shadow-inner resize-none"
+              placeholder="味の感想など..."
+              rows={3}
+              className="w-full bg-gray-50/50 border border-gray-100 rounded-xl px-4 py-2.5 text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500/10 focus:bg-white transition-all text-sm font-bold shadow-inner resize-none"
             />
           </div>
 
-          <div className="space-y-4 pt-2">
-            <label className="text-[11px] font-black text-gray-400 tracking-widest uppercase ml-1 block">Tags</label>
-            <div className="flex flex-wrap gap-2.5 min-h-[50px] p-4 bg-gray-50/50 border border-gray-100 rounded-[1.5rem] shadow-inner">
+          <div className="space-y-2">
+            <label className="text-[10px] font-black text-gray-400 tracking-widest ml-1 block">タグ</label>
+            <div className="flex flex-wrap gap-2 p-3 bg-gray-50/50 border border-gray-100 rounded-2xl shadow-inner">
               {values.tags.map(tag => (
                 <span 
                   key={tag}
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-white border border-gray-100 text-gray-700 rounded-xl text-xs font-black shadow-sm"
+                  className="inline-flex items-center gap-1 px-3 py-1 bg-white border border-gray-100 text-gray-700 rounded-lg text-[11px] font-black shadow-sm"
                 >
                   #{tag}
                   <X 
-                    size={14} 
-                    className="text-gray-300 hover:text-red-500 transition-colors cursor-pointer" 
+                    size={12} 
+                    className="text-gray-300 hover:text-red-500 cursor-pointer" 
                     onClick={() => set('tags', values.tags.filter(t => t !== tag))}
                   />
                 </span>
@@ -364,15 +352,15 @@ export function PostForm({ post }: Props) {
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={handleAddTag}
-                placeholder="＋ 新規タグ"
-                className="bg-transparent border-none focus:ring-0 text-sm py-1.5 px-2 placeholder-gray-400 font-bold flex-1 min-w-[100px]"
+                placeholder="＋ タグ"
+                className="bg-transparent border-none focus:ring-0 text-[13px] py-1 px-1 placeholder-gray-400 font-bold flex-1 min-w-[80px]"
               />
               <button
                 type="button"
                 onClick={() => setIsTagSelectorOpen(true)}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#a68c7e]/10 text-[#a68c7e] rounded-xl text-[11px] font-black hover:bg-[#a68c7e]/20 transition-all border border-[#a68c7e]/20"
+                className="px-2.5 py-1 bg-[#a68c7e]/10 text-[#a68c7e] rounded-lg text-[10px] font-black hover:bg-[#a68c7e]/20 transition-all border border-[#a68c7e]/20"
               >
-                <TagIcon size={14} /> 選択リスト
+                選択リスト
               </button>
             </div>
           </div>
@@ -380,27 +368,24 @@ export function PostForm({ post }: Props) {
       </section>
 
       {/* 4. 共有・プライバシー */}
-      <section className="bg-white border-y sm:border border-gray-100 sm:rounded-[2.5rem] overflow-hidden shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-        <div className="bg-[#a68c7e] text-white px-6 py-3.5 text-[13px] font-black tracking-widest uppercase">
-          Sharing & Privacy
-        </div>
-        <div className="p-6 space-y-8">
+      <section className="bg-white border-y sm:border border-gray-100 sm:rounded-3xl overflow-hidden shadow-sm">
+        <div className="p-4 space-y-4">
           {groups.length > 0 && (
-            <div className="space-y-4">
+            <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-[11px] font-black text-gray-400 tracking-widest uppercase ml-1">Share with Groups</label>
+                <label className="text-[10px] font-black text-gray-400 tracking-widest ml-1">共有先</label>
                 <button
                   type="button"
                   onClick={() => {
                     if (selectedGroupIds.length === groups.length) setSelectedGroupIds([]);
                     else setSelectedGroupIds(groups.map((g: any) => g.id));
                   }}
-                  className="text-[10px] font-black text-[#a68c7e] px-2 py-1 rounded-lg hover:bg-[#a68c7e]/5"
+                  className="text-[9px] font-black text-[#a68c7e] hover:underline"
                 >
                   {selectedGroupIds.length === groups.length ? '全解除' : '全選択'}
                 </button>
               </div>
-              <div className="flex flex-wrap gap-2.5">
+              <div className="flex flex-wrap gap-2">
                 {groups.map((group: any) => {
                   const isSelected = selectedGroupIds.includes(group.id);
                   return (
@@ -412,14 +397,13 @@ export function PostForm({ post }: Props) {
                           isSelected ? prev.filter(id => id !== group.id) : [...prev, group.id]
                         );
                       }}
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-[13px] font-black transition-all border ${
+                      className={`px-3 py-1.5 rounded-xl text-[11px] font-black transition-all border ${
                         isSelected
-                        ? 'bg-orange-500 border-orange-500 text-white shadow-lg shadow-orange-500/20'
-                        : 'bg-white border-gray-100 text-gray-400 hover:border-orange-200'
+                        ? 'bg-orange-500 border-orange-500 text-white shadow-sm'
+                        : 'bg-white border-gray-100 text-gray-400'
                       }`}
                     >
                       {group.name}
-                      {isSelected && <Check size={14} strokeWidth={3} />}
                     </button>
                   );
                 })}
@@ -427,9 +411,24 @@ export function PostForm({ post }: Props) {
             </div>
           )}
 
-          <div className="flex items-center justify-between p-1">
-            <span className="text-sm font-black text-gray-700 flex items-center gap-2">
-              <Lock size={16} className="text-[#a68c7e]" /> プライベート（自分のみ）
+          <div className="flex items-center justify-between px-1 border-b border-gray-50 pb-4">
+            <span className="text-[12px] font-black text-gray-700 flex items-center gap-2">
+              <Heart size={14} className={values.is_favorite ? "fill-pink-500 text-pink-500" : "text-[#a68c7e]"} /> お気に入り登録
+            </span>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={values.is_favorite}
+                onChange={(e) => set('is_favorite', e.target.checked)}
+                className="peer sr-only"
+              />
+              <div className="w-10 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-[20px] after:w-[20px] after:transition-all peer-checked:bg-pink-500 shadow-inner"></div>
+            </label>
+          </div>
+
+          <div className="flex items-center justify-between px-1 pt-1">
+            <span className="text-[12px] font-black text-gray-700 flex items-center gap-2">
+              <Lock size={14} className="text-[#a68c7e]" /> 自分のみ
             </span>
             <label className="relative inline-flex items-center cursor-pointer">
               <input 
@@ -438,7 +437,7 @@ export function PostForm({ post }: Props) {
                 onChange={(e) => set('is_mine_only', e.target.checked)}
                 className="peer sr-only"
               />
-              <div className="w-12 h-7 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-[19px] after:w-[19px] after:transition-all peer-checked:bg-orange-500 transition-colors shadow-inner"></div>
+              <div className="w-10 h-6 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-[20px] after:w-[20px] after:transition-all peer-checked:bg-orange-500 shadow-inner"></div>
             </label>
           </div>
         </div>
@@ -446,24 +445,24 @@ export function PostForm({ post }: Props) {
 
       {/* エラー表示 */}
       {error && (
-        <div className="mx-4 rounded-2xl bg-red-50 border border-red-100 px-5 py-4 text-xs font-black text-red-500 animate-in slide-in-from-bottom-2">
+        <div className="mx-4 rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-[11px] font-black text-red-500">
           ⚠️ {error}
         </div>
       )}
 
       {/* 送信ボタン */}
-      <div className="px-4 pt-4">
+      <div className="px-4">
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-5 rounded-[2rem] bg-gradient-to-r from-[#a68c7e] to-[#7d675b] text-white font-black text-lg hover:brightness-110 disabled:opacity-50 transition-all shadow-xl shadow-[#a68c7e]/30 flex items-center justify-center gap-3 active:scale-[0.98]"
+          className="w-full py-4 rounded-[1.5rem] bg-gradient-to-r from-[#a68c7e] to-[#7d675b] text-white font-black text-[16px] hover:brightness-110 disabled:opacity-50 transition-all shadow-lg shadow-[#a68c7e]/20 flex items-center justify-center gap-2 active:scale-[0.98]"
         >
           {loading ? (
-            <Loader2 size={24} className="animate-spin text-white" />
+            <Loader2 size={20} className="animate-spin text-white" />
           ) : (
             <>
-              <Check size={24} strokeWidth={3} />
-              {isEdit ? '変更を保存する' : 'この食事を記録する'}
+              <Check size={20} strokeWidth={3} />
+              {isEdit ? '保存する' : '記録する'}
             </>
           )}
         </button>

@@ -4,7 +4,7 @@ import type { Post } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Bookmark, CheckCircle2, Calendar, Hash, User, MoreHorizontal, Star, MapPin } from 'lucide-react';
+import { Heart, CheckCircle2, Calendar, Hash, User, MoreHorizontal, Star, MapPin, X } from 'lucide-react';
 import { useState, useRef } from 'react';
 
 type Props = { 
@@ -82,7 +82,7 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
           {/* 右側アクション */}
           <div className="flex flex-col justify-between items-end ml-2">
             <div className={`p-2 rounded-full transition-all ${post.is_favorite ? 'bg-pink-50 text-pink-500' : 'text-gray-100'}`}>
-              <Bookmark size={20} className={post.is_favorite ? 'fill-pink-500' : ''} />
+              <Heart size={20} className={post.is_favorite ? 'fill-pink-500' : ''} />
             </div>
             
             {post.status === 'visited' && (
@@ -204,164 +204,183 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
   // 自分自身の投稿かどうか（グループ投稿等で__is_mineがfalseになっている場合を除く）
   const isMine = (post as any).__is_mine !== false;
 
+  const toggleFavorite = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const res = await fetch(`/api/posts/${post.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_favorite: !post.is_favorite }),
+      });
+      if (res.ok) {
+        window.location.reload();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   return (
-    <div className="bg-white mb-6 pb-8 border-b-8 border-gray-50/50">
-      {/* Header: User Info */}
-      <div className="px-4 flex items-center justify-between mb-4 mt-2">
-        <div className="flex items-center gap-3">
-          {post.user?.avatar_url ? (
-            <div className="w-11 h-11 rounded-full overflow-hidden relative shadow-sm border border-gray-100">
-              <Image src={post.user.avatar_url} alt={post.user.name || 'User'} fill className="object-cover" sizes="44px" />
-            </div>
-          ) : (
-            <div className="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 shadow-sm">
-              <User size={22} />
-            </div>
-          )}
-          <span className="font-bold text-gray-900 text-[16px]">{post.user?.name || '名無しさん'}</span>
+    <div className="bg-white mb-2 pb-4 border-b border-gray-100">
+      <Link href={`/posts/${post.id}`} className="block group">
+        {/* Header: User Info */}
+        <div className="px-4 flex items-center justify-between mb-3 mt-3">
+          <div className="flex items-center gap-3">
+            {post.user?.avatar_url ? (
+              <div className="w-8 h-8 rounded-full overflow-hidden relative shadow-sm border border-gray-50">
+                <Image src={post.user.avatar_url} alt={post.user.name || 'User'} fill className="object-cover" sizes="32px" />
+              </div>
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-300">
+                <User size={16} />
+              </div>
+            )}
+            <span className="font-bold text-gray-700 text-sm">{post.user?.name || '名無しさん'}</span>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-gray-400 text-xs font-medium">{formattedDate}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-3 relative">
-          <span className="text-gray-500 text-[14px] font-medium tracking-wide">{formattedDate}</span>
-          
-          {isMine && (
-            <>
-              <button 
-                onClick={() => setIsMenuOpen(!isMenuOpen)} 
-                className="text-gray-400 p-1 hover:bg-gray-50 rounded-full transition-colors relative"
-              >
-                <MoreHorizontal size={22} />
-              </button>
-              
-              {isMenuOpen && (
-                <>
-                  <div className="fixed inset-0 z-40" onClick={() => setIsMenuOpen(false)} />
-                  <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-gray-100 rounded-xl shadow-xl z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200 origin-top-right">
-                    <Link 
-                      href={`/posts/${post.id}/edit`}
-                      className="block w-full text-left px-4 py-3 text-sm font-bold text-gray-700 hover:bg-gray-50 hover:text-orange-500 transition-colors"
-                    >
-                      編集する
-                    </Link>
-                    <div className="h-[1px] bg-gray-50 w-full" />
-                    <button 
-                      onClick={handleDelete}
-                      className="block w-full text-left px-4 py-3 text-sm font-bold text-red-500 hover:bg-red-50 transition-colors"
-                    >
-                      削除する
-                    </button>
-                  </div>
-                </>
-              )}
-            </>
-          )}
-        </div>
-      </div>
 
-      {/* Title / Store Name */}
-      <div className="px-4 mb-4">
-        <h2 className="text-[16px] font-black leading-snug text-gray-900 mb-1">{post.title}</h2>
-        <p className="text-gray-500 font-medium text-[13px] tracking-wide inline-flex items-center gap-1">
-          <MapPin size={12} className="text-orange-500" />
-          <span className="font-bold underline decoration-gray-200 underline-offset-4 decoration-2">{post.store_name}</span>
-        </p>
-      </div>
-
-      <Link href={`/posts/${post.id}`} className="block relative group">
-        {/* Images */}
-        <div className="relative bg-gray-50 aspect-[4/5] w-full mt-1">
+        {/* Image Area (Compact Aspect) */}
+        <div className="relative aspect-[16/10] w-full overflow-hidden bg-gray-50">
           {images.length > 0 ? (
             <div 
               ref={scrollContainerRef}
               onScroll={handleScroll}
               className="flex w-full h-full overflow-x-auto snap-x snap-mandatory scrollbar-hide"
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
             >
               {images.map((img, idx) => (
                 <div key={idx} className="relative w-full h-full flex-shrink-0 snap-center">
                   <Image
                     src={img}
-                    alt={`${post.store_name} - image ${idx + 1}`}
+                    alt={post.title}
                     fill
-                    className="object-cover transition-transform duration-700 group-hover:scale-[1.01]"
-                    sizes="(max-width: 768px) 100vw, 42rem"
+                    className="object-cover transition-transform duration-700 group-hover:scale-105"
+                    sizes="100vw"
                   />
                 </div>
               ))}
             </div>
           ) : (
-            <div className="w-full h-full bg-gradient-to-br from-orange-50 to-pink-50 flex items-center justify-center group-hover:scale-[1.01] transition-transform duration-700">
-              <span className="text-6xl opacity-40">🍽️</span>
+            <div className="w-full h-full flex items-center justify-center bg-orange-50">
+              <span className="text-4xl opacity-30">🍽️</span>
+            </div>
+          )}
+          
+          {/* Quick Stats Overlay */}
+          <div className="absolute top-3 right-3 flex flex-col gap-2 z-10">
+            <button 
+              onClick={toggleFavorite}
+              className={`w-9 h-9 rounded-full backdrop-blur-md flex items-center justify-center shadow-lg transition-all ${
+                post.is_favorite 
+                ? 'bg-pink-500 text-white' 
+                : 'bg-white/80 text-gray-400 hover:text-pink-500'
+              }`}
+            >
+              <Heart size={18} className={post.is_favorite ? 'fill-white' : ''} />
+            </button>
+            {isMine && (
+              <button 
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(!isMenuOpen); }}
+                className="w-9 h-9 bg-white/80 backdrop-blur-md text-gray-600 rounded-full flex items-center justify-center shadow-lg hover:bg-white"
+              >
+                <MoreHorizontal size={18} />
+              </button>
+            )}
+          </div>
+
+          {isMenuOpen && (
+            <div className="absolute top-14 right-3 w-36 bg-white border border-gray-100 rounded-xl shadow-2xl z-20 overflow-hidden animate-in fade-in slide-in-from-top-1">
+              <Link 
+                href={`/posts/${post.id}/edit`}
+                className="block w-full text-left px-4 py-3 text-sm font-bold text-gray-700 hover:bg-gray-50"
+              >
+                編集する
+              </Link>
+            </div>
+          )}
+
+          {images.length > 1 && (
+            <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 px-2 py-1 bg-black/20 backdrop-blur-sm rounded-full">
+              {images.map((_, idx) => (
+                <div key={idx} className={`w-1.5 h-1.5 rounded-full transition-all ${idx === currentImageIndex ? 'bg-white scale-125' : 'bg-white/40'}`} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Content Area */}
+        <div className="px-4 py-3">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <h2 className="text-[15px] font-black text-gray-900 truncate mb-0.5">{post.title}</h2>
+              <p className="text-gray-500 font-medium text-[12px] truncate flex items-center gap-1">
+                <MapPin size={10} className="text-orange-500" />
+                {post.store_name}
+              </p>
+            </div>
+            <div className="flex items-center gap-1 bg-orange-50 px-2 py-1 rounded-lg">
+              <Star size={12} className="fill-orange-500 text-orange-500" />
+              <span className="text-orange-600 font-black text-[13px]">{post.rating?.toFixed(1)}</span>
+            </div>
+          </div>
+          
+          {/* Tags (Small) */}
+          {post.tags && post.tags.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-2">
+              {post.tags.slice(0, 3).map(tag => (
+                <span key={tag.id} className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">#{tag.name}</span>
+              ))}
+              {post.tags.length > 3 && <span className="text-[10px] text-gray-300">...</span>}
             </div>
           )}
         </div>
       </Link>
-
-      {/* Pagination Dots */}
-      {images.length > 1 && (
-        <div className="flex justify-center gap-2 mt-4">
-          {images.map((_, idx) => (
-            <div 
-              key={idx} 
-              className={`w-2 h-2 rounded-full transition-all duration-300 ${idx === currentImageIndex ? 'bg-gray-600 scale-110' : 'bg-gray-300'}`}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Details Below Image */}
-      <div className="px-4 mt-4">
-        {post.address && (
-          <p className="text-gray-500 text-[13px] mb-3 font-medium truncate max-w-full">
-            {post.address}
-          </p>
-        )}
-        
-        {/* Rating */}
-        <div className="flex items-center gap-1.5 mb-5">
-          {[1, 2, 3, 4, 5].map((star) => (
-            <Star 
-              key={star} 
-              size={24} 
-              className={star <= (post.rating || 0) ? "fill-orange-500 text-orange-500 drop-shadow-sm" : "text-gray-300"} 
-            />
-          ))}
-          <span className="ml-1 text-gray-900 font-extrabold text-xl">{post.rating?.toFixed(1) || '0.0'}</span>
-        </div>
-
-        {/* Comment Box */}
-        {post.comment && (
-          <div className="bg-[#f3f4f6] rounded-xl p-5 mb-5 text-[15px] text-gray-700 leading-loose whitespace-pre-wrap shadow-sm ring-1 ring-gray-900/5">
-            <span className="text-xl mr-1.5 inline-block -translate-y-0.5">⭐</span>
-            {post.comment}
-          </div>
-        )}
-
-        {/* Tags */}
-        {post.tags && post.tags.length > 0 && (
-          <div className="flex flex-wrap gap-x-4 gap-y-2 mb-8 mt-2">
-            {post.tags.map(tag => (
-              <span key={tag.id} className="text-gray-800 font-bold text-[14px]"># {tag.name}</span>
-            ))}
-          </div>
-        )}
-
-      </div>
     </div>
   );
 }
 
 /** フィルタチップ用コンポーネント */
-export function FilterChips({ filters, onRemove }: { filters: any, onRemove: (key: string) => void }) {
+export function FilterChips({ filters, onRemove }: { filters: any, onRemove: (key: string | string[]) => void }) {
   if (!filters) return null;
 
   const activeChips: Array<{ key: string, label: string, color: string, isTag?: boolean, tagValue?: string }> = [];
+  
+  // Tags
   if (filters.tags && filters.tags.length > 0) {
     filters.tags.forEach((t: string) => {
-      activeChips.push({ key: `tag-${t}`, label: `#${t}`, color: 'bg-pink-50 text-pink-500', isTag: true, tagValue: t });
+      activeChips.push({ key: `tag-${t}`, label: `#${t}`, color: 'bg-pink-50 text-pink-500 border-pink-100', isTag: true, tagValue: t });
     });
   }
-  if (filters.period !== 'all') activeChips.push({ key: 'period', label: `🗓️ ${filters.period}`, color: 'bg-orange-50 text-orange-500' });
-  if (filters.is_favorite) activeChips.push({ key: 'is_favorite', label: '❤️ お気に入り', color: 'bg-red-50 text-red-500' });
+  
+  // Period
+  if (filters.period && filters.period !== 'all') {
+    const periodMap: Record<string, string> = {
+      this_month: '今月',
+      last_3_months: '過去3ヶ月',
+      this_year: '今年',
+      last_year: '昨年',
+    };
+    activeChips.push({ key: 'period', label: `🗓️ ${periodMap[filters.period] || filters.period}`, color: 'bg-orange-50 text-orange-500 border-orange-100' });
+  }
+
+  // Status
+  if (filters.status && filters.status !== 'all') {
+    const statusLabel = filters.status === 'visited' ? '行った' : '行きたい';
+    activeChips.push({ key: 'status', label: `📍 ${statusLabel}`, color: 'bg-blue-50 text-blue-500 border-blue-100' });
+  }
+  
+  // Favorite
+  if (filters.is_favorite) {
+    activeChips.push({ key: 'is_favorite', label: '❤️ お気に入り', color: 'bg-red-50 text-red-500 border-red-100' });
+  }
+
+  // Mine only
+  if (filters.is_mine_only) {
+    activeChips.push({ key: 'is_mine_only', label: '🔒 自分のみ', color: 'bg-gray-100 text-gray-600 border-gray-200' });
+  }
 
   if (activeChips.length === 0) return null;
 
@@ -370,24 +389,30 @@ export function FilterChips({ filters, onRemove }: { filters: any, onRemove: (ke
       {activeChips.map((chip) => (
         <span 
           key={chip.key}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-black shadow-sm ${chip.color} animate-in zoom-in`}
+          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black border shadow-sm ${chip.color} animate-in zoom-in`}
         >
           {chip.label}
           <button 
             onClick={() => {
               if (chip.isTag) {
                 const newTags = filters.tags.filter((t: string) => t !== chip.tagValue);
-                onRemove(newTags as any); // hacky way to pass tags update if your hook supports it, but PostsPage logic receives the key.
+                onRemove(newTags);
               } else {
                 onRemove(chip.key);
               }
             }} 
-            className="hover:opacity-60 transition-opacity ml-1"
+            className="hover:opacity-60 transition-opacity ml-1 flex items-center justify-center w-3 h-3"
           >
-            <span className="text-[14px]">×</span>
+            <X size={10} strokeWidth={4} />
           </button>
         </span>
       ))}
+      <button 
+        onClick={() => onRemove([])}
+        className="text-[11px] font-black text-gray-400 hover:text-gray-600 px-2 transition-colors"
+      >
+        クリア
+      </button>
     </div>
   );
 }

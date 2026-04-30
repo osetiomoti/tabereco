@@ -10,7 +10,7 @@ type FilterState = {
   tags: string[];
   period: string;
   registrantUserId: string;
-  status: 'all' | 'visited';
+  status: 'all' | 'visited' | 'want_to_go';
   is_favorite: boolean;
   is_mine_only: boolean;
   activeGroups: string[];
@@ -371,11 +371,15 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
             </div>
           </section>
 
-          {/* ── Status (no want_to_go) ── */}
+          {/* ── Status ── */}
           <section className="space-y-2">
             <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">状態</label>
             <div className="flex gap-2">
-              {[{ id: 'all', label: 'すべて' }, { id: 'visited', label: '行った' }].map(s => (
+              {[
+                { id: 'all', label: 'すべて' }, 
+                { id: 'visited', label: '行った' },
+                { id: 'want_to_go', label: '行きたい' }
+              ].map(s => (
                 <button
                   key={s.id}
                   onClick={() => set('status', s.id as any)}

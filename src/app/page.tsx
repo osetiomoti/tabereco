@@ -13,7 +13,8 @@ import {
   ChevronRight, 
   Trophy, 
   Compass,
-  Star
+  Star,
+  Filter
 } from 'lucide-react';
 
 export default function HomePage() {
@@ -52,7 +53,14 @@ export default function HomePage() {
 
   return (
     <>
-      <Header />
+      <Header title="ホーム">
+        <Link
+          href="/posts"
+          className="w-9 h-9 bg-gray-100 text-gray-500 rounded-full flex items-center justify-center hover:bg-orange-50 hover:text-orange-500 transition-all"
+        >
+          <Filter size={18} />
+        </Link>
+      </Header>
       <main className="max-w-2xl mx-auto px-4 py-8 pb-32 animate-in fade-in duration-700">
         
         {/* プレミアム・統計サマリー (クリーン版) */}

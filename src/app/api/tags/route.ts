@@ -8,9 +8,26 @@ import { withAuth } from '@/lib/auth';
  */
 export async function GET(request: NextRequest) {
   return withAuth(request, async (auth) => {
+    const targetUserId = request.nextUrl.searchParams.get('userId') || auth.userId;
+
+    // もし自分以外のタグを取得する場合、ともだちか確認する
+    if (targetUserId !== auth.userId) {
+      const friendship = await prisma.friendship.findFirst({
+        where: {
+          OR: [
+            { user_id: auth.userId, friend_id: targetUserId },
+            { user_id: targetUserId, friend_id: auth.userId },
+          ]
+        }
+      });
+      if (!friendship) {
+        return NextResponse.json({ success: false, error: 'ともだちではありません' }, { status: 403 });
+      }
+    }
+
     const tags = await prisma.tag.findMany({
       where: {
-        user_id: auth.userId,
+        user_id: targetUserId,
       },
       orderBy: [
         { sort_order: 'asc' },

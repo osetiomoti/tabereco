@@ -1,3 +1,5 @@
+import colors from 'tailwindcss/colors';
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
@@ -11,10 +13,12 @@ export default {
         background: '#fcfcfc',
         card: '#ffffff',
         accent: {
-          DEFAULT: '#f97316',
-          hover: '#ea6c10',
-          muted: 'rgba(249,115,22,0.15)',
+          DEFAULT: '#f43f5e', // rose-500
+          hover: '#e11d48',
+          muted: 'rgba(244,63,94,0.15)',
         },
+        orange: colors.rose,
+        red: colors.pink,
       },
       fontFamily: {
         sans: ['var(--font-outfit)', 'var(--font-noto)', 'sans-serif'],

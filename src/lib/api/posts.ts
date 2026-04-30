@@ -75,8 +75,9 @@ export async function toggleFavorite(id: string, isFavorite: boolean): Promise<v
   await updatePost(id, { is_favorite: isFavorite } as any);
 }
 
-export async function getUserTags(): Promise<Tag[]> {
-  const res = await fetch('/api/tags');
+export async function getUserTags(userId?: string): Promise<Tag[]> {
+  const url = userId ? `/api/tags?userId=${encodeURIComponent(userId)}` : '/api/tags';
+  const res = await fetch(url);
   return handleResponse(res);
 }
 

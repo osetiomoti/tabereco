@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { Header } from '@/components/Header';
 import { PostForm } from '@/components/PostForm';
+import { DeleteButton } from '@/components/DeleteButton';
 import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -40,12 +41,15 @@ export default async function EditPostPage({ params }: Props) {
 
   return (
     <>
-      <Header title="編集する" showBackButton />
-      <main className="max-w-2xl mx-auto px-4 py-8 pb-32">
-        <h1 className="text-xl font-bold text-gray-900 mb-6 px-1">記録の内容を編集</h1>
+      <Header title="編集する" showBackButton hideSettings />
+      <main className="max-w-2xl mx-auto px-4 py-4 pb-32">
+        <h1 className="text-base font-black text-gray-800 mb-4 px-1">記録の内容を編集</h1>
 
         <React.Suspense fallback={<div className="h-64 flex justify-center items-center"><div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>}>
           <PostForm post={transformedPost as any} />
+          <div className="mt-12">
+            <DeleteButton postId={id} />
+          </div>
         </React.Suspense>
       </main>
     </>

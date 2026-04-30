@@ -64,6 +64,20 @@ export async function getGroupPosts(groupId: string): Promise<Post[]> {
   return handleResponse(res);
 }
 
+export async function removeGroupMember(groupId: string, userId: string): Promise<void> {
+  const res = await fetch(`/api/groups/${groupId}/members/${userId}`, {
+    method: 'DELETE',
+  });
+  await handleResponse(res);
+}
+
+export async function deleteGroup(groupId: string): Promise<void> {
+  const res = await fetch(`/api/groups/${groupId}`, {
+    method: 'DELETE',
+  });
+  await handleResponse(res);
+}
+
 /**
  * DB Schema check is no longer needed in Prisma world as we use migrations
  */

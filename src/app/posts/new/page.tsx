@@ -10,9 +10,9 @@ export const metadata: Metadata = {
 export default function NewPostPage() {
   return (
     <>
-      <Header title="新規投稿" showBackButton />
-      <main className="max-w-2xl mx-auto px-4 py-8 pb-32">
-        <h1 className="text-xl font-bold text-gray-900 mb-6 px-1">食事を記録する</h1>
+      <Header title="新規投稿" showBackButton hideSettings />
+      <main className="max-w-2xl mx-auto px-4 py-4 pb-32">
+        <h1 className="text-base font-black text-gray-800 mb-4 px-1">食事を記録する</h1>
 
         <React.Suspense fallback={<div className="h-64 flex justify-center items-center"><div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>}>
           <PostForm />

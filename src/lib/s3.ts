@@ -4,11 +4,12 @@ import {
   GetCredentialsForIdentityCommand,
 } from '@aws-sdk/client-cognito-identity';
 import { S3Client, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import { env } from './env';
 
-const IDENTITY_POOL_ID = process.env.COGNITO_IDENTITY_POOL_ID ?? '';
-const USER_POOL_ID = process.env.COGNITO_USER_POOL_ID ?? '';
-const REGION = process.env.COGNITO_REGION ?? 'ap-northeast-1';
-const BUCKET = process.env.AWS_S3_BUCKET_NAME ?? '';
+const IDENTITY_POOL_ID = env.COGNITO_IDENTITY_POOL_ID ?? '';
+const USER_POOL_ID = env.COGNITO_USER_POOL_ID ?? '';
+const REGION = env.COGNITO_REGION ?? 'ap-northeast-1';
+const BUCKET = env.AWS_S3_BUCKET_NAME ?? '';
 
 const identityClient = new CognitoIdentityClient({ region: REGION });
 
