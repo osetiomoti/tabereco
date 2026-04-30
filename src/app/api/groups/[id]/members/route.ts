@@ -33,7 +33,7 @@ export async function GET(
 
       return NextResponse.json({
         success: true,
-        data: members.map((m) => ({
+        data: members.map((m: any) => ({
           id: m.user.id,
           name: m.user.name,
           avatar_url: m.user.avatar_url,
