@@ -44,10 +44,10 @@ export async function POST(
           select: { group_id: true },
         });
 
-        const validGroupIds = memberships.map(m => m.group_id);
+        const validGroupIds = memberships.map((m: any) => m.group_id);
 
         await prisma.postGroup.createMany({
-          data: validGroupIds.map(gid => ({
+          data: validGroupIds.map((gid: string) => ({
             post_id: id,
             group_id: gid,
           })),
