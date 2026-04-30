@@ -1,83 +1,86 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { UtensilsCrossed, LogIn } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 
-const FOOD_EMOJIS = ['🍜', '🍣', '🍕', '🍔', '🌮', '🍱', '🍛', '🥗', '🍝', '🥩'];
-
-export default function LoginPage() {
-  const router = useRouter();
-
-  const [mounted, setMounted] = useState(false);
-  const [randomPositions, setRandomPositions] = useState<{top: string, left: string}[]>([]);
-
-  useEffect(() => {
-    setMounted(true);
-    setRandomPositions(
-      FOOD_EMOJIS.map(() => ({
-        top: `${Math.random() * 90}%`,
-        left: `${Math.random() * 90}%`,
-      }))
-    );
-  }, []);
+function LoginForm() {
+  const searchParams = useSearchParams();
+  const error = searchParams.get('error');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = () => {
-    // Next.jsのrouter.pushではなく、通常のページ遷移として外部URL(Cognito)へリダイレクトさせます
+    setIsLoading(true);
     window.location.href = '/api/auth/login';
   };
 
+  const errorMessage = error === 'auth_failed'
+    ? 'ログインに失敗しました。もう一度お試しください。'
+    : error === 'token_exchange_failed'
+      ? '認証処理に失敗しました。しばらくしてからお試しください。'
+      : null;
+
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4 overflow-hidden relative">
-      {/* 背景の浮遊絵文字 (Light Mode) */}
-      {mounted && FOOD_EMOJIS.map((emoji, i) => (
-        <div
-          key={i}
-          className="absolute select-none pointer-events-none text-4xl opacity-[0.03] animate-float"
-          style={{
-            top: randomPositions[i]?.top || '0%',
-            left: randomPositions[i]?.left || '0%',
-            animationDelay: `${i * 0.7}s`,
-            animationDuration: `${5 + i * 0.5}s`,
-          }}
-        >
-          {emoji}
-        </div>
-      ))}
-
-      {/* グラデーション (Subtle) */}
-      <div className="absolute inset-0 bg-gradient-to-b from-orange-50/50 to-transparent" />
-
-      {/* カード */}
-      <div className="relative w-full max-w-md animate-slide-up">
-        <div className="bg-white border border-gray-100 rounded-[2.5rem] p-10 shadow-2xl shadow-orange-500/5">
-          {/* ロゴ */}
-          <div className="text-center mb-10">
-            <div className="w-20 h-20 rounded-[1.8rem] flex items-center justify-center mx-auto mb-5 shadow-xl shadow-orange-500/20 group hover:scale-105 transition-transform duration-300 overflow-hidden">
-              <img src="/icon-192.png" alt="モグレコ ロゴ" className="w-full h-full object-cover" />
-            </div>
-            <h1 className="text-3xl font-black text-gray-900 tracking-tight">食べレコ</h1>
-            <p className="text-gray-400 text-sm mt-2 font-medium">美味しいを、もっと身近に。</p>
-          </div>
-
-          <div className="space-y-6">
-            <button
-              onClick={handleLogin}
-              className="w-full py-4 mt-2 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 text-white font-semibold hover:from-orange-400 hover:to-red-400 transition-all duration-200 hover:shadow-[0_4px_20px_rgba(249,115,22,0.4)] flex items-center justify-center gap-2"
-            >
-              <LogIn size={18} />
-              ログイン / 新規登録
-            </button>
-            <p className="text-xs text-center text-gray-500 mt-4">
-              セキュアな認証画面へ移動します
-            </p>
-          </div>
-
-          <footer className="mt-10 text-center">
-            <p className="text-[11px] text-gray-300 font-bold uppercase tracking-widest">Premium Gourmet Platform</p>
-          </footer>
-        </div>
+    <>
+      {/* キャラクターアイコン */}
+      <div className="mb-2 animate-in zoom-in duration-700">
+        <img
+          src="/icon-512.png"
+          alt="食べレコ ロゴ"
+          width={180}
+          height={180}
+          className="drop-shadow-xl rounded-[3.2rem]"
+        />
       </div>
-    </div>
+
+      {/* アプリ名 */}
+      <h1 className="text-4xl font-bold text-[#ff6b95] mb-1 tracking-wide">
+        食べレコ
+      </h1>
+      <p className="text-gray-400 text-sm mb-10">美味しいの思い出を、ここに</p>
+
+      {/* エラーメッセージ */}
+      {errorMessage && (
+        <div className="w-full max-w-xs bg-red-50 border border-red-200 rounded-2xl px-4 py-3 mb-5 text-center">
+          <p className="text-red-500 text-sm">{errorMessage}</p>
+        </div>
+      )}
+
+      {/* ログインボタン */}
+      <button
+        id="login-button"
+        onClick={handleLogin}
+        disabled={isLoading}
+        className="w-full max-w-xs bg-[#ff6b95] text-white py-4 rounded-full font-bold text-lg shadow-lg
+           active:scale-95 transition-all duration-150
+           disabled:opacity-70 disabled:cursor-not-allowed
+           hover:bg-[#ff5a8a]"
+      >
+        {isLoading ? (
+          <span className="flex items-center justify-center gap-2">
+            <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+            </svg>
+            ログイン中...
+          </span>
+        ) : (
+          'ログイン / はじめる'
+        )}
+      </button>
+
+      <p className="mt-8 text-xs text-gray-300">
+        ログインすると利用規約に同意したことになります
+      </p>
+    </>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <main className="min-h-screen flex flex-col items-center justify-center bg-white px-6 select-none">
+      <Suspense fallback={<div>Loading...</div>}>
+        <LoginForm />
+      </Suspense>
+    </main>
   );
 }
