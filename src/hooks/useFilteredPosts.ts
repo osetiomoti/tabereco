@@ -57,21 +57,31 @@ export function useFilteredPosts() {
   const posts = useMemo(() => {
     let combinedMap = new Map();
 
+    const myId = ownPostsCache.length > 0 ? (ownPostsCache[0] as any).user_id : null;
+
     if (activeGroups.includes('all')) {
-      ownPostsCache.forEach(p => combinedMap.set(p.id, p));
+      // By default 'all' only includes group posts (others + mine in groups)
       groupPostsCache.forEach(g => g.posts.forEach(p => combinedMap.set(p.id, p)));
-    } else {
-      if (activeGroups.includes('mine')) {
-        ownPostsCache.forEach(p => combinedMap.set(p.id, p));
-      }
-      groupPostsCache.forEach(g => {
-        if (activeGroups.includes(g.groupId)) {
-          g.posts.forEach(p => combinedMap.set(p.id, p));
-        }
-      });
+    }
+    
+    if (activeGroups.includes('mine')) {
+      ownPostsCache.forEach(p => combinedMap.set(p.id, p));
     }
 
+    // Individual groups
+    groupPostsCache.forEach(g => {
+      if (activeGroups.includes(g.groupId)) {
+        g.posts.forEach(p => combinedMap.set(p.id, p));
+      }
+    });
+
     let result = Array.from(combinedMap.values()) as Post[];
+
+    // デフォルトは自分以外の投稿を表示 (activeGroupsに'mine'がなく、投稿者が明示的に選ばれていない場合)
+    const isRegistrantSelected = advancedFilters?.registrantUserIds && advancedFilters.registrantUserIds.length > 0;
+    if (!activeGroups.includes('mine') && !isRegistrantSelected && myId) {
+      result = result.filter(p => (p as any).user_id !== myId);
+    }
 
     if (activeTab !== 'all') {
       result = result.filter(p => p.status === activeTab);
@@ -96,8 +106,8 @@ export function useFilteredPosts() {
     if (advancedFilters?.status && advancedFilters.status !== 'all') {
       result = result.filter(p => p.status === advancedFilters.status);
     }
-    if (advancedFilters?.registrantUserId) {
-      result = result.filter(p => (p as any).user_id === advancedFilters.registrantUserId);
+    if (advancedFilters?.registrantUserIds && advancedFilters.registrantUserIds.length > 0) {
+      result = result.filter(p => advancedFilters.registrantUserIds.includes((p as any).user_id));
     }
     
     return result.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -126,8 +136,8 @@ export function useFilteredPosts() {
   const activeFilterCount = useMemo(() => {
     return advancedFilters
       ? Object.entries(advancedFilters).filter(([k, v]) =>
-          v && v !== 'all' && v !== '' && v !== false && k !== 'activeGroups' && k !== 'tags'
-        ).length + (advancedFilters.tags?.length || 0) + (activeGroups.filter(x => x !== 'all').length > 0 ? 1 : 0)
+          v && v !== 'all' && v !== '' && v !== false && k !== 'activeGroups' && k !== 'tags' && k !== 'registrantUserIds'
+        ).length + (advancedFilters.tags?.length || 0) + (advancedFilters.registrantUserIds?.length || 0) + (activeGroups.filter(x => x !== 'all').length > 0 ? 1 : 0)
       : activeGroups.filter(x => x !== 'all').length;
   }, [advancedFilters, activeGroups]);
 

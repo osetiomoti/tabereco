@@ -377,6 +377,12 @@ export function FilterChips({ filters, onRemove }: { filters: any, onRemove: (ke
     activeChips.push({ key: 'is_favorite', label: '❤️ お気に入り', color: 'bg-red-50 text-red-500 border-red-100' });
   }
 
+  // Registrant
+  if (filters.registrantUserIds && filters.registrantUserIds.length > 0) {
+    const label = filters.registrantUserIds.length === 1 ? '👤 投稿者' : `👤 ${filters.registrantUserIds.length}名の投稿者`;
+    activeChips.push({ key: 'registrantUserIds', label, color: 'bg-indigo-50 text-indigo-500 border-indigo-100' });
+  }
+
   // Mine only
   if (filters.is_mine_only) {
     activeChips.push({ key: 'is_mine_only', label: '🔒 自分のみ', color: 'bg-gray-100 text-gray-600 border-gray-200' });

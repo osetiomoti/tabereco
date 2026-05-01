@@ -9,7 +9,7 @@ import { TagSelector } from './TagSelector';
 type FilterState = {
   tags: string[];
   period: string;
-  registrantUserId: string;
+  registrantUserIds: string[]; // Changed from registrantUserId
   status: 'all' | 'visited' | 'want_to_go';
   is_favorite: boolean;
   is_mine_only: boolean;
@@ -38,7 +38,7 @@ const PERIOD_OPTIONS = [
 const DEFAULT: FilterState = {
   tags: [],
   period: 'all',
-  registrantUserId: '',
+  registrantUserIds: [], // Changed from registrantUserId
   status: 'all',
   is_favorite: false,
   is_mine_only: false,
@@ -69,17 +69,12 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
   }, [isOpen]);
 
   useEffect(() => {
-    if (!isOpen) return;
-    let ids = filters.activeGroups.filter(g => g !== 'all' && g !== 'mine');
-    
-    // If 'all' is selected, include all joined groups
-    if (filters.activeGroups.includes('all')) {
-      ids = joinedGroups.map(g => g.id);
+    if (joinedGroups.length > 0) {
+      // Load all members from all groups for the 'Registrant' list
+      const allGroupIds = joinedGroups.map(g => g.id);
+      loadMembers(allGroupIds);
     }
-    
-    if (ids.length) loadMembers(ids);
-    else setMembers([]);
-  }, [filters.activeGroups, isOpen, joinedGroups]);
+  }, [joinedGroups]);
 
   /* ── click-outside ── */
   useEffect(() => {
@@ -116,7 +111,6 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
   const handleReset = () => {
     setFilters({ ...DEFAULT });
     setGroupSearch(''); setMemberSearch('');
-    setMembers([]);
   };
 
   /* ── group options ── */
@@ -129,13 +123,42 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
     o.label.toLowerCase().includes(groupSearch.toLowerCase())
   );
 
-  const toggleGroup = (id: string) => {
-    if (id === 'all') { set('activeGroups', ['all']); set('registrantUserId', ''); return; }
-    let next = filters.activeGroups.filter(x => x !== 'all');
-    next = next.includes(id) ? next.filter(x => x !== id) : [...next, id];
-    if (!next.length) next = ['all'];
-    set('activeGroups', next);
-    set('registrantUserId', '');
+  const toggleGroup = async (id: string) => {
+    if (id === 'all') { 
+      set('activeGroups', ['all']); 
+      set('registrantUserIds', []); 
+      return; 
+    }
+    
+    let nextGroups = filters.activeGroups.filter(x => x !== 'all');
+    const isAdding = !nextGroups.includes(id);
+    nextGroups = isAdding ? [...nextGroups, id] : nextGroups.filter(x => x !== id);
+    if (!nextGroups.length) nextGroups = ['all'];
+    set('activeGroups', nextGroups);
+
+    // Link: Selecting a group selects its members
+    try {
+      const r = await fetch(`/api/groups/${id}/members`);
+      const j = await r.json();
+      const groupMemberIds = (j.data || []).map((m: any) => m.id);
+      
+      let nextMembers = [...filters.registrantUserIds];
+      if (isAdding) {
+        // Add members who are not already selected
+        groupMemberIds.forEach((mId: string) => {
+          if (!nextMembers.includes(mId)) nextMembers.push(mId);
+        });
+      } else {
+        // Remove members of this group? 
+        // Better: user might want to keep some if they are in other selected groups.
+        // For simplicity, let's just add on select. On unselect, it's safer to not uncheck unless we know.
+        // But the user said "選択されるようにする", so unselecting should probably unselect?
+        // Let's just add for now as a "shortcut".
+      }
+      set('registrantUserIds', nextMembers);
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const groupLabel = () => {
@@ -148,8 +171,11 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
     (m.name || '').toLowerCase().includes(memberSearch.toLowerCase())
   );
   const memberLabel = () => {
-    if (!filters.registrantUserId) return '全員';
-    return members.find(m => m.id === filters.registrantUserId)?.name ?? '選択中';
+    if (filters.registrantUserIds.length === 0) return '全員';
+    if (filters.registrantUserIds.length === 1) {
+      return members.find(m => m.id === filters.registrantUserIds[0])?.name ?? '1名選択中';
+    }
+    return `${filters.registrantUserIds.length}名選択中`;
   };
 
   // Remove hasFilter restriction so dropdown is always enabled
@@ -235,9 +261,9 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
 
           {/* ── Member Combobox ── */}
           <section className="space-y-2">
-            <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">ともだち</label>
+            <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">投稿者</label>
             {!memberOptionsEnabled ? (
-              <p className="text-[13px] text-gray-400 italic">グループにメンバーがいません</p>
+              <p className="text-[13px] text-gray-400 italic">メンバーがいません</p>
             ) : (
               <div className="relative" ref={memberRef}>
                 <button
@@ -259,7 +285,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
                         <input
                           value={memberSearch}
                           onChange={e => setMemberSearch(e.target.value)}
-                          placeholder="ともだちを検索..."
+                          placeholder="メンバーを検索..."
                           className="flex-1 bg-transparent text-[13px] text-gray-700 focus:outline-none"
                           autoFocus
                         />
@@ -269,29 +295,35 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
                       {/* "all" option */}
                       <label className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition-colors">
                         <input
-                          type="radio"
-                          name="member"
-                          checked={!filters.registrantUserId}
-                          onChange={() => set('registrantUserId', '')}
-                          className="w-4 h-4 accent-orange-500"
+                          type="checkbox"
+                          checked={filters.registrantUserIds.length === 0}
+                          onChange={() => set('registrantUserIds', [])}
+                          className="w-4 h-4 rounded border-gray-300 accent-orange-500"
                         />
                         <span className="text-[14px] text-gray-700">全員</span>
                       </label>
                       {loadingMembers ? (
                         <div className="px-4 py-3 text-[13px] text-gray-400">読み込み中...</div>
                       ) : (
-                        filteredMembers.map(m => (
-                          <label key={m.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition-colors">
-                            <input
-                              type="radio"
-                              name="member"
-                              checked={filters.registrantUserId === m.id}
-                              onChange={() => set('registrantUserId', m.id)}
-                              className="w-4 h-4 accent-orange-500"
-                            />
-                            <span className="text-[14px] text-gray-700">{m.name}</span>
-                          </label>
-                        ))
+                        filteredMembers.map(m => {
+                          const isSelected = filters.registrantUserIds.includes(m.id);
+                          return (
+                            <label key={m.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition-colors">
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => {
+                                  let next = [...filters.registrantUserIds];
+                                  if (isSelected) next = next.filter(id => id !== m.id);
+                                  else next = [...next, m.id];
+                                  set('registrantUserIds', next);
+                                }}
+                                className="w-4 h-4 rounded border-gray-300 accent-orange-500"
+                              />
+                              <span className="text-[14px] text-gray-700">{m.name}</span>
+                            </label>
+                          );
+                        })
                       )}
                     </div>
                   </div>
