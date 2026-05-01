@@ -13,6 +13,7 @@ import { Loader2, MapPin, Globe, Lock, Hash, Check, Tag as TagIcon, Plus, X, Use
 
 import { PlaceAutocomplete } from './PlaceAutocomplete';
 import { TagSelector } from './TagSelector';
+import { PlacePickerModal } from './PlacePickerModal';
 import { useSearchParams } from 'next/navigation';
 
 type Props = {
@@ -53,6 +54,7 @@ export function PostForm({ post }: Props) {
   });
 
   const [isTagSelectorOpen, setIsTagSelectorOpen] = useState(false);
+  const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
   const [addressLanguage, setAddressLanguage] = useState<'ja' | 'en'>('ja');
   const [loading, setLoading] = useState(false);
   const [groups, setGroups] = useState<any[]>([]);
@@ -141,6 +143,23 @@ export function PostForm({ post }: Props) {
     if (addressLanguage === 'en') {
       updateAddressByLanguage(place.placeId, 'en');
     }
+  };
+
+  const handleMapPlaceSelected = (place: {
+    name: string;
+    address: string;
+    lat: number;
+    lng: number;
+    placeId?: string;
+  }) => {
+    setValues((prev) => ({
+      ...prev,
+      store_name: place.name,
+      address: place.address,
+      latitude: place.lat,
+      longitude: place.lng,
+      google_place_id: place.placeId || '',
+    }));
   };
 
 
@@ -289,6 +308,7 @@ export function PostForm({ post }: Props) {
         <div className="flex items-center gap-3 mt-2 px-1">
           <button
             type="button"
+            onClick={() => setIsMapPickerOpen(true)}
             className="flex items-center gap-2 px-4 py-2 bg-pink-50 text-[#ff6b95] rounded-full text-[11px] font-black hover:bg-pink-100 transition-colors border border-pink-100/50"
           >
             🗺️ 地図から選択
@@ -480,6 +500,13 @@ export function PostForm({ post }: Props) {
         onClose={() => setIsTagSelectorOpen(false)}
         selectedTags={values.tags}
         onSelect={(tags) => set('tags', tags)}
+      />
+
+      <PlacePickerModal
+        isOpen={isMapPickerOpen}
+        onClose={() => setIsMapPickerOpen(false)}
+        onSelect={handleMapPlaceSelected}
+        initialCenter={values.latitude && values.longitude ? { lat: values.latitude, lng: values.longitude } : undefined}
       />
     </form>
   );

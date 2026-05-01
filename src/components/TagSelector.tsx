@@ -145,23 +145,18 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
         {/* Tags Content Area */}
         <div className="flex-1 overflow-y-auto px-6 py-4 pb-12">
           <div className="flex flex-wrap gap-3">
-            {/* Pink Add Row */}
+            {/* Pink Add Chip (Image Style) */}
             {searchQuery.trim() && !tempSelected.includes(searchQuery.trim().replace(/^#/, '')) && (
               <button
                 type="button"
                 onClick={handleAddTag}
-                className="w-full flex items-center justify-between px-6 py-5 rounded-[2rem] border-2 border-pink-200 bg-pink-50/50 text-pink-600 transition-all active:scale-[0.97] mb-4 group shadow-sm hover:border-pink-300 hover:bg-pink-50"
+                className="inline-flex items-center gap-4 px-5 py-3 rounded-full border-2 border-pink-200 bg-pink-50/30 text-pink-500 transition-all active:scale-[0.95] animate-in zoom-in group"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-pink-500 text-white rounded-full flex items-center justify-center shadow-md shadow-pink-500/20 group-hover:scale-110 transition-transform">
-                    <Plus size={20} strokeWidth={3} />
-                  </div>
-                  <div className="flex flex-col items-start">
-                    <span className="text-[10px] font-black text-pink-400 uppercase tracking-widest">新しいタグを追加</span>
-                    <span className="text-xl font-black"># {searchQuery.trim().replace(/^#/, '')}</span>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-base font-bold opacity-60">#</span>
+                  <span className="text-base font-bold text-gray-700">{searchQuery.trim().replace(/^#/, '')}</span>
                 </div>
-                <span className="text-lg font-black bg-white px-4 py-1.5 rounded-xl shadow-sm border border-pink-100">追加</span>
+                <span className="text-base font-bold ml-2">追加</span>
               </button>
             )}
 
