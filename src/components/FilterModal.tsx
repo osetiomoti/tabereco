@@ -235,7 +235,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
 
           {/* ── Member Combobox ── */}
           <section className="space-y-2">
-            <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">投稿者</label>
+            <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">ともだち</label>
             {!memberOptionsEnabled ? (
               <p className="text-[13px] text-gray-400 italic">グループにメンバーがいません</p>
             ) : (
@@ -259,7 +259,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
                         <input
                           value={memberSearch}
                           onChange={e => setMemberSearch(e.target.value)}
-                          placeholder="メンバーを検索..."
+                          placeholder="ともだちを検索..."
                           className="flex-1 bg-transparent text-[13px] text-gray-700 focus:outline-none"
                           autoFocus
                         />
