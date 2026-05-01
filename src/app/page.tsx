@@ -62,10 +62,10 @@ export default function HomePage() {
           <Filter size={18} />
         </Link>
       </Header>
-      <main className="max-w-2xl mx-auto px-4 py-8 pb-32 min-h-screen">
+      <main className="max-w-2xl mx-auto px-4 py-8 pb-32 min-h-screen overflow-x-hidden">
         
         {/* プレミアム・統計サマリー (クリーン版) */}
-        <div className="flex gap-3 mb-8 overflow-x-auto pb-2 scrollbar-hide snap-x min-h-[86px]">
+        <div className="flex gap-3 mb-8 overflow-x-auto pb-2 scrollbar-hide snap-x" style={{ minHeight: 86 }}>
           {loading ? (
             <>
               <div className="flex-shrink-0 w-[110px] h-[86px] bg-gray-50 animate-pulse rounded-[1.5rem] border border-gray-100" />

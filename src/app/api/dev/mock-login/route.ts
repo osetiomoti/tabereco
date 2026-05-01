@@ -1,60 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 
 /**
- * GET /api/dev/mock-login?userId=<uuid>
- * 
- * Development-only endpoint to authenticate without Cognito.
- * Sets a dev session cookie that bypasses JWT verification.
- * Only available when NODE_ENV !== 'production'.
+ * DEV ONLY: Mock login endpoint
+ * Usage: GET /api/dev/mock-login?userId=<user-uuid>
+ * Sets a dev_token cookie that bypasses Cognito auth in withAuth()
  */
 export async function GET(request: NextRequest) {
+  // Only available in development
   if (process.env.NODE_ENV === 'production') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    return NextResponse.json({ error: 'Not available in production' }, { status: 404 });
   }
 
-  const userId = request.nextUrl.searchParams.get('userId');
-  const origin = request.nextUrl.origin;
+  const { searchParams } = new URL(request.url);
+  const userId = searchParams.get('userId');
 
-  // If no userId provided, list all available users for convenience
   if (!userId) {
-    const users = await prisma.user.findMany({
-      select: { id: true, email: true, name: true },
-      take: 20,
-    });
-    return NextResponse.json({ users, hint: `Use /api/dev/mock-login?userId=<id> to log in` });
+    return NextResponse.json({ error: 'userId parameter is required' }, { status: 400 });
   }
 
-  // Find or create the user
-  let user = await prisma.user.findUnique({
-    where: { id: userId },
-  });
+  // Create a base64-encoded dev token payload
+  const payload = Buffer.from(JSON.stringify({ dev: true, userId })).toString('base64');
 
-  if (!user) {
-    // Also try by cognito_sub
-    user = await prisma.user.findFirst({
-      where: { cognito_sub: userId },
-    });
-  }
+  const redirectTo = searchParams.get('redirect') || '/';
 
-  if (!user) {
-    return NextResponse.json(
-      { error: `User not found: ${userId}` },
-      { status: 404 }
-    );
-  }
-
-  // Create a dev session token (simple signed cookie with userId)
-  const devToken = Buffer.from(
-    JSON.stringify({ userId: user.id, dev: true, iat: Date.now() })
-  ).toString('base64');
-
-  const response = NextResponse.redirect(`${origin}/posts`);
-  response.cookies.set('dev_token', devToken, {
+  const response = NextResponse.redirect(new URL(redirectTo, request.url));
+  response.cookies.set('dev_token', payload, {
     httpOnly: true,
     secure: false,
     sameSite: 'lax',
-    maxAge: 60 * 60 * 24, // 1 day
+    maxAge: 60 * 60 * 24, // 24 hours
     path: '/',
   });
 

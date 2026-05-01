@@ -65,7 +65,22 @@ export function PlacePickerModal({ isOpen, onClose, onSelect, initialCenter }: P
 
   const onMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
-  }, []);
+    // Use Google Maps native event to ensure POI clicks are captured even
+    // when the native info window intercepts the React onClick event
+    window.google.maps.event.addListener(map, 'click', (e: any) => {
+      if (!e.latLng) return;
+      const lat = e.latLng.lat();
+      const lng = e.latLng.lng();
+      const placeId = e.placeId;
+      // Set a preliminary marker so the card appears immediately
+      setMarker(prev => prev ?? {
+        lat, lng,
+        name: '読み込み中...',
+        address: '',
+      });
+      fetchPlaceDetails(lat, lng, placeId);
+    });
+  }, [fetchPlaceDetails]);
 
   const fetchPlaceDetails = useCallback((lat: number, lng: number, placeId?: string) => {
     if (!isLoaded) return;
@@ -211,7 +226,6 @@ export function PlacePickerModal({ isOpen, onClose, onSelect, initialCenter }: P
             center={center}
             zoom={16}
             onLoad={onMapLoad}
-            onClick={handleMapClick}
             options={{
               zoomControl: false,
               streetViewControl: false,

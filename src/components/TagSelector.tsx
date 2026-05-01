@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, Plus, X, Hash, Check } from 'lucide-react';
 import { getUserTags } from '@/lib/api/posts';
 import type { Tag } from '@/lib/types';
@@ -22,6 +22,7 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
   const [searchQuery, setSearchQuery] = useState('');
   const [tempSelected, setTempSelected] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // モーダルが開いた時に初期化
   useEffect(() => {
@@ -115,6 +116,7 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
               size={18} 
             />
             <input
+              ref={searchInputRef}
               type="text"
               placeholder="タグ検索"
               value={searchQuery}
@@ -145,6 +147,18 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
         {/* Tags Content Area */}
         <div className="flex-1 overflow-y-auto px-6 py-4 pb-12">
           <div className="flex flex-wrap gap-3">
+            {/* Persistent "+ 新しいタグ" chip (always visible) */}
+            {!isLoading && (
+              <button
+                type="button"
+                onClick={() => searchInputRef.current?.focus()}
+                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-gray-200 bg-white text-gray-500 font-bold text-sm transition-all hover:border-gray-300 active:scale-[0.97]"
+              >
+                <Plus size={14} strokeWidth={2.5} />
+                <span>新しいタグ</span>
+              </button>
+            )}
+
             {/* Add / Select Chip - shows when typing */}
             {searchQuery.trim() && (() => {
               const name = searchQuery.trim().replace(/^#/, '');
