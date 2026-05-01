@@ -78,7 +78,7 @@ export function PlacePickerModal({ isOpen, onClose, onSelect, initialCenter }: P
               lat: place.geometry?.location?.lat() || lat,
               lng: place.geometry?.location?.lng() || lng,
               name: place.name || '不明な場所',
-              address: (place.formatted_address || '').replace(/^日本、/, ''),
+              address: (place.formatted_address || '').replace(/^日本、\s*/, '').replace(/^〒\d{3}-\d{4}\s*/, ''),
               placeId: place.place_id
             });
           }
@@ -88,11 +88,12 @@ export function PlacePickerModal({ isOpen, onClose, onSelect, initialCenter }: P
         // Reverse geocoding for generic coordinate click
         geocoder.geocode({ location: { lat, lng } }, (results, status) => {
           if (status === 'OK' && results && results[0]) {
+            const poi = results[0].address_components.find(c => c.types.includes('point_of_interest') || c.types.includes('establishment'));
             setMarker({
               lat,
               lng,
-              name: results[0].address_components.find(c => c.types.includes('point_of_interest'))?.long_name || results[0].address_components[0].long_name,
-              address: results[0].formatted_address.replace(/^日本、/, ''),
+              name: poi?.long_name || results[0].address_components[0].long_name,
+              address: results[0].formatted_address.replace(/^日本、\s*/, '').replace(/^〒\d{3}-\d{4}\s*/, ''),
             });
           }
           setLoading(false);

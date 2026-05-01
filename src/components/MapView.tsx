@@ -69,13 +69,27 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
 
     setTempMarker({ lat, lng, placeId });
 
-    const geocoder = new window.google.maps.Geocoder();
-    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-      if (status === 'OK' && results && results[0]) {
-        let address = results[0].formatted_address.replace(/^日本、/, '');
-        setTempMarker((prev) => prev ? { ...prev, address } : null);
-      }
-    });
+    if (placeId) {
+      // If POI is clicked, get details including name
+      const service = new window.google.maps.places.PlacesService(mapRef.current!);
+      service.getDetails({ placeId, fields: ['name', 'formatted_address'] }, (place, status) => {
+        if (status === 'OK' && place) {
+          const address = (place.formatted_address || '').replace(/^日本、\s*/, '').replace(/^〒\d{3}-\d{4}\s*/, '');
+          setTempMarker(prev => prev ? { ...prev, name: place.name, address } : null);
+        }
+      });
+    } else {
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+        if (status === 'OK' && results && results[0]) {
+          // Try to find a logical name from address components if not a POI
+          const poi = results[0].address_components.find(c => c.types.includes('point_of_interest') || c.types.includes('establishment'));
+          const name = poi?.long_name || '';
+          const address = results[0].formatted_address.replace(/^日本、\s*/, '').replace(/^〒\d{3}-\d{4}\s*/, '');
+          setTempMarker((prev) => prev ? { ...prev, name, address } : null);
+        }
+      });
+    }
   };
 
   const toggleMapType = () => {
