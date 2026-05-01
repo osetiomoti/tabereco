@@ -59,21 +59,21 @@ export function useFilteredPosts() {
 
     const myId = ownPostsCache.length > 0 ? (ownPostsCache[0] as any).user_id : null;
 
-    if (activeGroups.includes('all')) {
-      // By default 'all' only includes group posts (others + mine in groups)
+    if (activeGroups.length === 0) {
+      // If none selected, show all joined groups
       groupPostsCache.forEach((g: any) => g.posts.forEach((p: Post) => combinedMap.set(p.id, p)));
-    }
-    
-    if (activeGroups.includes('mine')) {
-      ownPostsCache.forEach((p: Post) => combinedMap.set(p.id, p));
-    }
-
-    // Individual groups
-    groupPostsCache.forEach((g: any) => {
-      if (activeGroups.includes(g.groupId)) {
-        g.posts.forEach((p: Post) => combinedMap.set(p.id, p));
+    } else {
+      // Individual groups
+      groupPostsCache.forEach((g: any) => {
+        if (activeGroups.includes(g.groupId)) {
+          g.posts.forEach((p: Post) => combinedMap.set(p.id, p));
+        }
+      });
+      // Also check if 'mine' was somehow still there (unlikely but safe)
+      if (activeGroups.includes('mine')) {
+        ownPostsCache.forEach((p: Post) => combinedMap.set(p.id, p));
       }
-    });
+    }
 
     let result = Array.from(combinedMap.values()) as Post[];
 

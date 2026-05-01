@@ -81,22 +81,29 @@ export async function POST(request: NextRequest) {
       });
 
       if (tagNames && tagNames.length > 0) {
+        // Get initial sort_order offset
+        const lastTag = await prisma.tag.findFirst({
+          where: { user_id: auth.userId },
+          orderBy: { sort_order: 'desc' },
+        });
+        let nextOrder = lastTag ? lastTag.sort_order + 1 : 0;
+
         // Sync tags
         const tags = await Promise.all(
           tagNames.map(async (name: string) => {
-            return prisma.tag.upsert({
-              where: {
-                user_id_name: {
-                  user_id: auth.userId,
-                  name: name.trim(),
-                },
-              },
-              update: {},
-              create: {
+            const existing = await prisma.tag.findUnique({
+              where: { user_id_name: { user_id: auth.userId, name: name.trim() } }
+            });
+            if (existing) return existing;
+
+            const newTag = await prisma.tag.create({
+              data: {
                 user_id: auth.userId,
                 name: name.trim(),
+                sort_order: nextOrder++,
               },
             });
+            return newTag;
           })
         );
 

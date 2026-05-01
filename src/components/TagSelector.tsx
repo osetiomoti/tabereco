@@ -14,8 +14,7 @@ type Props = {
 
 // 初期表示用の共通タグ（プリセット）
 const PRESET_TAGS = [
-  'グルメ', 'スイーツ', 'ラーメン', 'カフェ', '居酒屋', 
-  'ランチ', 'ディナー', '自炊', 'コンビニ', '激辛', 'ヘルシー'
+  'グルメ', 'スイーツ', 'ラーメン', 'カフェ'
 ];
 
 export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) {
@@ -45,29 +44,35 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
     }
   };
 
-  // 表示するタグの計算（プリセット + ユーザー作成タグ、重複排除）
+  // 表示するタグの計算（ユーザー作成タグ、重複排除）
   const allAvailableTags = useMemo(() => {
-    const userNames = userTags.map(t => t.name);
+    const userNames = userTags.map((t: Tag) => t.name);
     return Array.from(new Set([...PRESET_TAGS, ...userNames]));
   }, [userTags]);
 
   // 検索フィルタリング
   const filteredTags = useMemo(() => {
-    if (!searchQuery) return allAvailableTags;
-    return allAvailableTags.filter(t => 
-      t.toLowerCase().includes(searchQuery.toLowerCase())
+    const query = searchQuery.trim().replace(/^#/, '');
+    if (!query) return allAvailableTags;
+    return allAvailableTags.filter((t: string) => 
+      t.toLowerCase().includes(query.toLowerCase())
     );
   }, [allAvailableTags, searchQuery]);
 
-  // 入力中の文字が既存タグにない場合、新規追加ボタンを表示
-  const showAddButton = searchQuery && !allAvailableTags.some(t => t === searchQuery);
-
   const toggleTag = (tagName: string) => {
-    setTempSelected(prev => 
+    setTempSelected((prev: string[]) => 
       prev.includes(tagName) 
-        ? prev.filter(t => t !== tagName) 
+        ? prev.filter((t: string) => t !== tagName) 
         : [...prev, tagName]
     );
+  };
+
+  const handleAddTag = () => {
+    const tagName = searchQuery.trim().replace(/^#/, '');
+    if (tagName && !tempSelected.includes(tagName)) {
+      setTempSelected((prev: string[]) => [...prev, tagName]);
+      setSearchQuery('');
+    }
   };
 
   const handleConfirm = () => {
@@ -81,22 +86,22 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
     <div className="fixed inset-0 z-[100] flex flex-col justify-end overflow-hidden animate-in fade-in duration-300">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/30 backdrop-blur-[2px]"
         onClick={onClose}
       />
 
       {/* Bottom Sheet Body */}
-      <div className="relative w-full max-w-2xl mx-auto bg-white rounded-t-[2rem] shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-500 max-h-[85vh] flex flex-col">
+      <div className="relative w-full max-w-2xl mx-auto bg-white rounded-t-[2.5rem] shadow-2xl overflow-hidden animate-in slide-in-from-bottom duration-500 max-h-[90vh] flex flex-col">
         {/* Handle bar */}
-        <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mt-3 mb-1" />
+        <div className="w-12 h-1 bg-gray-100 rounded-full mx-auto mt-3 mb-1" />
 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-50">
-          <h2 className="text-sm font-bold text-gray-400 tracking-tight">タグを選択</h2>
+          <h2 className="text-lg font-bold text-gray-400">タグを選択</h2>
           <button 
             type="button"
             onClick={handleConfirm}
-            className="text-red-600 font-black text-sm hover:text-red-500 transition-colors"
+            className="text-red-600 font-bold text-lg hover:opacity-70 transition-opacity"
           >
             決定
           </button>
@@ -104,40 +109,34 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
 
         {/* Search Bar */}
         <div className="px-6 py-4">
-          <div className="relative group">
+          <div className="relative">
             <Search 
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-orange-500 transition-colors" 
-              size={20} 
+              className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-300" 
+              size={18} 
             />
             <input
               type="text"
-              placeholder="タグを検索..."
+              placeholder="タグ検索"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && searchQuery.trim()) {
-                  const tagName = searchQuery.trim().replace(/^#/, '');
-                  if (tagName && !tempSelected.includes(tagName)) {
-                    setTempSelected(prev => [...prev, tagName]);
-                    setSearchQuery('');
-                  }
-                }
+                if (e.key === 'Enter' && searchQuery.trim()) handleAddTag();
               }}
-              className="w-full bg-gray-100 border-none rounded-2xl py-3.5 pl-12 pr-4 text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-orange-500/20 transition-all text-base"
+              className="w-full bg-gray-50 border-none rounded-2xl py-4 pl-12 pr-4 text-gray-900 placeholder:text-gray-300 focus:ring-0 text-base font-medium"
             />
           </div>
         </div>
 
-        {/* Selected Tags Display (Mini Chips) */}
+        {/* Selected Tags Display */}
         {tempSelected.length > 0 && (
-          <div className="flex flex-wrap gap-2 px-6 pb-2 min-h-11">
-            {tempSelected.map(tag => (
+          <div className="flex flex-wrap gap-2 px-6 pb-2 min-h-10">
+            {tempSelected.map((tag: string) => (
               <span 
                 key={tag}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 text-white rounded-full text-sm font-bold shadow-md shadow-orange-500/20 animate-in zoom-in"
+                className="inline-flex items-center gap-1.5 px-4 py-2 bg-gray-900 text-white rounded-full text-[13px] font-bold animate-in zoom-in"
               >
-                #{tag}
-                <X size={14} className="cursor-pointer" onClick={() => toggleTag(tag)} />
+                # {tag}
+                <X size={14} className="cursor-pointer opacity-60 hover:opacity-100" onClick={() => toggleTag(tag)} />
               </span>
             ))}
           </div>
@@ -145,34 +144,19 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
 
         {/* Tags Content Area */}
         <div className="flex-1 overflow-y-auto px-6 py-4 pb-12">
-
-          {/* Tag Cloud */}
-          <div className="flex flex-wrap gap-2.5">
-            {/* Quick Add Input Chip — visible only when user has typed something and it's not exactly in the list */}
-            {searchQuery.trim() && !filteredTags.some(t => t === searchQuery.trim().replace(/^#/, '')) && (
+          <div className="flex flex-wrap gap-3">
+            {/* Pink Add Row */}
+            {searchQuery.trim() && !allAvailableTags.some((t: string) => t === searchQuery.trim().replace(/^#/, '')) && (
               <button
                 type="button"
-                onClick={() => {
-                  const tagName = searchQuery.trim().replace(/^#/, '');
-                  if (tagName) {
-                    if (!tempSelected.includes(tagName)) {
-                      setTempSelected(prev => [...prev, tagName]);
-                    }
-                    setSearchQuery('');
-                  }
-                }}
-                className="w-full flex items-center justify-between gap-3 px-5 py-4 rounded-2xl border-2 border-dashed border-orange-300 bg-orange-50/50 text-orange-600 transition-all duration-300 active:scale-[0.98] mb-2 group hover:border-orange-400 hover:bg-orange-50"
+                onClick={handleAddTag}
+                className="w-full flex items-center justify-between px-5 py-4 rounded-3xl border-2 border-pink-200 bg-pink-50/50 text-pink-500 transition-all active:scale-[0.98] mb-2 group"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-orange-500 text-white rounded-full flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                    <Plus size={18} strokeWidth={3} />
-                  </div>
-                  <div className="flex flex-col items-start">
-                    <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest">新しいタグを追加</span>
-                    <span className="text-base font-black italic">#{searchQuery.trim().replace(/^#/, '')}</span>
-                  </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xl font-bold opacity-60">#</span>
+                  <span className="text-xl font-bold">{searchQuery.trim().replace(/^#/, '')}</span>
                 </div>
-                <div className="px-3 py-1 bg-white border border-orange-200 rounded-lg text-[10px] font-black shadow-sm">Enter</div>
+                <span className="text-lg font-black">追加</span>
               </button>
             )}
 
@@ -180,10 +164,8 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
               <div className="w-full flex items-center justify-center py-8">
                 <div className="w-6 h-6 border-4 border-gray-100 border-t-red-500 rounded-full animate-spin" />
               </div>
-            ) : filteredTags.length === 0 && !searchQuery ? (
-              <p className="text-gray-400 text-sm w-full text-center py-8">タグが見つかりませんでした</p>
             ) : (
-              filteredTags.map(tag => {
+              filteredTags.map((tag: string) => {
                 const isSelected = tempSelected.includes(tag);
                 return (
                   <button
@@ -191,14 +173,14 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
                     type="button"
                     onClick={() => toggleTag(tag)}
                     className={`
-                      flex items-center gap-1.5 px-4 py-2.5 rounded-full border font-bold text-sm transition-all duration-300 active:scale-95
+                      flex items-center gap-1.5 px-4 py-2.5 rounded-2xl border font-bold text-sm transition-all
                       ${isSelected 
-                        ? 'bg-red-500 border-red-500 text-white shadow-md shadow-red-500/20' 
-                        : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+                        ? 'bg-gray-100 border-gray-100 text-gray-900' 
+                        : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
                       }
                     `}
                   >
-                    <Hash size={14} className={isSelected ? 'text-white' : 'text-gray-400'} />
+                    <span className="opacity-50">#</span>
                     <span>{tag}</span>
                   </button>
                 );

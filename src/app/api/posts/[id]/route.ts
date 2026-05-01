@@ -87,12 +87,26 @@ export async function PATCH(
         await prisma.postTag.deleteMany({ where: { post_id: id } });
 
         if (tagNames.length > 0) {
+          // Get initial sort_order offset
+          const lastTag = await prisma.tag.findFirst({
+            where: { user_id: auth.userId },
+            orderBy: { sort_order: 'desc' },
+          });
+          let nextOrder = lastTag ? lastTag.sort_order + 1 : 0;
+
           const tags = await Promise.all(
             tagNames.map(async (name: string) => {
-              return prisma.tag.upsert({
-                where: { user_id_name: { user_id: auth.userId, name: name.trim() } },
-                update: {},
-                create: { user_id: auth.userId, name: name.trim() },
+              const existing = await prisma.tag.findUnique({
+                where: { user_id_name: { user_id: auth.userId, name: name.trim() } }
+              });
+              if (existing) return existing;
+
+              return prisma.tag.create({
+                data: {
+                  user_id: auth.userId,
+                  name: name.trim(),
+                  sort_order: nextOrder++,
+                },
               });
             })
           );

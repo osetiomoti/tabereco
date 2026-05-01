@@ -42,7 +42,7 @@ const DEFAULT: FilterState = {
   status: 'all',
   is_favorite: false,
   is_mine_only: false,
-  activeGroups: ['all'],
+  activeGroups: [], // Changed from ['all']
 };
 
 export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialTags }: Props) {
@@ -115,8 +115,6 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
 
   /* ── group options ── */
   const groupOptions = [
-    { id: 'all',  label: 'すべて' },
-    { id: 'mine', label: '自分のみ' },
     ...joinedGroups.map(g => ({ id: g.id, label: g.name })),
   ];
   const filteredGroups = groupOptions.filter(o =>
@@ -124,16 +122,9 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
   );
 
   const toggleGroup = async (id: string) => {
-    if (id === 'all') { 
-      set('activeGroups', ['all']); 
-      set('registrantUserIds', []); 
-      return; 
-    }
-    
-    let nextGroups = filters.activeGroups.filter(x => x !== 'all');
+    let nextGroups = [...filters.activeGroups];
     const isAdding = !nextGroups.includes(id);
     nextGroups = isAdding ? [...nextGroups, id] : nextGroups.filter(x => x !== id);
-    if (!nextGroups.length) nextGroups = ['all'];
     set('activeGroups', nextGroups);
 
     // Link: Selecting a group selects its members

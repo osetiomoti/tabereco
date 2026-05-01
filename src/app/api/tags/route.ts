@@ -49,6 +49,13 @@ export async function POST(request: NextRequest) {
       const { name } = await request.json();
       if (!name) return NextResponse.json({ error: 'Name is required' }, { status: 400 });
 
+      // Get next sort_order
+      const lastTag = await prisma.tag.findFirst({
+        where: { user_id: auth.userId },
+        orderBy: { sort_order: 'desc' },
+      });
+      const nextOrder = lastTag ? lastTag.sort_order + 1 : 0;
+
       const tag = await prisma.tag.upsert({
         where: {
           user_id_name: {
@@ -60,6 +67,7 @@ export async function POST(request: NextRequest) {
         create: {
           user_id: auth.userId,
           name: name.trim(),
+          sort_order: nextOrder,
         },
       });
 
