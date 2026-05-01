@@ -17,12 +17,12 @@ export default function MyPage() {
   const router = useRouter();
   const { updateFilter } = useSharedFilter();
   const [activeTab, setActiveTab] = useState<'all' | 'visited' | 'want_to_go'>('all');
-  const { data: userData } = useSWR('/api/profiles/me', (url) => fetch(url).then(r => r.json()));
-  const { data: postsData, isLoading: postsLoading } = useSWR('/api/posts?is_mine=true', (url) => fetch(url).then(r => r.json()));
-  const { data: friendsData } = useSWR('/api/friends', () => import('@/lib/api/friends').then(m => m.getFriends()));
+  const { data: userData } = useSWR<{ success: boolean, data: any }>('/api/profiles/me', (url) => fetch(url).then(r => r.json()));
+  const { data: postsData, isLoading: postsLoading } = useSWR<Post[]>('/api/posts?is_mine=true', () => getPosts({ is_mine: true }));
+  const { data: friendsData } = useSWR<any[]>('/api/friends', () => import('@/lib/api/friends').then(m => m.getFriends()));
 
   const user = userData?.data || null;
-  const posts = postsData || [];
+  const posts: Post[] = postsData || [];
   const loading = postsLoading;
   const friendsCount = friendsData?.length || 0;
 

@@ -15,13 +15,13 @@ export function useFilteredPosts() {
   const { activeTab, keyword, activeGroups, advancedFilters, activeMapTag } = filterState;
 
   // 1. Fetch own posts
-  const { data: ownPostsData, isLoading: ownLoading } = useSWR('/api/posts', fetcher, {
+  const { data: ownPostsData, isLoading: ownLoading } = useSWR<Post[]>('/api/posts', () => getPosts(), {
     revalidateOnFocus: false,
     dedupingInterval: 10000,
   });
 
   // 2. Fetch joined groups
-  const { data: groupsData, isLoading: groupsLoading } = useSWR('/api/groups', fetcher, {
+  const { data: groupsData, isLoading: groupsLoading } = useSWR<any[]>('/api/groups', () => getJoinedGroups(), {
     revalidateOnFocus: false,
     dedupingInterval: 60000,
   });
