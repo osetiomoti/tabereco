@@ -11,6 +11,7 @@ import { ShareButton } from '@/components/ShareButton';
 
 import { PostMenu } from '@/components/PostMenu';
 import { FavoriteToggle } from '@/components/FavoriteToggle';
+import { StarDisplay } from '@/components/StarRating';
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -85,14 +86,9 @@ export default async function PostDetailPage({ params }: Props) {
           </div>
           <span className="text-sm text-gray-800">{post.user?.name || 'ゲスト'}</span>
         </div>
-        <div className="flex items-center gap-1.5 text-orange-500">
-          <div className="flex text-lg tracking-widest gap-0.5">
-            {'★★★★★'.split('').map((star, i) => (
-               <span key={i} className={i < Math.floor(post.rating) ? 'text-orange-500' : 'text-orange-200'}>★</span>
-            ))}
-          </div>
-          <span className="text-gray-900 font-black text-sm ml-1">{post.rating.toFixed(1)}</span>
-          <ChevronDown size={14} className="text-gray-600 font-bold ml-0.5" />
+        <div className="flex items-center gap-1.5">
+          <StarDisplay rating={post.rating} size="md" />
+          <ChevronDown size={14} className="text-gray-400 font-bold ml-0.5" />
         </div>
       </div>
 
