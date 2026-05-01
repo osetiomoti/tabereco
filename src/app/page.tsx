@@ -125,9 +125,9 @@ export default function HomePage() {
           </div>
           
           {loading ? (
-            <div className="flex gap-4 overflow-hidden">
+            <div className="flex gap-4 overflow-x-hidden" style={{ minHeight: 192 }}>
               {[1, 2].map(i => (
-                <div key={i} className="min-w-[240px] h-48 bg-gray-50 animate-pulse rounded-[2rem]" />
+                <div key={i} className="min-w-[240px] h-48 bg-gray-50 animate-pulse rounded-[2rem] flex-shrink-0" />
               ))}
             </div>
           ) : wantToGoPosts.length === 0 ? (
@@ -159,7 +159,7 @@ export default function HomePage() {
           </div>
 
           {loading ? (
-            <div className="space-y-4">
+            <div className="space-y-4" style={{ minHeight: 240 }}>
               {[1, 2, 3].map(i => (
                 <div key={i} className="h-24 bg-gray-50 animate-pulse rounded-3xl" />
               ))}
