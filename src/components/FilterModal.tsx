@@ -13,6 +13,7 @@ type FilterState = {
   status: 'all' | 'visited' | 'want_to_go';
   is_favorite: boolean;
   is_mine_only: boolean;
+  include_mine: boolean;
   activeGroups: string[];
 };
 
@@ -42,6 +43,7 @@ const DEFAULT: FilterState = {
   status: 'all',
   is_favorite: false,
   is_mine_only: false,
+  include_mine: false,
   activeGroups: [], // Changed from ['all']
 };
 
@@ -197,6 +199,28 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
 
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-7 pb-28">
+          
+          {/* ── Include Mine Toggle ── */}
+          <section className="bg-orange-50/50 border border-orange-100 rounded-2xl p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-orange-500">
+                <Plus size={20} />
+              </div>
+              <div>
+                <p className="text-[14px] font-black text-gray-800">自分の投稿を含める</p>
+                <p className="text-[11px] text-gray-400 font-bold">OFFにすると他人の投稿のみ表示</p>
+              </div>
+            </div>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={filters.include_mine}
+                onChange={(e) => set('include_mine', e.target.checked)}
+                className="peer sr-only"
+              />
+              <div className="w-12 h-7 bg-gray-200 rounded-full peer peer-checked:after:translate-x-[20px] after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-[20px] after:w-[20px] after:transition-all peer-checked:bg-orange-500 shadow-inner"></div>
+            </label>
+          </section>
 
           {/* ── Group Combobox ── */}
           <section className="space-y-2">

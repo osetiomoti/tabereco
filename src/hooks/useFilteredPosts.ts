@@ -76,10 +76,14 @@ export function useFilteredPosts() {
     }
 
     let result = Array.from(combinedMap.values()) as Post[];
+    const includeMine = advancedFilters?.include_mine ?? false;
 
-    // デフォルトは自分以外の投稿を表示 (activeGroupsに'mine'がなく、投稿者が明示的に選ばれていない場合)
+    // 「自分の投稿を含める」がOFFの場合、自分を除外
+    // ただし、投稿者として自分が個別に選ばれている場合は表示する
     const isRegistrantSelected = advancedFilters?.registrantUserIds && advancedFilters.registrantUserIds.length > 0;
-    if (!activeGroups.includes('mine') && !isRegistrantSelected && myId) {
+    const isMeSelected = advancedFilters?.registrantUserIds?.includes(myId);
+
+    if (!includeMine && !isMeSelected && myId) {
       result = result.filter(p => (p as any).user_id !== myId);
     }
 

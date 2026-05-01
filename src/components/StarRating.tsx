@@ -1,6 +1,29 @@
-import { Star, StarHalf } from 'lucide-react';
+import { Star } from 'lucide-react';
 
 const STARS = [1, 2, 3, 4, 5];
+
+// ─── カスタム星コンポーネント ──────────────────
+
+function StarIcon({ fill, half, size }: { fill: boolean; half?: boolean; size: number }) {
+  if (half) {
+    return (
+      <div className="relative" style={{ width: size, height: size }}>
+        {/* Background (Empty) */}
+        <Star size={size} className="text-gray-200 absolute inset-0" />
+        {/* Foreground (Half Filled) */}
+        <div className="absolute inset-0 overflow-hidden" style={{ width: '50%' }}>
+          <Star size={size} className="text-yellow-400 fill-yellow-400" />
+        </div>
+      </div>
+    );
+  }
+  return (
+    <Star 
+      size={size} 
+      className={`${fill ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'}`} 
+    />
+  );
+}
 
 // ─── 表示専用 ─────────────────────────────────
 
@@ -20,15 +43,7 @@ export function StarDisplay({ rating, size = 'md' }: DisplayProps) {
         const isHalf = !isFull && (s - 0.5) <= rating;
         
         return (
-          <div key={s} className="relative">
-            {isHalf ? (
-              <StarHalf size={iconSize} className="text-yellow-400 fill-yellow-400" />
-            ) : isFull ? (
-              <Star size={iconSize} className="text-yellow-400 fill-yellow-400" />
-            ) : (
-              <Star size={iconSize} className="text-gray-200" />
-            )}
-          </div>
+          <StarIcon key={s} fill={isFull} half={isHalf} size={iconSize} />
         );
       })}
       {rating > 0 && (
@@ -49,44 +64,44 @@ type InputProps = {
 
 export function StarInput({ value, onChange }: InputProps) {
   return (
-    <div className="flex gap-1.5">
+    <div className="flex gap-1">
       {STARS.map((s) => {
         const isFull = s <= value;
         const isHalf = !isFull && (s - 0.5) <= value;
         
         return (
-          <div key={s} className="flex group relative">
+          <div key={s} className="flex relative">
             {/* Left half (0.5) */}
             <button
               type="button"
               onClick={() => onChange(s - 0.5)}
-              className={`w-5 h-10 flex items-center justify-end overflow-hidden transition-all active:scale-90`}
+              className="w-5 h-10 overflow-hidden transition-all active:scale-90"
             >
-              <Star 
-                size={32} 
-                className={`min-w-[40px] -translate-x-[0px] ${
-                  isFull || isHalf ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'
-                }`} 
-              />
+              <div className="w-10 h-10 flex items-center justify-center">
+                <Star 
+                  size={32} 
+                  className={`${isFull || isHalf ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'}`} 
+                />
+              </div>
             </button>
             {/* Right half (1.0) */}
             <button
               type="button"
               onClick={() => onChange(s)}
-              className={`w-5 h-10 flex items-center justify-start overflow-hidden transition-all active:scale-90`}
+              className="w-5 h-10 overflow-hidden transition-all active:scale-90"
             >
-              <Star 
-                size={32} 
-                className={`min-w-[40px] -translate-x-[20px] ${
-                  isFull ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'
-                }`} 
-              />
+              <div className="w-10 h-10 flex items-center justify-center -translate-x-5">
+                <Star 
+                  size={32} 
+                  className={`${isFull ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'}`} 
+                />
+              </div>
             </button>
           </div>
         );
       })}
       <div className="ml-2 flex items-center">
-        <span className="text-2xl font-black text-[#ff6b95] min-w-[3rem] text-center">
+        <span className="text-3xl font-black text-[#ff6b95] min-w-[3.5rem] text-center drop-shadow-sm">
           {value.toFixed(1)}
         </span>
       </div>
