@@ -50,8 +50,8 @@ export function useFilteredPosts() {
   });
 
   const loading = ownLoading || groupsLoading || groupPostsLoading;
-  const ownPostsCache = useMemo(() => (ownPostsData || []).map((p: any) => ({ ...p, __is_mine: true })), [ownPostsData]);
-  const groupPostsCache = groupPostsData || [];
+  const ownPostsCache = useMemo(() => (ownPostsData || []).map((p: Post) => ({ ...p, __is_mine: true })), [ownPostsData]);
+  const groupPostsCache = (groupPostsData || []) as any[];
 
   // Compute displayed posts locally
   const posts = useMemo(() => {
@@ -61,17 +61,17 @@ export function useFilteredPosts() {
 
     if (activeGroups.includes('all')) {
       // By default 'all' only includes group posts (others + mine in groups)
-      groupPostsCache.forEach(g => g.posts.forEach(p => combinedMap.set(p.id, p)));
+      groupPostsCache.forEach((g: any) => g.posts.forEach((p: Post) => combinedMap.set(p.id, p)));
     }
     
     if (activeGroups.includes('mine')) {
-      ownPostsCache.forEach(p => combinedMap.set(p.id, p));
+      ownPostsCache.forEach((p: Post) => combinedMap.set(p.id, p));
     }
 
     // Individual groups
-    groupPostsCache.forEach(g => {
+    groupPostsCache.forEach((g: any) => {
       if (activeGroups.includes(g.groupId)) {
-        g.posts.forEach(p => combinedMap.set(p.id, p));
+        g.posts.forEach((p: Post) => combinedMap.set(p.id, p));
       }
     });
 
@@ -107,10 +107,10 @@ export function useFilteredPosts() {
       result = result.filter(p => p.status === advancedFilters.status);
     }
     if (advancedFilters?.registrantUserIds && advancedFilters.registrantUserIds.length > 0) {
-      result = result.filter(p => advancedFilters.registrantUserIds.includes((p as any).user_id));
+      result = result.filter((p: Post) => advancedFilters.registrantUserIds.includes((p as any).user_id));
     }
     
-    return result.sort((a,b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return result.sort((a: Post, b: Post) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [activeGroups, activeTab, keyword, advancedFilters, ownPostsCache, groupPostsCache]);
 
   const removeFilter = (key: string | string[]) => {
@@ -135,10 +135,10 @@ export function useFilteredPosts() {
 
   const activeFilterCount = useMemo(() => {
     return advancedFilters
-      ? Object.entries(advancedFilters).filter(([k, v]) =>
+      ? Object.entries(advancedFilters).filter(([k, v]: [string, any]) =>
           v && v !== 'all' && v !== '' && v !== false && k !== 'activeGroups' && k !== 'tags' && k !== 'registrantUserIds'
-        ).length + (advancedFilters.tags?.length || 0) + (advancedFilters.registrantUserIds?.length || 0) + (activeGroups.filter(x => x !== 'all').length > 0 ? 1 : 0)
-      : activeGroups.filter(x => x !== 'all').length;
+        ).length + (advancedFilters.tags?.length || 0) + (advancedFilters.registrantUserIds?.length || 0) + (activeGroups.filter((x: string) => x !== 'all').length > 0 ? 1 : 0)
+      : activeGroups.filter((x: string) => x !== 'all').length;
   }, [advancedFilters, activeGroups]);
 
   return {

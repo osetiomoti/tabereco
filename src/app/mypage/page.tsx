@@ -17,7 +17,7 @@ export default function MyPage() {
   const router = useRouter();
   const { updateFilter } = useSharedFilter();
   const [activeTab, setActiveTab] = useState<'all' | 'visited' | 'want_to_go'>('all');
-  const { data: userData } = useSWR<{ success: boolean, data: any }>('/api/profiles/me', (url) => fetch(url).then(r => r.json()));
+  const { data: userData } = useSWR<{ success: boolean, data: any }>('/api/profiles/me', (url: string) => fetch(url).then(r => r.json()));
   const { data: postsData, isLoading: postsLoading } = useSWR<Post[]>('/api/posts?is_mine=true', () => getPosts({ is_mine: true }));
   const { data: friendsData } = useSWR<any[]>('/api/friends', () => import('@/lib/api/friends').then(m => m.getFriends()));
 

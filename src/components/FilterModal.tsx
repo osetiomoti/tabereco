@@ -163,17 +163,17 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
 
   const groupLabel = () => {
     if (filters.activeGroups.includes('all')) return 'すべて';
-    return filters.activeGroups.map(id => groupOptions.find(o => o.id === id)?.label ?? id).join(', ');
+    return filters.activeGroups.map((id: string) => groupOptions.find((o: any) => o.id === id)?.label ?? id).join(', ');
   };
 
   /* ── member options ── */
-  const filteredMembers = members.filter(m =>
+  const filteredMembers = members.filter((m: Member) =>
     (m.name || '').toLowerCase().includes(memberSearch.toLowerCase())
   );
   const memberLabel = () => {
     if (filters.registrantUserIds.length === 0) return '全員';
     if (filters.registrantUserIds.length === 1) {
-      return members.find(m => m.id === filters.registrantUserIds[0])?.name ?? '1名選択中';
+      return members.find((m: Member) => m.id === filters.registrantUserIds[0])?.name ?? '1名選択中';
     }
     return `${filters.registrantUserIds.length}名選択中`;
   };
@@ -305,7 +305,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
                       {loadingMembers ? (
                         <div className="px-4 py-3 text-[13px] text-gray-400">読み込み中...</div>
                       ) : (
-                        filteredMembers.map(m => {
+                        filteredMembers.map((m: Member) => {
                           const isSelected = filters.registrantUserIds.includes(m.id);
                           return (
                             <label key={m.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition-colors">
@@ -314,7 +314,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
                                 checked={isSelected}
                                 onChange={() => {
                                   let next = [...filters.registrantUserIds];
-                                  if (isSelected) next = next.filter(id => id !== m.id);
+                                  if (isSelected) next = next.filter((id: string) => id !== m.id);
                                   else next = [...next, m.id];
                                   set('registrantUserIds', next);
                                 }}
@@ -342,11 +342,11 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
             </div>
             
             <div className="flex flex-wrap gap-2">
-              {filters.tags.map(tag => (
+              {filters.tags.map((tag: string) => (
                 <div key={tag} className="inline-flex items-center gap-1.5 bg-orange-50 text-orange-600 border border-orange-200 px-3 py-1.5 rounded-[10px] text-[13px] font-medium animate-in zoom-in">
                   <Hash size={14} />
                   <span>{tag}</span>
-                  <X size={14} className="cursor-pointer opacity-60 hover:opacity-100" onClick={() => set('tags', filters.tags.filter(t => t !== tag))} />
+                  <X size={14} className="cursor-pointer opacity-60 hover:opacity-100" onClick={() => set('tags', filters.tags.filter((t: string) => t !== tag))} />
                 </div>
               ))}
             </div>
@@ -360,13 +360,13 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
               タグを追加する
             </button>
             <div className="flex flex-wrap gap-2 mt-4">
-              {userTags.slice(0, 12).map(tag => {
+              {userTags.slice(0, 12).map((tag: Tag) => {
                 const isSelected = filters.tags.includes(tag.name);
                 return (
                   <button
                     key={tag.id}
                     onClick={() => {
-                      if (isSelected) set('tags', filters.tags.filter(t => t !== tag.name));
+                      if (isSelected) set('tags', filters.tags.filter((t: string) => t !== tag.name));
                       else set('tags', [...filters.tags, tag.name]);
                     }}
                     className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all ${
@@ -384,7 +384,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
               isOpen={isTagSelectorOpen}
               onClose={() => setIsTagSelectorOpen(false)}
               selectedTags={filters.tags}
-              onSelect={tags => set('tags', tags)}
+              onSelect={(tags: string[]) => set('tags', tags)}
             />
           </section>
 
