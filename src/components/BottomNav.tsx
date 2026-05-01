@@ -19,12 +19,12 @@ export function BottomNav() {
           <NavItem href="/" icon={<Home size={22} />} label="ホーム" isActive={pathname === '/'} />
           
           <NavItem href="/posts" icon={<Clock size={22} />} label="タイムライン" isActive={pathname === '/posts'} />
-          
+
+          <NavItem href="/mypage" icon={<User size={22} />} label="マイページ" isActive={pathname.startsWith('/mypage')} />
+
           <NavItem href="/map" icon={<MapPin size={22} />} label="マップ" isActive={pathname === '/map'} />
 
           <NavItem href="/rankings" icon={<Trophy size={22} />} label="ランキング" isActive={pathname.startsWith('/rankings')} />
-
-          <NavItem href="/mypage" icon={<User size={22} />} label="マイページ" isActive={pathname.startsWith('/mypage')} />
         </nav>
       </div>
     </>

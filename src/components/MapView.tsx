@@ -34,10 +34,11 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
   const apiKey = (process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '').trim();
 
   const { isLoaded, loadError } = useJsApiLoader({
-    id: 'google-map-script-ja',
+    id: 'google-map-script-main',
     googleMapsApiKey: apiKey,
     language: 'ja',
     region: 'JP',
+    libraries: ['places'],
   });
 
   const mapRef = useRef<google.maps.Map | null>(null);

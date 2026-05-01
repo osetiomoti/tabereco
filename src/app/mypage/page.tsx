@@ -104,7 +104,7 @@ export default function MyPage() {
           <Link href="/groups" className="hover:scale-105 transition-transform">
             <StatBox count={friendsCount} label="ともだち" />
           </Link>
-          <Link href="/groups" className="hover:scale-105 transition-transform">
+          <Link href="/groups?tab=groups" className="hover:scale-105 transition-transform">
             <StatBox count={user?.groups_joined || 0} label="グループ" />
           </Link>
         </div>

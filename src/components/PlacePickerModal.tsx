@@ -28,7 +28,7 @@ export function PlacePickerModal({ isOpen, onClose, onSelect, initialCenter }: P
   const apiKey = (process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '').trim();
   
   const { isLoaded } = useJsApiLoader({
-    id: 'google-map-script-picker',
+    id: 'google-map-script-main',
     googleMapsApiKey: apiKey,
     language: 'ja',
     region: 'JP',
@@ -136,7 +136,7 @@ export function PlacePickerModal({ isOpen, onClose, onSelect, initialCenter }: P
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[200] flex flex-col bg-white animate-in fade-in slide-in-from-bottom duration-300">
+    <div className="fixed inset-0 z-[300] flex flex-col bg-white animate-in fade-in slide-in-from-bottom duration-300" style={{ top: 0, left: 0, right: 0, bottom: 0, position: 'fixed' }}>
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 bg-white/80 backdrop-blur-md z-10">
         <button type="button" onClick={onClose} className="text-sm font-bold text-gray-400 hover:text-gray-600">
@@ -146,8 +146,8 @@ export function PlacePickerModal({ isOpen, onClose, onSelect, initialCenter }: P
         <button 
           type="button"
           onClick={handleConfirm} 
-          disabled={!marker || loading}
-          className={`text-sm font-black ${marker && !loading ? 'text-pink-500' : 'text-gray-300'}`}
+          disabled={!marker}
+          className={`text-sm font-black ${marker ? 'text-pink-500' : 'text-gray-300'}`}
         >
           決定
         </button>

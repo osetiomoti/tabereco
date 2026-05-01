@@ -145,20 +145,30 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
         {/* Tags Content Area */}
         <div className="flex-1 overflow-y-auto px-6 py-4 pb-12">
           <div className="flex flex-wrap gap-3">
-            {/* Pink Add Chip (Image Style) */}
-            {searchQuery.trim() && !tempSelected.includes(searchQuery.trim().replace(/^#/, '')) && (
-              <button
-                type="button"
-                onClick={handleAddTag}
-                className="inline-flex items-center gap-4 px-5 py-3 rounded-full border-2 border-pink-200 bg-pink-50/30 text-pink-500 transition-all active:scale-[0.95] animate-in zoom-in group"
-              >
-                <div className="flex items-center gap-2">
+            {/* Add / Select Chip - shows when typing */}
+            {searchQuery.trim() && (() => {
+              const name = searchQuery.trim().replace(/^#/, '');
+              const alreadySelected = tempSelected.includes(name);
+              if (alreadySelected) return null;
+              const isExisting = allAvailableTags.includes(name);
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isExisting) {
+                      toggleTag(name);
+                    } else {
+                      handleAddTag();
+                    }
+                  }}
+                  className="inline-flex items-center gap-3 px-5 py-3 rounded-full border-2 border-pink-200 bg-pink-50/30 text-pink-500 transition-all active:scale-[0.95] animate-in zoom-in"
+                >
                   <span className="text-base font-bold opacity-60">#</span>
-                  <span className="text-base font-bold text-gray-700">{searchQuery.trim().replace(/^#/, '')}</span>
-                </div>
-                <span className="text-base font-bold ml-2">追加</span>
-              </button>
-            )}
+                  <span className="text-base font-bold text-gray-700">{name}</span>
+                  <span className="text-base font-bold">{isExisting ? '選択' : '追加'}</span>
+                </button>
+              );
+            })()}
 
             {isLoading ? (
               <div className="w-full flex items-center justify-center py-8">

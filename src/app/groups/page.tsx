@@ -16,6 +16,14 @@ type Group = { id: string; name: string; description?: string | null; invite_cod
 
 export default function FriendsPage() {
   const [tab, setTab] = useState<'friends' | 'groups'>('friends');
+
+  // URLパラメータからタブを初期化
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tabParam = params.get('tab');
+    if (tabParam === 'groups') setTab('groups');
+  }, []);
+
   const [myId, setMyId] = useState('');
   const [friends, setFriends] = useState<Friend[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
