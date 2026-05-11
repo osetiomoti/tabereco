@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Trophy, GripVertical, Save, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import { getRankings, saveRankings } from '@/lib/api/friends';
@@ -14,7 +14,6 @@ export default function RankingsPage() {
   const { profile: myProfile } = useMyProfile();
 
   const [friendTags, setFriendTags] = useState<Tag[]>([]);
-  const [userTags, setUserTags] = useState<Tag[]>([]);
   const [rankingTag, setRankingTag] = useState<string>('');
   const [rankingPosts, setRankingPosts] = useState<any[]>([]);
   const [rankingLoading, setRankingLoading] = useState(false);
@@ -25,23 +24,26 @@ export default function RankingsPage() {
   // Friend Selection
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
-  // 表示するタグは選択中のユーザーに依存
+  // フレンド切り替え時にタグをフェッチ
   useEffect(() => {
-    if (selectedUserId === null) {
-      // 自分のタグ（SWRキャッシュから即座）
-      setUserTags(myTags);
-    } else {
-      // フレンドのタグ（別途フェッチが必要）
+    if (selectedUserId !== null) {
       setRankingTag('');
       setRankingPosts([]);
+      setFriendTags([]);
       import('@/lib/api/posts').then(({ getUserTags: getTagsApi }) => {
         getTagsApi(selectedUserId).then(tags => setFriendTags(tags ?? [])).catch(() => {});
       });
+    } else {
+      setRankingTag('');
+      setRankingPosts([]);
     }
-  }, [selectedUserId, myTags]);
+  }, [selectedUserId]);
 
-  // 表示するタグリスト（自分 or フレンド）
-  const displayTags = selectedUserId === null ? userTags : friendTags;
+  // 表示するタグリスト（自分 or フレンド）— useMemoで無限ループを回避
+  const displayTags = useMemo(
+    () => selectedUserId === null ? myTags : friendTags,
+    [selectedUserId, myTags, friendTags]
+  );
 
   useEffect(() => {
     if (!rankingTag) return;

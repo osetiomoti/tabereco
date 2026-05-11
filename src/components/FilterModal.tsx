@@ -64,7 +64,6 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
   const groupRef  = useRef<HTMLDivElement>(null);
   const memberRef = useRef<HTMLDivElement>(null);
   const [isTagSelectorOpen, setIsTagSelectorOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState<{ id: string } | null>(null);
 
   /* ── load on open ── */
   useEffect(() => {

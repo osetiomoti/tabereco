@@ -31,6 +31,8 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      console.log(`[Rankings] tag=${tag} targetUserId=${targetUserId} authUserId=${auth.userId}`);
+
       // 既存ランキングを取得
       const rankings = await prisma.tagRanking.findMany({
         where: { user_id: targetUserId, tag_name: tag },
@@ -43,6 +45,8 @@ export async function GET(request: NextRequest) {
       });
 
       // タグを持つ全投稿を取得
+      // 注意: tagsテーブルは user_id ごとに同名タグが別レコードのため、
+      // タグ名だけで絞り込む必要がある
       const postsWithTag = await prisma.post.findMany({
         where: {
           user_id: targetUserId,
@@ -51,6 +55,8 @@ export async function GET(request: NextRequest) {
         include: { tags: { include: { tag: true } } },
         orderBy: { created_at: 'asc' },
       });
+
+      console.log(`[Rankings] found ${postsWithTag.length} posts with tag, ${rankings.length} ranked`);
 
       // ランキングに登録されていない新規投稿を末尾に追加
       const rankedPostIds = new Set(rankings.map((r: any) => r.post_id));
