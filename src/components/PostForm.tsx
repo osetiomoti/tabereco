@@ -82,6 +82,9 @@ export function PostForm({ post }: Props) {
     setValues((prev) => ({ ...prev, [key]: val }));
 
   // 住所の言語を切り替える際のAPI取得ロジック (案B: リロードなし翻訳)
+  const cleanAddress = (addr: string) =>
+    addr.replace(/^日本、\s*/, '').replace(/^〒\d{3}-\d{4}\s*/, '');
+
   const updateAddressByLanguage = async (placeId: string, lang: 'ja' | 'en') => {
     if (!placeId) return;
     const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
@@ -92,7 +95,7 @@ export function PostForm({ post }: Props) {
       const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?place_id=${placeId}&language=${lang}&key=${apiKey}`);
       const data = await res.json();
       if (data.results && data.results[0]) {
-        set('address', data.results[0].formatted_address);
+        set('address', cleanAddress(data.results[0].formatted_address));
       }
     } catch (err) {
       console.error('Failed to translate address:', err);

@@ -59,31 +59,31 @@ export function useFilteredPosts() {
 
     const myId = ownPostsCache.length > 0 ? (ownPostsCache[0] as any).user_id : null;
 
+    // Always start with own posts as base
+    ownPostsCache.forEach((p: Post) => combinedMap.set(p.id, p));
+
+    // Merge group posts on top (group posts from other members)
     if (activeGroups.length === 0) {
-      // If none selected, show all joined groups
+      // If no group filter, show all joined groups' posts
       groupPostsCache.forEach((g: any) => g.posts.forEach((p: Post) => combinedMap.set(p.id, p)));
     } else {
-      // Individual groups
+      // Only selected groups
       groupPostsCache.forEach((g: any) => {
         if (activeGroups.includes(g.groupId)) {
           g.posts.forEach((p: Post) => combinedMap.set(p.id, p));
         }
       });
-      // Also check if 'mine' was somehow still there (unlikely but safe)
-      if (activeGroups.includes('mine')) {
-        ownPostsCache.forEach((p: Post) => combinedMap.set(p.id, p));
-      }
     }
 
     let result = Array.from(combinedMap.values()) as Post[];
     const includeMine = advancedFilters?.include_mine ?? false;
 
     // 「自分の投稿を含める」がOFFの場合、自分を除外
-    // ただし、投稿者として自分が個別に選ばれている場合は表示する
     const isRegistrantSelected = advancedFilters?.registrantUserIds && advancedFilters.registrantUserIds.length > 0;
     const isMeSelected = advancedFilters?.registrantUserIds?.includes(myId);
 
-    if (!includeMine && !isMeSelected && myId) {
+    if (!includeMine && !isMeSelected && myId && isRegistrantSelected) {
+      // Only exclude mine if a specific registrant filter is active and excludes me
       result = result.filter(p => (p as any).user_id !== myId);
     }
 

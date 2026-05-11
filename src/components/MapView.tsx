@@ -56,42 +56,49 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
       });
       map.fitBounds(bounds);
     }
-  }, [posts]);
+
+    if (setTempMarker) {
+      const cleanAddress = (addr: string) =>
+        addr.replace(/^日本、\s*/, '').replace(/^〒\d{3}-\d{4}\s*/, '');
+
+      // Use native listener to capture POI clicks that React onClick misses
+      window.google.maps.event.addListener(map, 'click', (e: any) => {
+        if (!e.latLng) return;
+        const lat = e.latLng.lat();
+        const lng = e.latLng.lng();
+        const placeId = e.placeId;
+
+        // Set preliminary marker immediately
+        setTempMarker({ lat, lng, placeId, name: '', address: '' });
+
+        if (placeId) {
+          const service = new window.google.maps.places.PlacesService(map);
+          service.getDetails({ placeId, fields: ['name', 'formatted_address'] }, (place, status) => {
+            if (status === 'OK' && place) {
+              const address = cleanAddress(place.formatted_address || '');
+              setTempMarker(prev => prev ? { ...prev, name: place.name || '', address } : null);
+            }
+          });
+        } else {
+          const geocoder = new window.google.maps.Geocoder();
+          geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+            if (status === 'OK' && results && results[0]) {
+              const poi = results[0].address_components.find((c: any) =>
+                c.types.includes('point_of_interest') || c.types.includes('establishment')
+              );
+              const name = poi?.long_name || '';
+              const address = cleanAddress(results[0].formatted_address);
+              setTempMarker(prev => prev ? { ...prev, name, address } : null);
+            }
+          });
+        }
+      });
+    }
+  }, [posts, setTempMarker]);
 
   const onUnmount = useCallback(() => {
     mapRef.current = null;
   }, []);
-
-  const handleMapClick = (e: google.maps.MapMouseEvent) => {
-    if (!e.latLng || !setTempMarker) return;
-    const lat = e.latLng.lat();
-    const lng = e.latLng.lng();
-    const placeId = (e as any).placeId;
-
-    setTempMarker({ lat, lng, placeId });
-
-    if (placeId) {
-      // If POI is clicked, get details including name
-      const service = new window.google.maps.places.PlacesService(mapRef.current!);
-      service.getDetails({ placeId, fields: ['name', 'formatted_address'] }, (place, status) => {
-        if (status === 'OK' && place) {
-          const address = (place.formatted_address || '').replace(/^日本、\s*/, '').replace(/^〒\d{3}-\d{4}\s*/, '');
-          setTempMarker(prev => prev ? { ...prev, name: place.name, address } : null);
-        }
-      });
-    } else {
-      const geocoder = new window.google.maps.Geocoder();
-      geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-        if (status === 'OK' && results && results[0]) {
-          // Try to find a logical name from address components if not a POI
-          const poi = results[0].address_components.find(c => c.types.includes('point_of_interest') || c.types.includes('establishment'));
-          const name = poi?.long_name || '';
-          const address = results[0].formatted_address.replace(/^日本、\s*/, '').replace(/^〒\d{3}-\d{4}\s*/, '');
-          setTempMarker((prev) => prev ? { ...prev, name, address } : null);
-        }
-      });
-    }
-  };
 
   const toggleMapType = () => {
     setMapTypeId(prev => prev === 'roadmap' ? 'satellite' : 'roadmap');
@@ -152,7 +159,7 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
         zoom={zoom}
         onLoad={onLoad}
         onUnmount={onUnmount}
-        onClick={handleMapClick}
+        onClick={undefined}
         mapTypeId={mapTypeId}
         options={{
           zoomControl: false,
