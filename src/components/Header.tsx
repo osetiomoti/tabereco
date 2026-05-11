@@ -1,9 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { UtensilsCrossed, Settings, ChevronLeft } from 'lucide-react';
+import { useMyProfile } from '@/hooks/useAppData';
 
 type HeaderProps = {
   children?: React.ReactNode;
@@ -14,23 +14,7 @@ type HeaderProps = {
 
 export function Header({ children, title, showBackButton, hideSettings }: HeaderProps) {
   const router = useRouter();
-  const [user, setUser] = useState<any | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    fetch('/api/profiles/me')
-      .then(res => res.json())
-      .then(json => {
-        if (json.success) {
-          setUser(json.data);
-        } else {
-          console.error('[Header] Auth check failed:', json);
-          setUser(null);
-        }
-      })
-      .catch(() => setUser(null))
-      .finally(() => setLoading(false));
-  }, []);
+  const { profile: user, isLoading } = useMyProfile();
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-100/50 h-14 transition-all duration-300">
@@ -67,14 +51,14 @@ export function Header({ children, title, showBackButton, hideSettings }: Header
         <div className="flex items-center gap-2 z-10">
           {children}
           
-          {!loading && user && !hideSettings ? (
+          {!isLoading && user && !hideSettings ? (
             <Link
               href="/settings"
               className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-orange-50 hover:text-orange-500 transition-all"
             >
               <Settings size={18} />
             </Link>
-          ) : !loading && !user && !hideSettings && (
+          ) : !isLoading && !user && !hideSettings && (
             <Link
               href="/login"
               className="text-orange-500 font-bold text-sm px-3 py-1.5 bg-orange-50 rounded-full hover:bg-orange-100 transition-colors"
