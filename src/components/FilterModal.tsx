@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { X, Heart, Lock, ChevronDown, Plus, Hash, Search } from 'lucide-react';
-import { getUserTags } from '@/lib/api/posts';
+import { useMyTags, useGroups, useMyProfile } from '@/hooks/useAppData';
 import type { Tag } from '@/lib/types';
 import { TagSelector } from './TagSelector';
 
@@ -49,7 +49,9 @@ const DEFAULT: FilterState = {
 
 export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialTags }: Props) {
   const [filters, setFilters] = useState<FilterState>({ ...DEFAULT, ...(initialFilters || {}) });
-  const [userTags, setUserTags]         = useState<Tag[]>(initialTags || []);
+  const { tags: swrTags } = useMyTags();
+  const { groups: swrGroups } = useGroups();
+  const { profile: currentUser } = useMyProfile();
   const [joinedGroups, setJoinedGroups] = useState<Group[]>([]);
   const [members, setMembers]           = useState<Member[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
@@ -67,23 +69,15 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
   /* ── load on open ── */
   useEffect(() => {
     if (!isOpen) return;
-    if (!initialTags) loadTags();
-    loadGroups();
-    
+    // Groups come from SWR cache immediately, set to local state for member loading
+    setJoinedGroups(swrGroups);
+
     // Load current user to exclude from member list
-    if (!currentUser) {
-      fetch('/api/profiles/me')
-        .then(res => res.json())
-        .then(json => {
-          if (json.success) setCurrentUser(json.data);
-        })
-        .catch(console.error);
-    }
-  }, [isOpen]);
+    // (already available from useMyProfile, no extra fetch needed)
+  }, [isOpen, swrGroups]);
 
   useEffect(() => {
     if (joinedGroups.length > 0) {
-      // Load all members from all groups for the 'Registrant' list
       const allGroupIds = joinedGroups.map(g => g.id);
       loadMembers(allGroupIds);
     }
@@ -99,13 +93,6 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
     return () => document.removeEventListener('mousedown', fn);
   }, []);
 
-  const loadGroups = async () => {
-    const { getJoinedGroups } = await import('@/lib/api/groups');
-    setJoinedGroups((await getJoinedGroups()) || []);
-  };
-  const loadTags = async () => {
-    setUserTags(await getUserTags());
-  };
   const loadMembers = async (ids: string[]) => {
     setLoadingMembers(true);
     const map = new Map<string, Member>();
@@ -387,7 +374,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
               タグを追加する
             </button>
             <div className="flex flex-wrap gap-2 mt-4">
-              {userTags.slice(0, 12).map((tag: Tag) => {
+              {swrTags.slice(0, 12).map((tag: Tag) => {
                 const isSelected = filters.tags.includes(tag.name);
                 return (
                   <button

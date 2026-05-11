@@ -3,12 +3,17 @@
 import { useState, useEffect } from 'react';
 import { Trophy, GripVertical, Save, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
-import { getRankings, saveRankings, getFriends } from '@/lib/api/friends';
-import { getUserTags } from '@/lib/api/posts';
+import { getRankings, saveRankings } from '@/lib/api/friends';
+import { useMyTags, useFriends, useMyProfile } from '@/hooks/useAppData';
 import type { Tag } from '@/lib/types';
 import { Header } from '@/components/Header';
 
 export default function RankingsPage() {
+  const { tags: myTags } = useMyTags();
+  const { friends } = useFriends();
+  const { profile: myProfile } = useMyProfile();
+
+  const [friendTags, setFriendTags] = useState<Tag[]>([]);
   const [userTags, setUserTags] = useState<Tag[]>([]);
   const [rankingTag, setRankingTag] = useState<string>('');
   const [rankingPosts, setRankingPosts] = useState<any[]>([]);
@@ -18,21 +23,25 @@ export default function RankingsPage() {
   const [showTagDropdown, setShowTagDropdown] = useState(false);
   
   // Friend Selection
-  const [friends, setFriends] = useState<any[]>([]);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [myProfile, setMyProfile] = useState<any>(null);
 
+  // 表示するタグは選択中のユーザーに依存
   useEffect(() => {
-    fetch('/api/profiles/me').then(r => r.json()).then(j => { if (j.success) setMyProfile(j.data); });
-    getFriends().then(f => setFriends(f || []));
-  }, []);
+    if (selectedUserId === null) {
+      // 自分のタグ（SWRキャッシュから即座）
+      setUserTags(myTags);
+    } else {
+      // フレンドのタグ（別途フェッチが必要）
+      setRankingTag('');
+      setRankingPosts([]);
+      import('@/lib/api/posts').then(({ getUserTags: getTagsApi }) => {
+        getTagsApi(selectedUserId).then(tags => setFriendTags(tags ?? [])).catch(() => {});
+      });
+    }
+  }, [selectedUserId, myTags]);
 
-  useEffect(() => {
-    // ユーザーが変わったらタグの一覧を取り直す
-    setRankingTag('');
-    setRankingPosts([]);
-    getUserTags(selectedUserId ?? undefined).then(tags => setUserTags(tags ?? [])).catch(() => {});
-  }, [selectedUserId]);
+  // 表示するタグリスト（自分 or フレンド）
+  const displayTags = selectedUserId === null ? userTags : friendTags;
 
   useEffect(() => {
     if (!rankingTag) return;
@@ -133,10 +142,10 @@ export default function RankingsPage() {
           </button>
           {showTagDropdown && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-100 rounded-2xl shadow-xl z-20 max-h-56 overflow-y-auto">
-              {userTags.length === 0 ? (
+              {displayTags.length === 0 ? (
                 <p className="text-center text-sm text-gray-400 font-bold p-4">タグがありません</p>
               ) : (
-                userTags.map(t => (
+                displayTags.map(t => (
                   <button
                     key={t.id}
                     onClick={() => { setRankingTag(t.name); setShowTagDropdown(false); }}

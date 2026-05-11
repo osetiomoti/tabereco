@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Outfit, Noto_Sans_JP } from 'next/font/google';
 import './globals.css';
 import { BottomNav } from '@/components/BottomNav';
+import { SWRProvider } from '@/components/SWRProvider';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -40,8 +41,10 @@ export default function RootLayout({
   return (
     <html lang="ja">
       <body className={`${outfit.variable} ${notoSansJP.variable} font-sans bg-[#fcfcfc] text-gray-900 antialiased overflow-x-hidden min-h-[100dvh] flex flex-col`}>
-        {children}
-        <BottomNav />
+        <SWRProvider>
+          {children}
+          <BottomNav />
+        </SWRProvider>
       </body>
     </html>
   );

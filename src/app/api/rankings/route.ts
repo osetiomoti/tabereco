@@ -46,7 +46,6 @@ export async function GET(request: NextRequest) {
       const postsWithTag = await prisma.post.findMany({
         where: {
           user_id: targetUserId,
-          status: 'visited', // ランキングには行った場所のみ表示する条件追加
           tags: { some: { tag: { name: tag } } },
         },
         include: { tags: { include: { tag: true } } },

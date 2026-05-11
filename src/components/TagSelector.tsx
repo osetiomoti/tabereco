@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, Plus, X, Hash, Check } from 'lucide-react';
-import { getUserTags } from '@/lib/api/posts';
+import { useMyTags } from '@/hooks/useAppData';
 import type { Tag } from '@/lib/types';
 
 type Props = {
@@ -13,10 +13,10 @@ type Props = {
 };
 
 export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) {
-  const [userTags, setUserTags] = useState<Tag[]>([]);
+  // SWRキャッシュから即座に取得（ページ遷移をまたいで共有される）
+  const { tags: swrTags, isLoading: swrLoading } = useMyTags();
   const [searchQuery, setSearchQuery] = useState('');
   const [tempSelected, setTempSelected] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // モーダルが開いた時に初期化
@@ -24,27 +24,14 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
     if (isOpen) {
       setTempSelected([...selectedTags]);
       setSearchQuery('');
-      loadUserTags();
     }
   }, [isOpen]);
 
-  const loadUserTags = async () => {
-    setIsLoading(true);
-    try {
-      const tags = await getUserTags();
-      setUserTags(tags);
-    } catch (err) {
-      console.error('Failed to load tags:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   // 表示するタグの計算（ユーザー作成タグ、重複排除）
   const allAvailableTags = useMemo(() => {
-    const userNames = userTags.map((t: Tag) => t.name);
+    const userNames = swrTags.map((t: Tag) => t.name);
     return Array.from(new Set(userNames));
-  }, [userTags]);
+  }, [swrTags]);
 
   // 検索フィルタリング
   const filteredTags = useMemo(() => {
@@ -54,6 +41,8 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
       t.toLowerCase().includes(query.toLowerCase())
     );
   }, [allAvailableTags, searchQuery]);
+
+  const isLoading = swrLoading;
 
   const toggleTag = (tagName: string) => {
     setTempSelected((prev: string[]) => 
