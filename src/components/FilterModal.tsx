@@ -62,12 +62,23 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
   const groupRef  = useRef<HTMLDivElement>(null);
   const memberRef = useRef<HTMLDivElement>(null);
   const [isTagSelectorOpen, setIsTagSelectorOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState<{ id: string } | null>(null);
 
   /* ── load on open ── */
   useEffect(() => {
     if (!isOpen) return;
     if (!initialTags) loadTags();
     loadGroups();
+    
+    // Load current user to exclude from member list
+    if (!currentUser) {
+      fetch('/api/profiles/me')
+        .then(res => res.json())
+        .then(json => {
+          if (json.success) setCurrentUser(json.data);
+        })
+        .catch(console.error);
+    }
   }, [isOpen]);
 
   useEffect(() => {
@@ -160,19 +171,20 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
   };
 
   /* ── member options ── */
-  const filteredMembers = members.filter((m: Member) =>
+  const availableMembers = members.filter(m => m.id !== currentUser?.id);
+  const filteredMembers = availableMembers.filter((m: Member) =>
     (m.name || '').toLowerCase().includes(memberSearch.toLowerCase())
   );
   const memberLabel = () => {
     if (filters.registrantUserIds.length === 0) return '全員';
     if (filters.registrantUserIds.length === 1) {
-      return members.find((m: Member) => m.id === filters.registrantUserIds[0])?.name ?? '1名選択中';
+      return availableMembers.find((m: Member) => m.id === filters.registrantUserIds[0])?.name ?? '1名選択中';
     }
     return `${filters.registrantUserIds.length}名選択中`;
   };
 
   // Remove hasFilter restriction so dropdown is always enabled
-  const memberOptionsEnabled = members.length > 0;
+  const memberOptionsEnabled = availableMembers.length > 0;
 
   if (!isOpen) return null;
 

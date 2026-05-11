@@ -12,11 +12,6 @@ type Props = {
   onSelect: (tags: string[]) => void;
 };
 
-// 初期表示用の共通タグ（プリセット）
-const PRESET_TAGS = [
-  'グルメ', 'スイーツ', 'ラーメン', 'カフェ'
-];
-
 export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) {
   const [userTags, setUserTags] = useState<Tag[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,7 +43,7 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
   // 表示するタグの計算（ユーザー作成タグ、重複排除）
   const allAvailableTags = useMemo(() => {
     const userNames = userTags.map((t: Tag) => t.name);
-    return Array.from(new Set([...PRESET_TAGS, ...userNames]));
+    return Array.from(new Set(userNames));
   }, [userTags]);
 
   // 検索フィルタリング
