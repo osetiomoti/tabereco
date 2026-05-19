@@ -1,56 +1,50 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Header } from '@/components/Header';
-import { useFilteredPosts } from '@/hooks/useFilteredPosts';
-import { Filter, ChevronLeft, ChevronRight, Plus, UtensilsCrossed, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, UtensilsCrossed, Calendar as CalendarIcon } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay, addMonths, subMonths, getDay, isToday } from 'date-fns';
+import { format, startOfMonth, endOfMonth, isSameDay, addMonths, subMonths, getDay, isToday, addDays, startOfWeek, isSameMonth } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { MonthPickerModal } from '@/components/MonthPickerModal';
-import { FilterModal } from '@/components/FilterModal';
-import { FilterChips } from '@/components/PostCard';
+import useSWR from 'swr';
+import { getPosts } from '@/lib/api/posts';
+
 export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const { posts, loading, filterState, updateFilter, activeFilterCount, removeFilter } = useFilteredPosts();
-  const { activeGroups, advancedFilters, activeTab, keyword } = filterState;
-
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [isMonthPickerOpen, setIsMonthPickerOpen] = useState(false);
 
-  const daysInMonth = eachDayOfInterval({
-    start: startOfMonth(currentDate),
-    end: endOfMonth(currentDate),
+  const { data: postsData, isLoading: loading } = useSWR('/api/posts', () => getPosts(), {
+    revalidateOnFocus: false,
+    dedupingInterval: 10000,
   });
+  const posts = postsData || [];
 
-  const startPadding = Array.from({ length: getDay(daysInMonth[0]) });
+  // 安全に月を切り替え、選択日を切り替え先の月の適切な日に調整する
+  const changeMonthSafe = (targetMonth: Date) => {
+    const targetDay = selectedDate.getDate();
+    const lastDay = endOfMonth(targetMonth).getDate();
+    const newDate = new Date(targetMonth);
+    newDate.setDate(Math.min(targetDay, lastDay));
+    setSelectedDate(newDate);
+    setCurrentDate(targetMonth);
+  };
 
-  const nextMonth = () => setCurrentDate(addMonths(currentDate, 1));
-  const prevMonth = () => setCurrentDate(subMonths(currentDate, 1));
+  const nextMonth = () => changeMonthSafe(addMonths(currentDate, 1));
+  const prevMonth = () => changeMonthSafe(subMonths(currentDate, 1));
+
+  // 常に42日分（6週間）のカレンダーを表示する
+  const monthStart = startOfMonth(currentDate);
+  const calendarStart = startOfWeek(monthStart);
+  const daysInMonth = Array.from({ length: 42 }).map((_, i) => addDays(calendarStart, i));
 
   const selectedPosts = posts.filter(p => isSameDay(new Date(p.visited_at), selectedDate));
 
   return (
     <div className="min-h-screen bg-gray-50 pb-32">
-      <Header title="マイカレンダー">
-        <button
-          onClick={() => setIsFilterModalOpen(true)}
-          className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-            activeFilterCount > 0
-              ? 'bg-orange-500 text-white shadow-sm'
-              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-          }`}
-        >
-          <Filter size={18} />
-          {activeFilterCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-white text-orange-500 text-[9px] font-black rounded-full flex items-center justify-center border border-orange-200">
-              {activeFilterCount}
-            </span>
-          )}
-        </button>
-      </Header>
+      <Header title="マイカレンダー" />
       
       <main className="max-w-2xl mx-auto animate-in fade-in duration-700">
         {/* 1. Monthly Switcher */}
@@ -72,10 +66,6 @@ export default function CalendarPage() {
           </button>
         </div>
         
-        <div className="px-4">
-           <FilterChips filters={advancedFilters} onRemove={removeFilter} />
-        </div>
-
         {/* 2. Calendar Grid */}
         <div className="bg-white mx-4 rounded-[2.5rem] p-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-100">
           <div className="grid grid-cols-7 mb-4">
@@ -87,32 +77,46 @@ export default function CalendarPage() {
           </div>
 
           <div className="grid grid-cols-7 gap-y-1">
-            {startPadding.map((_, i) => <div key={`pad-${i}`} />)}
             {daysInMonth.map((date) => {
               const dayPosts = posts.filter(p => isSameDay(new Date(p.visited_at), date));
               const isSelected = isSameDay(date, selectedDate);
-              const isTodayDate = isToday(date);
-              const hasImage = dayPosts.length > 0 && !!dayPosts[0].image_url;
+              const isCurrentMonth = isSameMonth(date, currentDate);
+              const hasImage = isCurrentMonth && dayPosts.length > 0 && !!dayPosts[0].image_url;
               const dIndex = getDay(date);
 
               return (
                 <button
                   key={date.toISOString()}
-                  onClick={() => setSelectedDate(date)}
+                  onClick={() => {
+                    setSelectedDate(date);
+                    if (!isCurrentMonth) {
+                      setCurrentDate(startOfMonth(date));
+                    }
+                  }}
                   className={`relative aspect-square flex flex-col items-center justify-center rounded-2xl transition-all overflow-hidden ${
-                    isSelected ? 'ring-2 ring-blue-400 ring-offset-1 z-10' : 'hover:bg-gray-50'
+                    isSelected 
+                      ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20 z-10' 
+                      : 'hover:bg-gray-50'
                   }`}
                 >
                   <span className={`text-[15px] font-black z-10 ${
-                    dIndex === 0 ? 'text-red-400' : dIndex === 6 ? 'text-blue-500' : 'text-gray-800'
-                  }`} style={hasImage ? { textShadow: '0 1px 4px rgba(255,255,255,0.9), 0 0 10px white' } : {}}>
+                    isSelected
+                      ? 'text-white'
+                      : !isCurrentMonth
+                        ? 'text-gray-200'
+                        : dIndex === 0
+                          ? 'text-red-400'
+                          : dIndex === 6
+                            ? 'text-blue-500'
+                            : 'text-gray-800'
+                  }`} style={hasImage && !isSelected ? { textShadow: '0 1px 4px rgba(255,255,255,0.9), 0 0 10px white' } : {}}>
                     {format(date, 'd')}
                   </span>
                   
                   {/* Indicators */}
                   <div className="mt-0.5 flex gap-0.5 h-1 z-10">
                     {dayPosts.length > 0 && (
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#e35688] shadow-[0_0_4px_white]" />
+                      <div className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-[#e35688]'} shadow-[0_0_4px_white]`} />
                     )}
                   </div>
 
@@ -120,7 +124,7 @@ export default function CalendarPage() {
                   {hasImage && (
                     <div className="absolute inset-0 -z-10">
                        <Image src={dayPosts[0].image_url!} alt="" fill className="object-cover" />
-                       <div className="absolute inset-0 bg-white/20" />
+                       <div className={`absolute inset-0 ${isSelected ? 'bg-orange-500/40' : 'bg-white/20'}`} />
                     </div>
                   )}
                 </button>
@@ -137,7 +141,9 @@ export default function CalendarPage() {
           </div>
 
           <div className="p-8 bg-white/50 backdrop-blur-sm border-b border-gray-100 flex flex-col items-center justify-center min-h-[300px] text-center space-y-6">
-            {selectedPosts.length > 0 ? (
+            {loading ? (
+              <div className="text-gray-400 font-bold text-sm">読み込み中...</div>
+            ) : selectedPosts.length > 0 ? (
               <div className="w-full space-y-4">
                 {selectedPosts.map(post => (
                   <Link 
@@ -189,25 +195,8 @@ export default function CalendarPage() {
         onClose={() => setIsMonthPickerOpen(false)}
         currentDate={currentDate}
         onSelect={(newDate) => {
-          setCurrentDate(newDate);
-          setSelectedDate(newDate);
+          changeMonthSafe(newDate);
         }}
-      />
-
-      <FilterModal 
-        isOpen={isFilterModalOpen}
-        onClose={() => setIsFilterModalOpen(false)}
-        onApply={(f) => {
-          const { activeGroups: newGroups, ...rest } = f as any;
-          updateFilter({ 
-            activeGroups: newGroups || ['all'],
-            advancedFilters: Object.keys(rest).some(k => rest[k] && rest[k] !== 'all' && rest[k] !== '' && rest[k] !== false) ? rest : null
-          });
-        }}
-        initialFilters={{
-          ...(advancedFilters || {}),
-          activeGroups: activeGroups,
-        } as any}
       />
     </div>
   );

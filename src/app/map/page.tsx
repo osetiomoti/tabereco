@@ -21,7 +21,7 @@ const MapView = dynamic(() => import('@/components/MapView'), {
 });
 
 export default function MapPage() {
-  const { posts, loading, filterState, updateFilter, activeFilterCount, joinedGroups, removeFilter } = useFilteredPosts();
+  const { posts, loading, filterState, updateFilter, activeFilterCount, joinedGroups, removeFilter, memberUsers } = useFilteredPosts();
   const { activeTab, keyword, activeGroups, advancedFilters, activeMapTag } = filterState;
 
   const [center, setCenter] = useState<{ lat: number, lng: number }>({ lat: 35.681236, lng: 139.767125 });
@@ -97,8 +97,27 @@ export default function MapPage() {
             <PlaceAutocomplete onPlaceSelected={handleSearchSelect} />
           </div>
 
+          {/* Active Filter Chips */}
+          <FilterChips
+            filters={{ ...(advancedFilters || {}), status: activeTab }}
+            onRemove={removeFilter}
+            className="pointer-events-auto"
+            users={memberUsers}
+          />
+
           {/* Floating Fast Tags */}
           {uniqueTags.length > 0 && (
+            (activeTab && activeTab !== 'all') ||
+            (keyword && keyword.trim() !== '') ||
+            (advancedFilters && (
+              (advancedFilters.tags && advancedFilters.tags.length > 0) ||
+              (advancedFilters.period && advancedFilters.period !== 'all') ||
+              advancedFilters.is_favorite ||
+              (advancedFilters.registrantUserIds && advancedFilters.registrantUserIds.length > 0) ||
+              advancedFilters.is_mine_only
+            )) ||
+            activeMapTag !== null
+          ) && (
             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 pointer-events-auto">
               <button
                  onClick={() => updateFilter({ activeMapTag: null })}

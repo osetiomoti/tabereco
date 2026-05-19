@@ -344,56 +344,42 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
               </div>
             )}
           </section>
-
           {/* ── Tag ── */}
-          <section className="space-y-3">
-            <div className="flex items-center justify-between">
-              <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">タグ</label>
-              {filters.tags.length > 0 && (
-                <button onClick={() => set('tags', [])} className="text-[11px] text-red-400 hover:text-red-500 font-medium">すべてクリア</button>
-              )}
-            </div>
-            
-            <div className="flex flex-wrap gap-2">
-              {filters.tags.map((tag: string) => (
-                <div key={tag} className="inline-flex items-center gap-1.5 bg-orange-50 text-orange-600 border border-orange-200 px-3 py-1.5 rounded-[10px] text-[13px] font-medium animate-in zoom-in">
-                  <Hash size={14} />
-                  <span>{tag}</span>
-                  <X size={14} className="cursor-pointer opacity-60 hover:opacity-100" onClick={() => set('tags', filters.tags.filter((t: string) => t !== tag))} />
-                </div>
-              ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setIsTagSelectorOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 border-2 border-dashed border-gray-200 text-gray-400 rounded-xl text-[13px] font-medium hover:border-orange-300 hover:text-orange-500 transition-all mt-1"
+          <section className="space-y-2">
+            <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">タグ</label>
+            <div 
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 bg-white flex items-center justify-between min-h-[48px] relative"
             >
-              <Plus size={16} />
-              タグを追加する
-            </button>
-            <div className="flex flex-wrap gap-2 mt-4">
-              {swrTags.slice(0, 12).map((tag: Tag) => {
-                const isSelected = filters.tags.includes(tag.name);
-                return (
-                  <button
-                    key={tag.id}
-                    onClick={() => {
-                      if (isSelected) set('tags', filters.tags.filter((t: string) => t !== tag.name));
-                      else set('tags', [...filters.tags, tag.name]);
-                    }}
-                    className={`px-3 py-1.5 rounded-lg text-[12px] font-medium transition-all ${
-                      isSelected
-                        ? 'bg-orange-100 text-orange-700 border border-orange-300'
-                        : 'bg-gray-50 text-gray-500 border border-gray-100 hover:bg-gray-100'
-                    }`}
-                  >
-                    #{tag.name}
-                  </button>
-                );
-              })}
+              <div className="flex flex-wrap gap-1.5 items-center flex-1 pr-16 py-0.5">
+                {filters.tags.length === 0 ? (
+                  <span className="text-gray-300 text-[14px]">タグが選択されていません</span>
+                ) : (
+                  filters.tags.map((tag: string) => (
+                    <div key={tag} className="inline-flex items-center gap-1 bg-[#FAF1EE] text-[#A86E64] border border-[#F3E2DD] px-2.5 py-0.5 rounded-full text-[12px] font-medium animate-in zoom-in">
+                      <span>#{tag}</span>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          set('tags', filters.tags.filter((t: string) => t !== tag));
+                        }}
+                        className="hover:opacity-75 transition-opacity ml-1 flex items-center justify-center"
+                      >
+                        <X size={10} className="text-[#A86E64] stroke-[2.5]" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsTagSelectorOpen(true)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-[13px] font-bold text-orange-500 hover:text-orange-600 active:scale-95 transition-all shrink-0 py-1"
+              >
+                編集
+              </button>
             </div>
-            <TagSelector
+             <TagSelector
               isOpen={isTagSelectorOpen}
               onClose={() => setIsTagSelectorOpen(false)}
               selectedTags={filters.tags}

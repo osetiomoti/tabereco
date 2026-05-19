@@ -17,6 +17,8 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
   const { tags: swrTags, isLoading: swrLoading } = useMyTags();
   const [searchQuery, setSearchQuery] = useState('');
   const [tempSelected, setTempSelected] = useState<string[]>([]);
+  const [isCreating, setIsCreating] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   // モーダルが開いた時に初期化
@@ -24,6 +26,8 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
     if (isOpen) {
       setTempSelected([...selectedTags]);
       setSearchQuery('');
+      setIsCreating(false);
+      setNewTagName('');
     }
   }, [isOpen]);
 
@@ -58,6 +62,25 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
       setTempSelected((prev: string[]) => [...prev, tagName]);
       setSearchQuery('');
     }
+  };
+
+  const handleCreateInlineTag = () => {
+    const name = newTagName.trim().replace(/^#/, '');
+    if (name) {
+      if (!tempSelected.includes(name)) {
+        setTempSelected((prev: string[]) => [...prev, name]);
+      }
+      setIsCreating(false);
+      setNewTagName('');
+    }
+  };
+
+  const handleBlur = () => {
+    setTimeout(() => {
+      if (!newTagName.trim()) {
+        setIsCreating(false);
+      }
+    }, 200);
   };
 
   const handleConfirm = () => {
@@ -133,14 +156,42 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
           <div className="flex flex-wrap gap-3">
             {/* Persistent "+ 新しいタグ" chip (always visible) */}
             {!isLoading && (
-              <button
-                type="button"
-                onClick={() => searchInputRef.current?.focus()}
-                className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-gray-200 bg-white text-gray-500 font-bold text-sm transition-all hover:border-gray-300 active:scale-[0.97]"
-              >
-                <Plus size={14} strokeWidth={2.5} />
-                <span>新しいタグ</span>
-              </button>
+              isCreating ? (
+                <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full border border-[#F3E2DD] bg-[#FAF1EE] text-[#A86E64] animate-in zoom-in">
+                  <span className="text-[13px] font-bold opacity-60">#</span>
+                  <input
+                    type="text"
+                    placeholder="タグ名を入力"
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    onBlur={handleBlur}
+                    className="bg-transparent border-none p-0 text-[13px] font-medium text-gray-700 placeholder:text-gray-300 focus:ring-0 w-28 focus:outline-none"
+                    autoFocus
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleCreateInlineTag();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCreateInlineTag}
+                    className="text-[13px] font-bold text-[#E6557E] hover:text-[#D1446C] transition-colors whitespace-nowrap ml-1"
+                  >
+                    追加
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsCreating(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-gray-200 bg-white text-gray-500 font-bold text-sm transition-all hover:border-gray-300 active:scale-[0.97]"
+                >
+                  <Plus size={14} strokeWidth={2.5} />
+                  <span>新しいタグ</span>
+                </button>
+              )
             )}
 
             {/* Add / Select Chip - shows when typing */}

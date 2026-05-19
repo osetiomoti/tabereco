@@ -13,6 +13,7 @@ const fetcher = (url: string) => fetch(url).then(res => res.json());
 export function useFilteredPosts() {
   const { filterState, updateFilter } = useSharedFilter();
   const { activeTab, keyword, activeGroups, advancedFilters, activeMapTag } = filterState;
+  const [memberUsers, setMemberUsers] = useState<{ id: string; name: string }[]>([]);
 
   // 1. Fetch own posts
   const { data: ownPostsData, isLoading: ownLoading } = useSWR<Post[]>('/api/posts', () => getPosts(), {
@@ -26,13 +27,49 @@ export function useFilteredPosts() {
     dedupingInterval: 60000,
   });
 
+  const joinedGroups = groupsData || [];
+
+  // Load group members when joinedGroups changes
+  useEffect(() => {
+    if (joinedGroups.length > 0) {
+      const loadAllMembers = async () => {
+        const map = new Map<string, { id: string; name: string }>();
+        // Add own profile first
+        try {
+          const profileRes = await fetch('/api/profile');
+          const profileJson = await profileRes.json();
+          if (profileJson.data) {
+            map.set(profileJson.data.id, { id: profileJson.data.id, name: profileJson.data.name || '自分' });
+          }
+        } catch (e) {
+          console.error(e);
+        }
+
+        await Promise.all(
+          joinedGroups.map(async (g: any) => {
+            try {
+              const r = await fetch(`/api/groups/${g.id}/members`);
+              const j = await r.json();
+              (j.data || []).forEach((m: any) => {
+                map.set(m.id, { id: m.id, name: m.name });
+              });
+            } catch (e) {
+              console.error(e);
+            }
+          })
+        );
+        setMemberUsers(Array.from(map.values()));
+      };
+      loadAllMembers();
+    }
+  }, [joinedGroups]);
+
   // 3. Fetch group posts for each group
   // We need to fetch multiple groups. SWR doesn't support multiple keys easily, 
   // but we can map over groupsData if it exists.
   // For simplicity, we'll use a combined fetcher or just fetch sequentially if needed.
   // Actually, we can fetch all group posts in one go if the API supports it, or use a custom key.
   
-  const joinedGroups = groupsData || [];
   
   // Custom fetcher for all group posts
   const groupPostsKey = joinedGroups.length > 0 ? ['/api/groups/posts', joinedGroups.map((g: any) => g.id).join(',')] : null;
@@ -153,5 +190,6 @@ export function useFilteredPosts() {
     joinedGroups,
     removeFilter,
     activeFilterCount,
+    memberUsers,
   };
 }

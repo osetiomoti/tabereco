@@ -342,8 +342,17 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
   );
 }
 
-/** フィルタチップ用コンポーネント */
-export function FilterChips({ filters, onRemove }: { filters: any, onRemove: (key: string | string[]) => void }) {
+export function FilterChips({ 
+  filters, 
+  onRemove, 
+  className, 
+  users = [] 
+}: { 
+  filters: any, 
+  onRemove: (key: string | string[]) => void, 
+  className?: string, 
+  users?: Array<{ id: string, name: string }> 
+}) {
   if (!filters) return null;
 
   const activeChips: Array<{ key: string, label: string, color: string, isTag?: boolean, tagValue?: string }> = [];
@@ -365,13 +374,6 @@ export function FilterChips({ filters, onRemove }: { filters: any, onRemove: (ke
     };
     activeChips.push({ key: 'period', label: `🗓️ ${periodMap[filters.period] || filters.period}`, color: 'bg-orange-50 text-orange-500 border-orange-100' });
   }
-
-  // Status
-  if (filters.status && filters.status !== 'all') {
-    const statusLabel = filters.status === 'visited' ? '行った' : '行きたい';
-    activeChips.push({ key: 'status', label: `📍 ${statusLabel}`, color: 'bg-blue-50 text-blue-500 border-blue-100' });
-  }
-  
   // Favorite
   if (filters.is_favorite) {
     activeChips.push({ key: 'is_favorite', label: '❤️ お気に入り', color: 'bg-red-50 text-red-500 border-red-100' });
@@ -379,7 +381,17 @@ export function FilterChips({ filters, onRemove }: { filters: any, onRemove: (ke
 
   // Registrant
   if (filters.registrantUserIds && filters.registrantUserIds.length > 0) {
-    const label = filters.registrantUserIds.length === 1 ? '👤 投稿者' : `👤 ${filters.registrantUserIds.length}名の投稿者`;
+    let label = '👤 投稿者';
+    if (filters.registrantUserIds.length === 1) {
+      const userId = filters.registrantUserIds[0];
+      const user = users.find((u: { id: string, name: string }) => u.id === userId);
+      label = `👤 ${user ? user.name : '投稿者'}`;
+    } else {
+      const names = filters.registrantUserIds
+        .map((id: string) => users.find((u: { id: string, name: string }) => u.id === id)?.name)
+        .filter(Boolean);
+      label = names.length > 0 ? `👤 ${names.join(', ')}` : `👤 ${filters.registrantUserIds.length}名の投稿者`;
+    }
     activeChips.push({ key: 'registrantUserIds', label, color: 'bg-indigo-50 text-indigo-500 border-indigo-100' });
   }
 
@@ -391,7 +403,7 @@ export function FilterChips({ filters, onRemove }: { filters: any, onRemove: (ke
   if (activeChips.length === 0) return null;
 
   return (
-    <div className="flex flex-wrap gap-2 mb-6 animate-in slide-in-from-left duration-500">
+    <div className={`flex flex-wrap gap-2 mb-6 animate-in slide-in-from-left duration-500 ${className || ''}`}>
       {activeChips.map((chip) => (
         <span 
           key={chip.key}

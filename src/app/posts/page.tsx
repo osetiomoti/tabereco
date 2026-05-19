@@ -13,7 +13,7 @@ import { FloatingActionButton } from '@/components/FloatingActionButton';
 const MapView = dynamic(() => import('@/components/MapView'), { ssr: false });
 
 export default function PostsPage() {
-  const { posts, loading, filterState, updateFilter, activeFilterCount, removeFilter } = useFilteredPosts();
+  const { posts, loading, filterState, updateFilter, activeFilterCount, removeFilter, memberUsers } = useFilteredPosts();
   const { activeTab, keyword, activeGroups, advancedFilters } = filterState;
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
@@ -77,6 +77,7 @@ export default function PostsPage() {
           <FilterChips 
             filters={{ ...(advancedFilters || {}), status: activeTab }} 
             onRemove={removeFilter} 
+            users={memberUsers}
           />
         </div>
 
