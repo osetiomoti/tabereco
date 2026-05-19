@@ -1,158 +1,120 @@
 # モグレコ (MoguReco) 🍜
 
-食事の写真・内容・評価を記録する Instagram 風の食事記録 Web アプリです。
+食事の写真・内容・評価を記録し、家族やグループで共有する Instagram 風の食事記録 Web アプリです。
+
+---
+
+## 主な機能
+
+| 機能 | 説明 |
+|---|---|
+| **タイムライン** | 記録した食事を一覧表示（すべて、行った、行きたい）。グループメンバーの投稿も併せて表示。 |
+| **マップ検索 (Google Map)** | 記録した店舗の位置にピンを表示。現在地取得、店名検索、タグや期間、投稿者による高度な絞り込みが可能。 |
+| **マイカレンダー** | 訪問日ごとにカレンダー上に食事アイコンを表示。いつ・どこで食べたかをカレンダー形式で視覚的に振り返る。 |
+| **マイランキング** | 登録したタグ（例: `#ラーメン`, `#カレー`）ごとに、自分のお気に入り店をドラッグ＆ドロップで並び替えて管理。 |
+| **グループ共有** | 家族や友人などとグループを作成。招待コードでグループに参加し、投稿の公開設定（グループ限定）で手軽に共有。 |
+| **タグ管理** | 投稿に複数タグを紐付け。タグ管理画面から並び順（表示優先度）を変更可能。 |
+| **画像管理 (S3 + CloudFront)** | 食事の写真を複数枚アップロード可能。AWS S3 に保存され、CloudFront を通じて高速配信。 |
+
+---
 
 ## 技術スタック
 
-- **フレームワーク**: Next.js 14 (App Router)
+- **フロントエンド / バックエンド**: Next.js 16 (App Router / Turbopack)
 - **言語**: TypeScript
-- **スタイリング**: Tailwind CSS
-- **バックエンド**: Supabase (PostgreSQL + Auth + Storage)
+- **データベース**: Neon PostgreSQL
+- **ORM**: Prisma
+- **インフラ / ストレージ**: AWS S3 + Amazon CloudFront
+- **認証**: AWS Cognito (認証ガード / APIプロキシ)
+- **地図機能**: Google Maps API (`@react-google-maps/api`)
+- **ドラッグ＆ドロップ**: `@dnd-kit/core` / `@dnd-kit/sortable`
+- **スタイリング**: Tailwind CSS + Vanilla CSS
 
 ---
 
 ## セットアップ手順
 
-### 1. Node.js のインストール
+### 1. 依存関係のインストール
 
-[https://nodejs.org/](https://nodejs.org/) から LTS 版をインストール。
-
-インストール確認:
-```bash
-node --version  # v18 以上
-npm --version
-```
-
-### 2. Supabase プロジェクトの作成
-
-1. [https://supabase.com](https://supabase.com) でアカウント作成
-2. **New project** でプロジェクトを作成
-3. **Settings → API** から以下をコピー:
-   - `Project URL`
-   - `anon public` キー
-
-### 3. データベースのセットアップ
-
-Supabase ダッシュボード → **SQL Editor** → **New query** で以下を実行:
-
-```sql
--- supabase/migrations/001_init.sql の内容をコピーして実行
-```
-
-### 4. Storage バケットの作成
-
-Supabase ダッシュボード → **Storage** → **New bucket**:
-
-| 項目 | 値 |
-|---|---|
-| Name | `meal-images` |
-| Public | ✅ ON |
-
-バケット作成後、**Policies** タブで以下を追加:
-
-**ポリシー 1: 認証ユーザーのアップロード許可**
-- Policy name: `Allow authenticated uploads`
-- Allowed operation: `INSERT`
-- Target roles: `authenticated`
-- WITH CHECK expression: `true`
-
-**ポリシー 2: 公開読み取り**
-- Policy name: `Allow public read`
-- Allowed operation: `SELECT`
-- Target roles: `public`
-- USING expression: `true`
-
-### 5. ユーザーの追加
-
-Supabase ダッシュボード → **Authentication → Users → Invite user** でメールアドレスを招待。
-
-### 6. 環境変数の設定
-
-`.env.local.example` をコピーして `.env.local` を作成:
+プロジェクトルートディレクトリで以下を実行します：
 
 ```bash
-cp .env.local.example .env.local
+npm install
 ```
 
-`.env.local` を編集:
+### 2. 環境変数の設定
+
+`.env` ファイルを作成し、以下の項目を設定します：
 
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://あなたのプロジェクトID.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=あなたのanonキー
+# --- DATABASE (Prisma) ---
+# Neon PostgreSQL 接続情報 (Migration用の Direct URL と App用の Pooler URL)
+DATABASE_URL="postgresql://username:password@pooler-host/dbname?sslmode=require"
+DIRECT_URL="postgresql://username:password@direct-host/dbname?sslmode=require"
+
+# --- AWS COGNITO (Auth) ---
+COGNITO_REGION="ap-northeast-1"
+COGNITO_USER_POOL_ID="your-user-pool-id"
+COGNITO_CLIENT_ID="your-client-id"
+COGNITO_CLIENT_SECRET="your-client-secret"
+COGNITO_DOMAIN="your-cognito-domain.auth.ap-northeast-1.amazoncognito.com"
+
+# --- AWS COGNITO IDENTITY POOL (S3 Credentials) ---
+COGNITO_IDENTITY_POOL_ID="ap-northeast-1:identity-pool-uuid"
+
+# --- AWS S3 (Storage) ---
+AWS_S3_BUCKET_NAME="your-s3-bucket-name"
+AWS_REGION="ap-northeast-1"
+NEXT_PUBLIC_CLOUDFRONT_DOMAIN="your-cloudfront-domain.cloudfront.net"
+
+# --- APP SETTINGS ---
+NEXT_PUBLIC_APP_URL="http://localhost:4000"
+
+# --- GOOGLE MAPS ---
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY="your-google-maps-api-key"
 ```
 
-### 7. 依存関係のインストールと起動
+### 3. データベースマイグレーション
+
+Prisma スキーマをデータベースに適用し、クライアントコードを生成します：
 
 ```bash
-# プロジェクトディレクトリに移動
-cd mogureco
+npx prisma migrate dev
+npx prisma generate
+```
 
-# 依存関係をインストール
-npm install
+### 4. 開発サーバーの起動
 
-# 開発サーバーを起動
+```bash
 npm run dev
 ```
 
-ブラウザで [http://localhost:3000](http://localhost:3000) を開く。
+開発サーバーが起動したら、ブラウザで [http://localhost:4000](http://localhost:4000) を開きます。
 
 ---
 
 ## ディレクトリ構成
 
 ```
-mogureco/
-├── app/
-│   ├── layout.tsx          # ルートレイアウト
-│   ├── page.tsx            # → /posts にリダイレクト
-│   ├── globals.css
-│   ├── login/
-│   │   └── page.tsx        # ログイン
-│   └── posts/
-│       ├── page.tsx        # 投稿一覧
-│       ├── new/page.tsx    # 新規投稿
-│       └── [id]/
-│           ├── page.tsx    # 詳細
-│           └── edit/page.tsx # 編集
-├── components/
-│   ├── Header.tsx
-│   ├── PostCard.tsx
-│   ├── StarRating.tsx
-│   ├── ImageUpload.tsx
-│   ├── PostForm.tsx
-│   └── DeleteButton.tsx
-├── lib/
-│   ├── types.ts
-│   ├── utils.ts
-│   ├── supabase/
-│   │   ├── client.ts       # ブラウザ用
-│   │   └── server.ts       # サーバー用
-│   └── api/
-│       └── posts.ts        # CRUD + 画像アップロード
-├── middleware.ts            # 認証ガード
-└── supabase/
-    └── migrations/
-        └── 001_init.sql    # DB スキーマ
+tabereco/
+├── prisma/
+│   ├── schema.prisma       # データベーススキーマ定義
+│   └── migrations/         # データベースマイグレーション履歴
+├── src/
+│   ├── app/                # Next.js App Router (各画面および API)
+│   │   ├── api/            # 投稿、グループ、ユーザー、S3アップロード用 API
+│   │   ├── calendar/       # マイカレンダー画面
+│   │   ├── groups/         # グループ詳細・編集画面
+│   │   ├── login/          # ログイン画面
+│   │   ├── map/            # 店舗マップ検索画面
+│   │   ├── mypage/         # マイページ (統計情報)
+│   │   ├── posts/          # タイムライン (一覧・詳細・新規作成・編集)
+│   │   ├── rankings/       # タグ別お気に入り店ランキング画面
+│   │   ├── settings/       # 各種設定画面
+│   │   └── tags/           # タグ管理・ソート画面
+│   ├── components/         # 共通 UI コンポーネント (Header, FilterModal, TagSelector等)
+│   ├── hooks/              # カスタム React フック (データフェッチ、状態共有用)
+│   ├── lib/                # 共通ユーティリティ (prisma クライアント、認証ヘルパー)
+│   ├── types/              # TypeScript 型定義
+│   └── middleware.ts       # 認証ガード用のミドルウェア
 ```
-
----
-
-## 機能一覧
-
-| 機能 | 説明 |
-|---|---|
-| ログイン | メール + パスワード認証 |
-| 投稿一覧 | グリッド表示、新しい順 |
-| 投稿作成 | 写真・食事名・店名・評価・コメント・日付 |
-| 投稿詳細 | 大きな画像 + 詳細情報 |
-| 投稿編集 | 自分の投稿のみ |
-| 投稿削除 | 自分の投稿のみ (2回クリック確認) |
-| 画像管理 | Supabase Storage に自動アップロード/削除 |
-
----
-
-## セキュリティ
-
-- Row Level Security (RLS) で自分の投稿のみアクセス可能
-- Supabase Auth による JWT 認証
-- ミドルウェアで未認証ユーザーをログインページへリダイレクト
