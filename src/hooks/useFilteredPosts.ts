@@ -36,7 +36,7 @@ export function useFilteredPosts() {
         const map = new Map<string, { id: string; name: string }>();
         // Add own profile first
         try {
-          const profileRes = await fetch('/api/profile');
+          const profileRes = await fetch('/api/profiles/me');
           const profileJson = await profileRes.json();
           if (profileJson.data) {
             map.set(profileJson.data.id, { id: profileJson.data.id, name: profileJson.data.name || '自分' });
