@@ -62,7 +62,7 @@ export default function HomePage() {
         setWantToGoPosts(Array.isArray(wantToGo) ? wantToGo : []);
 
         // 2. Fetch current user profile to get own ID
-        const profileRes = await fetch('/api/profile');
+        const profileRes = await fetch('/api/profiles/me');
         const profileJson = await profileRes.json();
         const myId = profileJson.data?.id || null;
         setMyUserId(myId);
