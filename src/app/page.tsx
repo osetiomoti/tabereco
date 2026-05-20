@@ -24,8 +24,10 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { useRouter } from 'next/navigation';
 
 export default function HomePage() {
+  const router = useRouter();
   const [visitedPosts, setVisitedPosts] = useState<Post[]>([]);
   const [wantToGoPosts, setWantToGoPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
@@ -425,7 +427,14 @@ export default function HomePage() {
                 >
                   <div className="flex gap-3 items-start">
                     {/* Member Avatar */}
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 text-white font-black flex items-center justify-center text-sm shadow-inner shrink-0">
+                    <div 
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        router.push(`/mypage?userId=${act.user_id}`);
+                      }}
+                      className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 text-white font-black flex items-center justify-center text-sm shadow-inner shrink-0 cursor-pointer hover:scale-105 transition-transform"
+                    >
                       {act.user?.name ? act.user.name[0].toUpperCase() : 'U'}
                     </div>
 
@@ -433,7 +442,16 @@ export default function HomePage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-baseline mb-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-xs font-black text-gray-800">{act.user?.name || 'ゲスト'}</span>
+                          <span 
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              router.push(`/mypage?userId=${act.user_id}`);
+                            }}
+                            className="text-xs font-black text-gray-800 cursor-pointer hover:underline"
+                          >
+                            {act.user?.name || 'ゲスト'}
+                          </span>
                           <span className="text-[9px] font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded-md">
                             {act.__group_name}
                           </span>

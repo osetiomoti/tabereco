@@ -230,28 +230,30 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
             ) : (
               members.map((member) => (
                 <div key={member.id} className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
-                  <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden flex-shrink-0 relative border-2 border-white shadow">
-                    {member.avatar_url ? (
-                      <Image src={member.avatar_url} alt={member.name} fill className="object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-100 to-orange-200">
-                        <User size={20} className="text-orange-400" />
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <p className="font-black text-gray-900 truncate">{member.name}</p>
-                      {member.role === 'admin' && (
-                        <span className="flex items-center gap-1 text-[10px] font-black text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100">
-                          <Crown size={10} />管理者
-                        </span>
+                  <Link href={`/mypage?userId=${member.id}`} className="flex items-center gap-4 flex-1 min-w-0 hover:opacity-85 transition-opacity">
+                    <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden flex-shrink-0 relative border-2 border-white shadow">
+                      {member.avatar_url ? (
+                        <Image src={member.avatar_url} alt={member.name} fill className="object-cover" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-100 to-orange-200">
+                          <User size={20} className="text-orange-400" />
+                        </div>
                       )}
                     </div>
-                    <p className="text-[11px] text-gray-400 font-bold">
-                      {new Date(member.joined_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}参加
-                    </p>
-                  </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="font-black text-gray-900 truncate">{member.name}</p>
+                        {member.role === 'admin' && (
+                          <span className="flex items-center gap-1 text-[10px] font-black text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full border border-orange-100">
+                            <Crown size={10} />管理者
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-gray-400 font-bold">
+                        {new Date(member.joined_at).toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' })}参加
+                      </p>
+                    </div>
+                  </Link>
                   {isAdmin && member.role !== 'admin' && (
                     <button
                       onClick={() => handleRemoveMember(member.id, member.name)}

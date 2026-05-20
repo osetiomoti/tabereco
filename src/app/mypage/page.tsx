@@ -17,14 +17,40 @@ export default function MyPage() {
   const router = useRouter();
   const { updateFilter } = useSharedFilter();
   const [activeTab, setActiveTab] = useState<'all' | 'visited' | 'want_to_go'>('all');
-  const { data: userData } = useSWR<{ success: boolean, data: any }>('/api/profiles/me', (url: string) => fetch(url).then(r => r.json()));
-  const { data: postsData, isLoading: postsLoading } = useSWR<Post[]>('/api/posts?is_mine=true', () => getPosts({ is_mine: true }));
-  const { data: friendsData } = useSWR<any[]>('/api/friends', () => import('@/lib/api/friends').then(m => m.getFriends()));
 
-  const user = userData?.data || null;
-  const posts: Post[] = postsData || [];
-  const loading = postsLoading;
-  const friendsCount = friendsData?.length || 0;
+  const [targetUserId, setTargetUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      setTargetUserId(params.get('userId'));
+    }
+  }, []);
+
+  const { data: myUserData } = useSWR<{ success: boolean, data: any }>(
+    !targetUserId ? '/api/profiles/me' : null,
+    (url: string) => fetch(url).then(r => r.json())
+  );
+  const { data: targetUserData } = useSWR<{ success: boolean, data: any }>(
+    targetUserId ? `/api/profiles/${targetUserId}` : null,
+    (url: string) => fetch(url).then(r => r.json())
+  );
+
+  const { data: ownPostsData, isLoading: ownPostsLoading } = useSWR<Post[]>(
+    !targetUserId ? '/api/posts?is_mine=true' : null,
+    () => getPosts({ is_mine: true })
+  );
+
+  const { data: friendsData } = useSWR<any[]>(
+    !targetUserId ? '/api/friends' : null,
+    () => import('@/lib/api/friends').then(m => m.getFriends())
+  );
+
+  const user = targetUserId ? targetUserData?.data?.user : myUserData?.data;
+  const posts: Post[] = targetUserId ? (targetUserData?.data?.posts || []) : (ownPostsData || []);
+  const loading = targetUserId ? !targetUserData : ownPostsLoading;
+  const friendsCount = targetUserId ? (targetUserData?.data?.friendsCount || 0) : (friendsData?.length || 0);
+  const groupsCount = targetUserId ? (targetUserData?.data?.groupsCount || 0) : (user?.groups_joined || 0);
 
   const [sortField, setSortField] = useState<'date' | 'rating'>('date');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
@@ -81,7 +107,11 @@ export default function MyPage() {
 
   return (
     <div className="min-h-screen bg-white pb-[100px]">
-      <Header title={user?.name || 'マイページ'} />
+      <Header 
+        title={targetUserId ? `${user?.name || 'ともだち'}のページ` : (user?.name || 'マイページ')} 
+        hideSettings={!!targetUserId}
+        showBackButton={!!targetUserId}
+      />
 
       {/* Profile Info */}
       <div className="px-6 py-6 flex items-center justify-between">
@@ -93,36 +123,52 @@ export default function MyPage() {
               <UserPlaceholder />
             )}
           </div>
-          <button className="absolute bottom-0 right-0 w-7 h-7 bg-gray-800 text-white rounded-full flex items-center justify-center border-2 border-white shadow-sm hover:scale-105 transition-transform" onClick={() => router.push('/settings')}>
-            <Plus size={16} strokeWidth={3} />
-          </button>
+          {!targetUserId && (
+            <button className="absolute bottom-0 right-0 w-7 h-7 bg-gray-800 text-white rounded-full flex items-center justify-center border-2 border-white shadow-sm hover:scale-105 transition-transform" onClick={() => router.push('/settings')}>
+              <Plus size={16} strokeWidth={3} />
+            </button>
+          )}
         </div>
 
         <div className="flex-1 flex justify-around ml-6">
           <StatBox count={visitedCount} label="行った" />
           <StatBox count={wantCount} label="行きたい" />
-          <Link href="/groups" className="hover:scale-105 transition-transform">
-            <StatBox count={friendsCount} label="ともだち" />
-          </Link>
-          <Link href="/groups?tab=groups" className="hover:scale-105 transition-transform">
-            <StatBox count={user?.groups_joined || 0} label="グループ" />
-          </Link>
+          {!targetUserId ? (
+            <Link href="/groups" className="hover:scale-105 transition-transform">
+              <StatBox count={friendsCount} label="ともだち" />
+            </Link>
+          ) : (
+            <div className="text-center">
+              <StatBox count={friendsCount} label="ともだち" />
+            </div>
+          )}
+          {!targetUserId ? (
+            <Link href="/groups?tab=groups" className="hover:scale-105 transition-transform">
+              <StatBox count={groupsCount} label="グループ" />
+            </Link>
+          ) : (
+            <div className="text-center">
+              <StatBox count={groupsCount} label="グループ" />
+            </div>
+          )}
         </div>
       </div>
 
       {/* New record button */}
-      <div className="px-4 mb-6">
-        <Link
-          href="/posts/new"
-          className="w-full py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl font-black text-lg flex items-center justify-center gap-3 shadow-lg shadow-orange-500/20 hover:scale-[1.01] active:scale-98 transition-all"
-        >
-          <div className="p-1.5 bg-white/20 rounded-[10px]"><Plus size={22} strokeWidth={3} /></div>
-          <span>新しく記録する</span>
-        </Link>
-      </div>
+      {!targetUserId && (
+        <div className="px-4 mb-6">
+          <Link
+            href="/posts/new"
+            className="w-full py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl font-black text-lg flex items-center justify-center gap-3 shadow-lg shadow-orange-500/20 hover:scale-[1.01] active:scale-98 transition-all"
+          >
+            <div className="p-1.5 bg-white/20 rounded-[10px]"><Plus size={22} strokeWidth={3} /></div>
+            <span>新しく記録する</span>
+          </Link>
+        </div>
+      )}
 
       {/* Action Row */}
-      <div className="px-4 mb-5 grid grid-cols-4 gap-2">
+      <div className={`px-4 mb-5 grid ${targetUserId ? 'grid-cols-2' : 'grid-cols-4'} gap-2`}>
         <button onClick={() => setIsTagSelectorOpen(true)} className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
           <Hash size={20} strokeWidth={2.5} className="mb-0.5" />
           <span className="text-[9px] font-black tracking-wider">タグ</span>
@@ -144,14 +190,18 @@ export default function MyPage() {
             </div>
           )}
         </div>
-        <button onClick={goToMap} className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
-          <MapPin size={20} strokeWidth={2.5} className="mb-0.5" />
-          <span className="text-[9px] font-black tracking-wider">マップ</span>
-        </button>
-        <button onClick={goToCalendar} className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
-          <Calendar size={20} strokeWidth={2.5} className="mb-0.5" />
-          <span className="text-[9px] font-black tracking-wider">カレンダー</span>
-        </button>
+        {!targetUserId && (
+          <>
+            <button onClick={goToMap} className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+              <MapPin size={20} strokeWidth={2.5} className="mb-0.5" />
+              <span className="text-[9px] font-black tracking-wider">マップ</span>
+            </button>
+            <button onClick={goToCalendar} className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+              <Calendar size={20} strokeWidth={2.5} className="mb-0.5" />
+              <span className="text-[9px] font-black tracking-wider">カレンダー</span>
+            </button>
+          </>
+        )}
       </div>
 
       {/* Tags Chips */}

@@ -6,6 +6,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Heart, CheckCircle2, Calendar, Hash, User, MoreHorizontal, Star, MapPin, X } from 'lucide-react';
 import { useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
 
 type Props = { 
   post: Post;
@@ -13,6 +14,7 @@ type Props = {
 };
 
 export function PostCard({ post, layout = 'vertical' }: Props) {
+  const router = useRouter();
   if (layout === 'horizontal') {
     return (
       <Link href={`/posts/${post.id}`} className="group block mb-4">
@@ -226,7 +228,14 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
       <Link href={`/posts/${post.id}`} className="block group">
         {/* Header: User Info */}
         <div className="px-4 flex items-center justify-between mb-3 mt-3">
-          <div className="flex items-center gap-3">
+          <div 
+            className="flex items-center gap-3 cursor-pointer hover:opacity-85 transition-opacity"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              router.push(`/mypage?userId=${post.user_id}`);
+            }}
+          >
             {post.user?.avatar_url ? (
               <div className="w-8 h-8 rounded-full overflow-hidden relative shadow-sm border border-gray-50">
                 <Image src={post.user.avatar_url} alt={post.user.name || 'User'} fill className="object-cover" sizes="32px" />

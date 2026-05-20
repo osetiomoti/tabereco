@@ -239,12 +239,14 @@ export default function FriendsPage() {
                 <div className="space-y-2">
                   {friends.map(f => (
                     <div key={f.friendship_id} className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
-                      <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center overflow-hidden relative flex-shrink-0 border-2 border-white shadow">
-                        {f.avatar_url ? <Image src={f.avatar_url} alt={f.name} fill className="object-cover" /> : <User size={20} className="text-orange-400" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-black text-gray-900 truncate">{f.name}</p>
-                      </div>
+                      <Link href={`/mypage?userId=${f.id}`} className="flex items-center gap-4 flex-1 min-w-0 hover:opacity-85 transition-opacity">
+                        <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center overflow-hidden relative flex-shrink-0 border-2 border-white shadow">
+                          {f.avatar_url ? <Image src={f.avatar_url} alt={f.name} fill className="object-cover" /> : <User size={20} className="text-orange-400" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-black text-gray-900 truncate">{f.name}</p>
+                        </div>
+                      </Link>
                       <button
                         onClick={() => handleRemoveFriend(f.friendship_id)}
                         className="w-9 h-9 flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 rounded-xl transition-all"
