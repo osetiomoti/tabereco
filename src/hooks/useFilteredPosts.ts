@@ -98,10 +98,10 @@ export function useFilteredPosts() {
     ownPostsCache.forEach((p: Post) => combinedMap.set(p.id, p));
 
     // Merge group posts on top
-    if (activeGroups.length === 0) {
-      // If no group filter, show all joined groups' posts
+    if (activeGroups.includes('all')) {
+      // If 'all', show all joined groups' posts
       groupPostsCache.forEach((g: any) => g.posts.forEach((p: Post) => combinedMap.set(p.id, p)));
-    } else {
+    } else if (activeGroups.length > 0) {
       // Only selected groups
       groupPostsCache.forEach((g: any) => {
         if (activeGroups.includes(g.groupId)) {
@@ -112,14 +112,15 @@ export function useFilteredPosts() {
 
     let result = Array.from(combinedMap.values()) as Post[];
 
-    // 自分の投稿を識別するためのセット（user_id ではなく post.id で判定し確実に捕捉）
+    // 自分の投稿を識別するためのセットとID
     const ownPostIds = new Set(ownPostsCache.map((p: Post) => p.id));
+    const myId = ownPostsCache[0]?.user_id;
 
     // ① 「自分の投稿を含める」がOFFの場合、自分の投稿を除外
     // デフォルト（advancedFilters 未設定時）は true = 自分の投稿を表示
     const includeMine = advancedFilters?.include_mine ?? true;
     if (!includeMine) {
-      result = result.filter(p => !ownPostIds.has(p.id));
+      result = result.filter(p => myId ? p.user_id !== myId : !ownPostIds.has(p.id));
     }
 
     if (activeTab !== 'all') {
@@ -150,8 +151,9 @@ export function useFilteredPosts() {
     // 自分の投稿は include_mine で制御済みなので、ここでは他人投稿のみに適用
     if (advancedFilters?.registrantUserIds && advancedFilters.registrantUserIds.length > 0) {
       result = result.filter((p: Post) => {
-        if (ownPostIds.has(p.id)) return true; // 自分の投稿は include_mine で制御済み
-        return advancedFilters.registrantUserIds.includes((p as any).user_id);
+        const isMine = myId ? p.user_id === myId : ownPostIds.has(p.id);
+        if (isMine) return true; // 自分の投稿は include_mine で制御済み
+        return advancedFilters.registrantUserIds.includes(p.user_id);
       });
     }
     

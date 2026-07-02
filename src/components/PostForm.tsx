@@ -9,7 +9,7 @@ import { useUpload } from '@/hooks/useUpload';
 import { todayString } from '@/lib/utils';
 import { getExifGPS } from '@/lib/exif';
 import type { Post, PostFormValues, PostStatus } from '@/lib/types';
-import { Loader2, MapPin, Globe, Lock, Hash, Check, Tag as TagIcon, Plus, X, Users, Heart } from 'lucide-react';
+import { Loader2, MapPin, Globe, Hash, Check, Tag as TagIcon, Plus, X, Users, Heart } from 'lucide-react';
 
 import { PlaceAutocomplete } from './PlaceAutocomplete';
 import { TagSelector } from './TagSelector';
@@ -34,6 +34,9 @@ export function PostForm({ post }: Props) {
   const queryLng = searchParams.get('lng') ? parseFloat(searchParams.get('lng')!) : undefined;
   const queryPlaceId = searchParams.get('placeId') || '';
 
+  const cleanAddress = (addr: string) =>
+    (addr || '').replace(/^日本、\s*/, '').replace(/^〒\d{3}-\d{4}\s*/, '');
+
   const [values, setValues] = useState<PostFormValues>({
     title: post?.title ?? '',
     store_name: post?.store_name ?? queryName,
@@ -46,7 +49,7 @@ export function PostForm({ post }: Props) {
     is_public: post?.is_public ?? false,
     is_favorite: post?.is_favorite ?? false,
     tags: post?.tags?.map(t => t.name) ?? [],
-    address: post?.address ?? queryAddress,
+    address: cleanAddress(post?.address ?? queryAddress),
     google_place_id: post?.google_place_id ?? queryPlaceId,
     latitude: post?.latitude ?? queryLat,
     longitude: post?.longitude ?? queryLng,
@@ -82,8 +85,6 @@ export function PostForm({ post }: Props) {
     setValues((prev) => ({ ...prev, [key]: val }));
 
   // 住所の言語を切り替える際のAPI取得ロジック (案B: リロードなし翻訳)
-  const cleanAddress = (addr: string) =>
-    addr.replace(/^日本、\s*/, '').replace(/^〒\d{3}-\d{4}\s*/, '');
 
   const updateAddressByLanguage = async (placeId: string, lang: 'ja' | 'en') => {
     if (!placeId) return;
@@ -136,7 +137,7 @@ export function PostForm({ post }: Props) {
     setValues((prev) => ({
       ...prev,
       store_name: place.name,
-      address: place.address,
+      address: cleanAddress(place.address),
       latitude: place.lat,
       longitude: place.lng,
       google_place_id: place.placeId,
@@ -158,7 +159,7 @@ export function PostForm({ post }: Props) {
     setValues((prev) => ({
       ...prev,
       store_name: place.name,
-      address: place.address,
+      address: cleanAddress(place.address),
       latitude: place.lat,
       longitude: place.lng,
       google_place_id: place.placeId || '',
@@ -266,18 +267,8 @@ export function PostForm({ post }: Props) {
         </div>
       </section>
 
-      {/* 2. 基本情報 (タイトル・場所) */}
+      {/* 2. 基本情報 (場所) */}
       <section className="space-y-5 bg-white sm:border border-gray-100 sm:rounded-[2.5rem] sm:p-8">
-        <div className="space-y-1.5">
-          <label className="text-[12px] font-black text-gray-500 tracking-widest ml-1 block">タイトル *</label>
-          <input
-            type="text"
-            value={values.title}
-            onChange={(e) => set('title', e.target.value)}
-            placeholder="例：伝説の唐揚げに出会った日 🍗"
-            className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-4 focus:ring-[#ff6b95]/5 focus:border-[#ff6b95]/20 focus:bg-white transition-all text-base font-bold"
-          />
-        </div>
 
         <div className="space-y-1.5">
           <label className="text-[12px] font-black text-gray-500 tracking-widest ml-1 block">場所 (任意)</label>
@@ -450,25 +441,6 @@ export function PostForm({ post }: Props) {
                 />
                 <div className="w-12 h-7 bg-gray-200 rounded-full peer peer-checked:after:translate-x-[20px] after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-[20px] after:w-[20px] after:transition-all peer-checked:bg-pink-500 shadow-inner"></div>
               </label>
-            </div>
-
-            <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl border border-gray-100">
-              <span className="text-[14px] font-black text-gray-700 flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${values.is_mine_only ? 'bg-orange-100 text-orange-500' : 'bg-gray-100 text-gray-400'}`}>
-                  <Lock size={18} />
-                </div>
-                自分のみに公開
-              </span>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  checked={values.is_mine_only}
-                  onChange={(e) => set('is_mine_only', e.target.checked)}
-                  className="peer sr-only"
-                />
-                <div className="w-12 h-7 bg-gray-200 rounded-full peer peer-checked:after:translate-x-[20px] after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-[20px] after:w-[20px] after:transition-all peer-checked:bg-orange-500 shadow-inner"></div>
-              </label>
-            </div>
           </div>
         </div>
       </section>

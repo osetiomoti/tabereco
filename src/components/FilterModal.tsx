@@ -99,16 +99,21 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
     if (members.length > 0 && !hasDefaulted.current) {
       hasDefaulted.current = true;
       setFilters(prev => {
+        let next = { ...prev };
         if (prev.registrantUserIds.length === 0) {
           const allIds = members
             .filter(m => m.id !== currentUser?.id)
             .map(m => m.id);
-          return allIds.length > 0 ? { ...prev, registrantUserIds: allIds } : prev;
+          if (allIds.length > 0) next.registrantUserIds = allIds;
         }
-        return prev;
+        if (prev.activeGroups.length === 0 && joinedGroups.length > 0) {
+          const allGroupIds = joinedGroups.map(g => g.id);
+          if (allGroupIds.length > 0) next.activeGroups = allGroupIds;
+        }
+        return next;
       });
     }
-  }, [members, currentUser]);
+  }, [members, currentUser, joinedGroups]);
 
   const loadMembers = async (ids: string[]) => {
     setLoadingMembers(true);
@@ -147,6 +152,8 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
 
   const toggleGroup = async (id: string) => {
     let nextGroups = [...filters.activeGroups];
+    // If we're toggling from an empty visual state, assume all were selected (or none).
+    // Wait, if it's the first time interacting, the default effect should have run.
     const isAdding = !nextGroups.includes(id);
     nextGroups = isAdding ? [...nextGroups, id] : nextGroups.filter(x => x !== id);
     set('activeGroups', nextGroups);
