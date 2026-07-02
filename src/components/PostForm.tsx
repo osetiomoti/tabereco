@@ -441,6 +441,7 @@ export function PostForm({ post }: Props) {
                 />
                 <div className="w-12 h-7 bg-gray-200 rounded-full peer peer-checked:after:translate-x-[20px] after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-[20px] after:w-[20px] after:transition-all peer-checked:bg-pink-500 shadow-inner"></div>
               </label>
+            </div>
           </div>
         </div>
       </section>
