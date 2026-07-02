@@ -55,6 +55,8 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
   const [joinedGroups, setJoinedGroups] = useState<Group[]>([]);
   const [members, setMembers]           = useState<Member[]>([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [groupMembersMap, setGroupMembersMap] = useState<Record<string, string[]>>({});
+  const hasDefaulted = useRef(false);
 
   // combobox state
   const [groupSearch,  setGroupSearch]  = useState('');
@@ -92,15 +94,38 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
     return () => document.removeEventListener('mousedown', fn);
   }, []);
 
+  /* ── デフォルト全選択: メンバー読み込み後、未選択なら全員を選択 ── */
+  useEffect(() => {
+    if (members.length > 0 && !hasDefaulted.current) {
+      hasDefaulted.current = true;
+      setFilters(prev => {
+        if (prev.registrantUserIds.length === 0) {
+          const allIds = members
+            .filter(m => m.id !== currentUser?.id)
+            .map(m => m.id);
+          return allIds.length > 0 ? { ...prev, registrantUserIds: allIds } : prev;
+        }
+        return prev;
+      });
+    }
+  }, [members, currentUser]);
+
   const loadMembers = async (ids: string[]) => {
     setLoadingMembers(true);
-    const map = new Map<string, Member>();
+    const memberMap = new Map<string, Member>();
+    const gMembersMap: Record<string, string[]> = {};
     await Promise.all(ids.map(async id => {
       const r = await fetch(`/api/groups/${id}/members`);
       const j = await r.json();
-      (j.data || []).forEach((m: Member) => map.set(m.id, m));
+      const mIds: string[] = [];
+      (j.data || []).forEach((m: Member) => {
+        memberMap.set(m.id, m);
+        mIds.push(m.id);
+      });
+      gMembersMap[id] = mIds;
     }));
-    setMembers([...map.values()]);
+    setMembers([...memberMap.values()]);
+    setGroupMembersMap(gMembersMap);
     setLoadingMembers(false);
   };
 
@@ -126,25 +151,36 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
     nextGroups = isAdding ? [...nextGroups, id] : nextGroups.filter(x => x !== id);
     set('activeGroups', nextGroups);
 
-    // Link: Selecting a group selects its members
     try {
-      const r = await fetch(`/api/groups/${id}/members`);
-      const j = await r.json();
-      const groupMemberIds = (j.data || []).map((m: any) => m.id);
-      
+      // グループメンバー情報をキャッシュから取得、なければフェッチ
+      let currentMap = { ...groupMembersMap };
+      if (!currentMap[id]) {
+        const r = await fetch(`/api/groups/${id}/members`);
+        const j = await r.json();
+        currentMap[id] = (j.data || []).map((m: any) => m.id as string);
+        setGroupMembersMap(currentMap);
+      }
+
+      const groupMemberIds = currentMap[id] || [];
       let nextMembers = [...filters.registrantUserIds];
+
       if (isAdding) {
-        // Add members who are not already selected
+        // グループを選択 → このグループのメンバーを投稿者に追加
         groupMemberIds.forEach((mId: string) => {
           if (!nextMembers.includes(mId)) nextMembers.push(mId);
         });
       } else {
-        // Remove members of this group? 
-        // Better: user might want to keep some if they are in other selected groups.
-        // For simplicity, let's just add on select. On unselect, it's safer to not uncheck unless we know.
-        // But the user said "選択されるようにする", so unselecting should probably unselect?
-        // Let's just add for now as a "shortcut".
+        // グループの選択を解除 → 他の選択中グループに属さないメンバーのチェックを外す
+        const keepIds = new Set<string>();
+        nextGroups.forEach(gId => {
+          (currentMap[gId] || []).forEach((mId: string) => keepIds.add(mId));
+        });
+        nextMembers = nextMembers.filter(mId => {
+          if (groupMemberIds.includes(mId)) return keepIds.has(mId);
+          return true;
+        });
       }
+
       set('registrantUserIds', nextMembers);
     } catch (e) {
       console.error(e);
@@ -158,11 +194,17 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
 
   /* ── member options ── */
   const availableMembers = members.filter(m => m.id !== currentUser?.id);
+  const allNonSelfIds = availableMembers.map(m => m.id);
+  const allMembersSelected =
+    allNonSelfIds.length > 0 &&
+    allNonSelfIds.every(id => filters.registrantUserIds.includes(id)) &&
+    filters.registrantUserIds.length === allNonSelfIds.length;
+
   const filteredMembers = availableMembers.filter((m: Member) =>
     (m.name || '').toLowerCase().includes(memberSearch.toLowerCase())
   );
   const memberLabel = () => {
-    if (filters.registrantUserIds.length === 0) return '全員';
+    if (filters.registrantUserIds.length === 0 || allMembersSelected) return '全員';
     if (filters.registrantUserIds.length === 1) {
       return availableMembers.find((m: Member) => m.id === filters.registrantUserIds[0])?.name ?? '1名選択中';
     }
@@ -305,12 +347,12 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
                       </div>
                     </div>
                     <div className="max-h-44 overflow-y-auto py-1">
-                      {/* "all" option */}
+                      {/* "全員" option: 全メンバーのIDをセット */}
                       <label className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition-colors">
                         <input
                           type="checkbox"
-                          checked={filters.registrantUserIds.length === 0}
-                          onChange={() => set('registrantUserIds', [])}
+                          checked={filters.registrantUserIds.length === 0 || allMembersSelected}
+                          onChange={() => set('registrantUserIds', allNonSelfIds)}
                           className="w-4 h-4 rounded border-gray-300 accent-orange-500"
                         />
                         <span className="text-[14px] text-gray-700">全員</span>

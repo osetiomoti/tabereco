@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useRef } from 'react';
+import { useCallback, useState, useRef, useEffect } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
 import type { Post } from '@/lib/types';
 import Link from 'next/link';
@@ -28,9 +28,10 @@ type Props = {
   zoom?: number;
   tempMarker?: { lat: number, lng: number, placeId?: string, name?: string, address?: string } | null;
   setTempMarker?: React.Dispatch<React.SetStateAction<{ lat: number, lng: number, placeId?: string, name?: string, address?: string } | null>>;
+  initialSelectedPostId?: string | null;
 };
 
-export default function MapView({ posts, center, zoom = 14, tempMarker, setTempMarker }: Props) {
+export default function MapView({ posts, center, zoom = 14, tempMarker, setTempMarker, initialSelectedPostId }: Props) {
   const apiKey = (process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '').trim();
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -44,6 +45,15 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
   const mapRef = useRef<google.maps.Map | null>(null);
   const [mapTypeId, setMapTypeId] = useState<string>('roadmap');
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+
+  useEffect(() => {
+    if (initialSelectedPostId) {
+      const post = posts.find(p => p.id === initialSelectedPostId);
+      if (post) {
+        setSelectedPost(post);
+      }
+    }
+  }, [initialSelectedPostId, posts]);
 
   const onLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;

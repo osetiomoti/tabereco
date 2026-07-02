@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import dynamic from 'next/dynamic';
+import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { PlaceAutocomplete } from '@/components/PlaceAutocomplete';
 import type { Post } from '@/lib/types';
@@ -20,7 +21,7 @@ const MapView = dynamic(() => import('@/components/MapView'), {
   ),
 });
 
-export default function MapPage() {
+function MapPageInner() {
   const { posts, loading, filterState, updateFilter, activeFilterCount, joinedGroups, removeFilter, memberUsers } = useFilteredPosts();
   const { activeTab, keyword, activeGroups, advancedFilters, activeMapTag } = filterState;
 
@@ -28,14 +29,21 @@ export default function MapPage() {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [tempMarker, setTempMarker] = useState<{ lat: number, lng: number, placeId?: string, name?: string, address?: string } | null>(null);
 
+  const searchParams = useSearchParams();
+  const queryLat = searchParams.get('lat');
+  const queryLng = searchParams.get('lng');
+  const queryPostId = searchParams.get('postId');
+
   useEffect(() => {
-    if (navigator.geolocation) {
+    if (queryLat && queryLng) {
+      setCenter({ lat: parseFloat(queryLat), lng: parseFloat(queryLng) });
+    } else if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
         (err) => console.log('Location error:', err)
       );
     }
-  }, []);
+  }, [queryLat, queryLng]);
 
   // Unique Tags
   const uniqueTags = Array.from(new Set(posts.flatMap((p: Post) => p.tags?.map((t: any) => t.name) || []))).sort();
@@ -55,20 +63,6 @@ export default function MapPage() {
       address: place.address
     });
   };
-
-  const toggleGroup = (id: string) => {
-    let next = [...activeGroups];
-    if (id === 'all') {
-      next = ['all'];
-    } else {
-      next = next.filter(x => x !== 'all');
-      if (next.includes(id)) next = next.filter(x => x !== id);
-      else next.push(id);
-      if (next.length === 0) next = ['all'];
-    }
-    updateFilter({ activeGroups: next });
-  };
-
 
   return (
     <>
@@ -142,10 +136,10 @@ export default function MapPage() {
         <div className="w-full h-full">
           {loading ? (
              <div className="w-full h-full bg-gray-50 flex items-center justify-center">
-               <MapPin className="text-gray-100 animate-bounce" size={48} />
+               <MapPin className="text-gray-200 animate-bounce" size={48} />
              </div>
           ) : (
-            <MapView posts={displayedPosts} center={center} tempMarker={tempMarker} setTempMarker={setTempMarker} />
+            <MapView posts={displayedPosts} center={center} tempMarker={tempMarker} setTempMarker={setTempMarker} initialSelectedPostId={queryPostId} />
           )}
         </div>
       </main>
@@ -166,5 +160,17 @@ export default function MapPage() {
         } as any}
       />
     </>
+  );
+}
+
+export default function MapPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full h-full bg-gray-50 flex items-center justify-center min-h-screen">
+        <MapPin className="text-orange-500 animate-bounce" size={48} />
+      </div>
+    }>
+      <MapPageInner />
+    </Suspense>
   );
 }

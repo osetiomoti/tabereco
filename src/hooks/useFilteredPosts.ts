@@ -94,12 +94,10 @@ export function useFilteredPosts() {
   const posts = useMemo(() => {
     let combinedMap = new Map();
 
-    const myId = ownPostsCache.length > 0 ? (ownPostsCache[0] as any).user_id : null;
-
     // Always start with own posts as base
     ownPostsCache.forEach((p: Post) => combinedMap.set(p.id, p));
 
-    // Merge group posts on top (group posts from other members)
+    // Merge group posts on top
     if (activeGroups.length === 0) {
       // If no group filter, show all joined groups' posts
       groupPostsCache.forEach((g: any) => g.posts.forEach((p: Post) => combinedMap.set(p.id, p)));
@@ -113,15 +111,15 @@ export function useFilteredPosts() {
     }
 
     let result = Array.from(combinedMap.values()) as Post[];
-    const includeMine = advancedFilters?.include_mine ?? false;
 
-    // 「自分の投稿を含める」がOFFの場合、自分を除外
-    const isRegistrantSelected = advancedFilters?.registrantUserIds && advancedFilters.registrantUserIds.length > 0;
-    const isMeSelected = advancedFilters?.registrantUserIds?.includes(myId);
+    // 自分の投稿を識別するためのセット（user_id ではなく post.id で判定し確実に捕捉）
+    const ownPostIds = new Set(ownPostsCache.map((p: Post) => p.id));
 
-    if (!includeMine && !isMeSelected && myId && isRegistrantSelected) {
-      // Only exclude mine if a specific registrant filter is active and excludes me
-      result = result.filter(p => (p as any).user_id !== myId);
+    // ① 「自分の投稿を含める」がOFFの場合、自分の投稿を除外
+    // デフォルト（advancedFilters 未設定時）は true = 自分の投稿を表示
+    const includeMine = advancedFilters?.include_mine ?? true;
+    if (!includeMine) {
+      result = result.filter(p => !ownPostIds.has(p.id));
     }
 
     if (activeTab !== 'all') {
@@ -147,8 +145,14 @@ export function useFilteredPosts() {
     if (advancedFilters?.status && advancedFilters.status !== 'all') {
       result = result.filter(p => p.status === advancedFilters.status);
     }
+
+    // ② registrantUserIds フィルタ（他メンバーの絞り込み）
+    // 自分の投稿は include_mine で制御済みなので、ここでは他人投稿のみに適用
     if (advancedFilters?.registrantUserIds && advancedFilters.registrantUserIds.length > 0) {
-      result = result.filter((p: Post) => advancedFilters.registrantUserIds.includes((p as any).user_id));
+      result = result.filter((p: Post) => {
+        if (ownPostIds.has(p.id)) return true; // 自分の投稿は include_mine で制御済み
+        return advancedFilters.registrantUserIds.includes((p as any).user_id);
+      });
     }
     
     return result.sort((a: Post, b: Post) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());

@@ -41,6 +41,12 @@ export default async function PostDetailPage({ params }: Props) {
 
   if (!post) notFound();
 
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+  const hasCoords = post.latitude !== null && post.longitude !== null;
+  const staticMapUrl = hasCoords && apiKey
+    ? `https://maps.googleapis.com/maps/api/staticmap?center=${post.latitude},${post.longitude}&zoom=16&size=600x300&markers=color:0xf43f5e%7C${post.latitude},${post.longitude}&key=${apiKey}`
+    : null;
+
   return (
     <main className="w-full max-w-md mx-auto bg-white min-h-screen pb-32 shadow-sm border-x border-gray-50 relative">
       {/* 1. Updated Global Header for SubPage */}
@@ -130,26 +136,46 @@ export default async function PostDetailPage({ params }: Props) {
            店舗情報
         </div>
         
-        <div className="w-full aspect-[2/1] relative bg-[#e3e8da] overflow-hidden flex flex-col justify-center items-center group cursor-pointer hover:opacity-90 transition-opacity">
-           {/* 簡易的なマップモック表現 */}
-           <div className="absolute inset-0 opacity-40 mix-blend-multiply" style={{ backgroundImage: 'radial-gradient(circle at center, #bcd8b1 0%, #e3e8da 100%)' }}></div>
-           
-           {/* ピンと住所 */}
-           <div className="relative z-10 flex flex-col items-center">
-             <div className="bg-white/90 backdrop-blur-sm text-[#4d7f55] border border-green-200 font-bold px-3 py-1.5 rounded-lg shadow-sm text-xs flex items-center gap-1.5 whitespace-nowrap">
-                <MapPin size={14} className="fill-[#9ecea5] text-green-700" />
-                {post.store_name || "店舗位置"}
+        {hasCoords ? (
+          <Link
+            href={`/map?lat=${post.latitude}&lng=${post.longitude}&postId=${post.id}`}
+            className="w-full aspect-[2/1] relative block overflow-hidden group hover:opacity-90 transition-opacity border-b border-gray-100"
+          >
+            {staticMapUrl ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img 
+                src={staticMapUrl} 
+                alt={post.store_name || "店舗位置"}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-[#e3e8da] flex flex-col justify-center items-center relative">
+                <div className="absolute inset-0 opacity-40 mix-blend-multiply" style={{ backgroundImage: 'radial-gradient(circle at center, #bcd8b1 0%, #e3e8da 100%)' }}></div>
+                <div className="relative z-10 flex flex-col items-center">
+                  <div className="bg-white/90 backdrop-blur-sm text-[#4d7f55] border border-green-200 font-bold px-3 py-1.5 rounded-lg shadow-sm text-xs flex items-center gap-1.5 whitespace-nowrap">
+                     <MapPin size={14} className="fill-[#9ecea5] text-green-700" />
+                     {post.store_name || "店舗位置"}
+                  </div>
+                  <p className="mt-2 font-black text-gray-600 tracking-widest text-[#5d7f55] text-xl opacity-60">店舗マップ</p>
+                </div>
+              </div>
+            )}
+            <div className="absolute bottom-2.5 left-2.5 bg-black/60 backdrop-blur-sm text-white text-[9px] font-black px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 shadow-md">
+              <MapPin size={11} className="fill-white text-black" />
+              <span>アプリ内マップで開く</span>
+            </div>
+          </Link>
+        ) : (
+          <div className="w-full aspect-[2/1] relative bg-[#f9f9f9] overflow-hidden flex flex-col justify-center items-center border-b border-gray-200/50">
+             <div className="flex flex-col items-center text-center px-4">
+               <MapPin className="text-gray-300 mb-1.5" size={28} />
+               <p className="text-[11px] font-black text-gray-400">位置情報が登録されていません</p>
+               {post.address && (
+                 <p className="text-[9px] font-medium text-gray-400 mt-1 max-w-[80%] truncate">{post.address}</p>
+               )}
              </div>
-             <p className="mt-2 font-black text-gray-600 tracking-widest text-[#5d7f55] text-xl opacity-60">岩田町</p>
-           </div>
-
-           <div className="absolute bottom-2 left-2 flex items-center gap-1 opacity-70">
-              <span className="font-xl font-bold">🍎</span><span className="font-bold text-[11px] font-sans">マップ</span>
-           </div>
-           <div className="absolute bottom-2 left-20 opacity-60">
-             <span className="text-[10px] underline">法律に基づく情報</span>
-           </div>
-        </div>
+          </div>
+        )}
 
         <div className="bg-[#f9f9f9] px-4 py-5 flex justify-center border-b border-gray-200/50">
            <a 
