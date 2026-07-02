@@ -138,7 +138,11 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
     setFilters(p => ({ ...p, [k]: v }));
 
   const handleReset = () => {
-    setFilters({ ...DEFAULT });
+    setFilters({
+      ...DEFAULT,
+      activeGroups: groupOptions.map(g => g.id),
+      registrantUserIds: allNonSelfIds
+    });
     setGroupSearch(''); setMemberSearch('');
   };
 
@@ -195,8 +199,10 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
   };
 
   const groupLabel = () => {
-    if (filters.activeGroups.includes('all')) return 'すべて';
-    return filters.activeGroups.map((id: string) => groupOptions.find((o: any) => o.id === id)?.label ?? id).join(', ');
+    if (filters.activeGroups.includes('all')) return '全選択';
+    if (filters.activeGroups.length === groupOptions.length && groupOptions.length > 0) return '全選択';
+    if (filters.activeGroups.length === 0) return '選択なし';
+    return `${filters.activeGroups.length}グループ選択中`;
   };
 
   /* ── member options ── */
@@ -211,7 +217,8 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
     (m.name || '').toLowerCase().includes(memberSearch.toLowerCase())
   );
   const memberLabel = () => {
-    if (filters.registrantUserIds.length === 0 || allMembersSelected) return '全員';
+    if (allMembersSelected) return '全選択';
+    if (filters.registrantUserIds.length === 0) return '選択なし';
     if (filters.registrantUserIds.length === 1) {
       return availableMembers.find((m: Member) => m.id === filters.registrantUserIds[0])?.name ?? '1名選択中';
     }
@@ -301,6 +308,23 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
                   </div>
                   {/* items */}
                   <div className="max-h-44 overflow-y-auto py-1">
+                    {groupOptions.length > 0 && (
+                      <label className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={filters.activeGroups.length === groupOptions.length}
+                          onChange={() => {
+                            if (filters.activeGroups.length === groupOptions.length) {
+                              set('activeGroups', []);
+                            } else {
+                              set('activeGroups', groupOptions.map(g => g.id));
+                            }
+                          }}
+                          className="w-4 h-4 rounded border-gray-300 accent-orange-500"
+                        />
+                        <span className="text-[14px] text-gray-700">全選択</span>
+                      </label>
+                    )}
                     {filteredGroups.map(opt => {
                       const checked = filters.activeGroups.includes(opt.id);
                       return (
@@ -358,11 +382,17 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
                       <label className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition-colors">
                         <input
                           type="checkbox"
-                          checked={filters.registrantUserIds.length === 0 || allMembersSelected}
-                          onChange={() => set('registrantUserIds', allNonSelfIds)}
+                          checked={allMembersSelected}
+                          onChange={() => {
+                            if (allMembersSelected) {
+                              set('registrantUserIds', []);
+                            } else {
+                              set('registrantUserIds', allNonSelfIds);
+                            }
+                          }}
                           className="w-4 h-4 rounded border-gray-300 accent-orange-500"
                         />
-                        <span className="text-[14px] text-gray-700">全員</span>
+                        <span className="text-[14px] text-gray-700">全選択</span>
                       </label>
                       {loadingMembers ? (
                         <div className="px-4 py-3 text-[13px] text-gray-400">読み込み中...</div>
