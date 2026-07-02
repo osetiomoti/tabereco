@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Heart, Lock, ChevronDown, Plus, Hash, Search } from 'lucide-react';
+import { X, Heart, ChevronDown, Plus, Hash, Search } from 'lucide-react';
 import { useMyTags, useGroups, useMyProfile } from '@/hooks/useAppData';
 import type { Tag } from '@/lib/types';
 import { TagSelector } from './TagSelector';
@@ -165,9 +165,9 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
       let nextMembers = [...filters.registrantUserIds];
 
       if (isAdding) {
-        // グループを選択 → このグループのメンバーを投稿者に追加
+        // グループを選択 → このグループのメンバーを投稿者に追加（自分自身は除外）
         groupMemberIds.forEach((mId: string) => {
-          if (!nextMembers.includes(mId)) nextMembers.push(mId);
+          if (!nextMembers.includes(mId) && mId !== currentUser?.id) nextMembers.push(mId);
         });
       } else {
         // グループの選択を解除 → 他の選択中グループに属さないメンバーのチェックを外す
@@ -470,23 +470,17 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
 
           {/* ── Toggles ── */}
           <section className="space-y-2">
-            {[
-              { key: 'is_favorite', icon: <Heart size={16} className={filters.is_favorite ? 'fill-orange-500 text-orange-500' : ''} />, label: 'お気に入りのみ' },
-              { key: 'is_mine_only', icon: <Lock size={16} />, label: '自分の非公開のみ' },
-            ].map(({ key, icon, label }) => (
-              <button
-                key={key}
-                onClick={() => set(key as any, !(filters as any)[key])}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-[14px] font-medium transition-all ${
-                  (filters as any)[key]
-                    ? 'bg-orange-50 border-orange-200 text-orange-600'
-                    : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
-                }`}
-              >
-                {icon}
-                {label}
-              </button>
-            ))}
+            <button
+              onClick={() => set('is_favorite', !filters.is_favorite)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-[14px] font-medium transition-all ${
+                filters.is_favorite
+                  ? 'bg-orange-50 border-orange-200 text-orange-600'
+                  : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
+              }`}
+            >
+              <Heart size={16} className={filters.is_favorite ? 'fill-orange-500 text-orange-500' : ''} />
+              お気に入りのみ
+            </button>
           </section>
         </div>
 
