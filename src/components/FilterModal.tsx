@@ -39,12 +39,12 @@ const PERIOD_OPTIONS = [
 const DEFAULT: FilterState = {
   tags: [],
   period: 'all',
-  registrantUserIds: [], // Changed from registrantUserId
+  registrantUserIds: [],
   status: 'all',
   is_favorite: false,
   is_mine_only: false,
-  include_mine: false,
-  activeGroups: [], // Changed from ['all']
+  include_mine: true,  // デフォルトは自分の投稿を含める
+  activeGroups: [],
 };
 
 export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialTags }: Props) {
@@ -69,12 +69,22 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
 
   /* ── load on open ── */
   useEffect(() => {
-    if (!isOpen) return;
+    if (!isOpen) {
+      hasDefaulted.current = false;
+      return;
+    }
     // Groups come from SWR cache immediately, set to local state for member loading
     setJoinedGroups(swrGroups);
 
-    // Load current user to exclude from member list
-    // (already available from useMyProfile, no extra fetch needed)
+    // Sync filters with initialFilters each time modal opens
+    setFilters(prev => {
+      const base = { ...DEFAULT, ...(initialFilters || {}) };
+      // If no activeGroups provided, default to all groups
+      if (!initialFilters?.activeGroups || initialFilters.activeGroups.length === 0) {
+        base.activeGroups = swrGroups.map(g => g.id);
+      }
+      return base;
+    });
   }, [isOpen, swrGroups]);
 
   useEffect(() => {
@@ -106,14 +116,10 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
             .map(m => m.id);
           if (allIds.length > 0) next.registrantUserIds = allIds;
         }
-        if (prev.activeGroups.length === 0 && joinedGroups.length > 0) {
-          const allGroupIds = joinedGroups.map(g => g.id);
-          if (allGroupIds.length > 0) next.activeGroups = allGroupIds;
-        }
         return next;
       });
     }
-  }, [members, currentUser, joinedGroups]);
+  }, [members, currentUser]);
 
   const loadMembers = async (ids: string[]) => {
     setLoadingMembers(true);

@@ -14,7 +14,7 @@ const defaultState: SharedFilterState = {
   activeTab: 'all',
   keyword: '',
   activeGroups: ['all'],
-  advancedFilters: null,
+  advancedFilters: { include_mine: true },
   activeMapTag: null, // map側のタグ用
 };
 
