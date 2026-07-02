@@ -9,18 +9,35 @@ import { withAuth } from '@/lib/auth';
 export async function GET(request: NextRequest) {
   return withAuth(request, async (auth) => {
     try {
-      // 自分のタグを全取得
-      const myTags = await prisma.tag.findMany({
-        where: { user_id: auth.userId },
-        select: { name: true },
+      // 1. Get user and friends
+      const friendships = await prisma.friendship.findMany({
+        where: {
+          OR: [
+            { user_id: auth.userId },
+            { friend_id: auth.userId },
+          ]
+        }
       });
+      
+      const friendIds = friendships.map(f => f.user_id === auth.userId ? f.friend_id : f.user_id);
+      const targetUserIds = [auth.userId, ...friendIds];
+
+      // 2. Get distinct tags across these users
+      const allTags = await prisma.tag.findMany({
+        where: { user_id: { in: targetUserIds } },
+        select: { name: true, user_id: true },
+        distinct: ['name', 'user_id'],
+      });
+
+      // 3. Shuffle and pick up to 20 for performance
+      const shuffledTags = allTags.sort(() => 0.5 - Math.random()).slice(0, 20);
 
       const results: { tagName: string; post: any }[] = [];
 
-      for (const { name: tagName } of myTags) {
+      for (const { name: tagName, user_id: tagUserId } of shuffledTags) {
         // まずランキング登録されている1位を探す
         const topRanked = await prisma.tagRanking.findFirst({
-          where: { user_id: auth.userId, tag_name: tagName, rank: 1 },
+          where: { user_id: tagUserId, tag_name: tagName, rank: 1 },
           include: {
             post: {
               include: {
@@ -47,7 +64,7 @@ export async function GET(request: NextRequest) {
           // ランキング未設定ならそのタグで最高評価の投稿
           const topPost = await prisma.post.findFirst({
             where: {
-              user_id: auth.userId,
+              user_id: tagUserId,
               status: 'visited',
               tags: { some: { tag: { name: tagName } } },
             },

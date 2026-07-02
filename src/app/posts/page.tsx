@@ -173,28 +173,6 @@ export default function PostsPage() {
 
       <main className="max-w-2xl mx-auto w-full px-4 py-6 pb-32 animate-in fade-in duration-700">
         <div className="mb-6">
-          {/* Tabs */}
-          <div className="flex bg-gray-100/80 rounded-[14px] p-1 mb-4 border border-black/5 shadow-inner">
-            <button
-              onClick={() => updateFilter({ activeTab: 'all' })}
-              className={`flex-1 py-2 text-[12px] font-black rounded-[10px] transition-all duration-300 ${activeTab === 'all' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-            >
-              すべて
-            </button>
-            <button
-              onClick={() => updateFilter({ activeTab: 'visited' })}
-              className={`flex-1 py-2 text-[12px] font-black rounded-[10px] transition-all duration-300 ${activeTab === 'visited' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-            >
-              行った
-            </button>
-            <button
-              onClick={() => updateFilter({ activeTab: 'want_to_go' })}
-              className={`flex-1 py-2 text-[12px] font-black rounded-[10px] transition-all duration-300 ${activeTab === 'want_to_go' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
-            >
-              行きたい
-            </button>
-          </div>
-
           {/* Search bar (list view only) */}
           {viewMode === 'list' && (
             <>
