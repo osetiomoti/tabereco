@@ -136,43 +136,41 @@ export default function PostsPage() {
   return (
     <>
       <Header title="タイムライン">
-        <div className="flex items-center gap-2">
-          {/* View toggle */}
-          <div className="flex bg-gray-100 rounded-full p-0.5">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${viewMode === 'list' ? 'bg-white shadow-sm text-gray-700' : 'text-gray-400'}`}
-            >
-              <List size={15} />
-            </button>
-            <button
-              onClick={() => setViewMode('calendar')}
-              className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${viewMode === 'calendar' ? 'bg-white shadow-sm text-gray-700' : 'text-gray-400'}`}
-            >
-              <CalendarIcon size={15} />
-            </button>
-          </div>
-          {/* Filter button */}
-          <button
-            onClick={() => setIsFilterModalOpen(true)}
-            className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-              activeFilterCount > 0
-                ? 'bg-orange-500 text-white shadow-sm'
-                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-            }`}
-          >
-            <Filter size={18} />
-            {activeFilterCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-white text-orange-500 text-[9px] font-black rounded-full flex items-center justify-center border border-orange-200">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
-        </div>
+        <button
+          onClick={() => setIsFilterModalOpen(true)}
+          className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+            activeFilterCount > 0
+              ? 'bg-orange-500 text-white shadow-sm'
+              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+          }`}
+        >
+          <Filter size={18} />
+          {activeFilterCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-white text-orange-500 text-[9px] font-black rounded-full flex items-center justify-center border border-orange-200">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
       </Header>
 
       <main className="max-w-2xl mx-auto w-full px-4 py-6 pb-32 animate-in fade-in duration-700">
         <div className="mb-6">
+          {/* View Toggle Tabs */}
+          <div className="flex bg-gray-100/80 rounded-[14px] p-1 mb-4 border border-black/5 shadow-inner">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`flex-1 py-2 text-[12px] font-black rounded-[10px] transition-all duration-300 ${viewMode === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              リスト
+            </button>
+            <button
+              onClick={() => setViewMode('calendar')}
+              className={`flex-1 py-2 text-[12px] font-black rounded-[10px] transition-all duration-300 ${viewMode === 'calendar' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+            >
+              カレンダー
+            </button>
+          </div>
+
           {/* Search bar (list view only) */}
           {viewMode === 'list' && (
             <>
