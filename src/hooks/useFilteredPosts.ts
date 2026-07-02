@@ -147,9 +147,7 @@ export function useFilteredPosts() {
       result = result.filter(p => p.status === advancedFilters.status);
     }
 
-    // ② registrantUserIds フィルタ（他メンバーの絞り込み）
-    // 自分の投稿は include_mine で制御済みなので、ここでは他人投稿のみに適用
-    if (advancedFilters?.registrantUserIds && advancedFilters.registrantUserIds.length > 0) {
+    if (advancedFilters?.registrantUserIds !== undefined) {
       result = result.filter((p: Post) => {
         const isMine = myId ? p.user_id === myId : ownPostIds.has(p.id);
         if (isMine) return true; // 自分の投稿は include_mine で制御済み
