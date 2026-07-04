@@ -112,8 +112,8 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
       setFilters(prev => {
         let next = { ...prev };
         if (prev.registrantUserIds.length === 0) {
-          // 自分以外の全員を選択
-          const allIds = members.filter(m => m.id !== currentUser.id).map(m => m.id);
+          // 全員を選択（自分も含む）
+          const allIds = members.map(m => m.id);
           if (allIds.length > 0) next.registrantUserIds = allIds;
         }
         return next;
