@@ -102,7 +102,7 @@ export default function MyPage() {
     if (targetUserId) {
       // 友達ページからマップ: その人だけフィルター
       updateFilter({ 
-        activeGroups: [],
+        activeGroups: ['all'],
         advancedFilters: { registrantUserIds: [targetUserId], include_mine: false }
       });
     } else {
@@ -120,7 +120,7 @@ export default function MyPage() {
     if (targetUserId) {
       // 友達ページからカレンダー: その人だけフィルター
       updateFilter({ 
-        activeGroups: [],
+        activeGroups: ['all'],
         advancedFilters: { registrantUserIds: [targetUserId], include_mine: false }
       });
     } else {
