@@ -10,7 +10,7 @@ import { useUpload } from '@/hooks/useUpload';
 import { todayString } from '@/lib/utils';
 import { getExifGPS } from '@/lib/exif';
 import type { Post, PostFormValues, PostStatus } from '@/lib/types';
-import { Loader2, MapPin, Globe, Hash, Check, Tag as TagIcon, Plus, X, Users, Heart } from 'lucide-react';
+import { Loader2, MapPin, Globe, Hash, Check, Tag as TagIcon, Plus, X, Users, Heart, ChevronDown } from 'lucide-react';
 
 import { PlaceAutocomplete } from './PlaceAutocomplete';
 import { TagSelector } from './TagSelector';
