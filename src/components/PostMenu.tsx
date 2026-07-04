@@ -1,12 +1,18 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { MoreHorizontal, Pencil, Share2, Trash2 } from 'lucide-react';
+import { MoreHorizontal, Pencil } from 'lucide-react';
 import Link from 'next/link';
+import useSWR from 'swr';
 
-export function PostMenu({ postId }: { postId: string }) {
+export function PostMenu({ postId, postUserId }: { postId: string; postUserId?: string }) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  // 自分のプロフィールを取得して、投稿者と照合
+  const { data: meData } = useSWR('/api/profiles/me', (url: string) => fetch(url).then(r => r.json()));
+  const myId = meData?.data?.id;
+  const isOwner = !postUserId || (myId && myId === postUserId);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -17,6 +23,9 @@ export function PostMenu({ postId }: { postId: string }) {
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // 自分の投稿でない場合はメニューを表示しない
+  if (!isOwner) return null;
 
   return (
     <div className="relative" ref={menuRef}>
@@ -37,7 +46,6 @@ export function PostMenu({ postId }: { postId: string }) {
             <Pencil size={16} className="text-gray-400" />
             <span className="font-bold">編集する</span>
           </Link>
-          {/* Add other options if needed, like Share or Delete (though Delete is inside Edit) */}
         </div>
       )}
     </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Heart, ChevronDown, Plus, Hash, Search } from 'lucide-react';
+import { X, Heart, ChevronDown, Plus, Hash, Search, Users, User } from 'lucide-react';
 import { useMyTags, useGroups, useMyProfile } from '@/hooks/useAppData';
 import type { Tag } from '@/lib/types';
 import { TagSelector } from './TagSelector';
@@ -9,7 +9,7 @@ import { TagSelector } from './TagSelector';
 type FilterState = {
   tags: string[];
   period: string;
-  registrantUserIds: string[]; // Changed from registrantUserId
+  registrantUserIds: string[];
   status: 'all' | 'visited' | 'want_to_go';
   is_favorite: boolean;
   is_mine_only: boolean;
@@ -43,7 +43,7 @@ const DEFAULT: FilterState = {
   status: 'all',
   is_favorite: false,
   is_mine_only: false,
-  include_mine: true,  // デフォルトは自分の投稿を含める
+  include_mine: true,
   activeGroups: [],
 };
 
@@ -57,6 +57,9 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [groupMembersMap, setGroupMembersMap] = useState<Record<string, string[]>>({});
   const hasDefaulted = useRef(false);
+
+  // フィルターモード: 'registrant' or 'group'
+  const [filterMode, setFilterMode] = useState<'registrant' | 'group'>('registrant');
 
   // combobox state
   const [groupSearch,  setGroupSearch]  = useState('');
@@ -73,13 +76,10 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
       hasDefaulted.current = false;
       return;
     }
-    // Groups come from SWR cache immediately, set to local state for member loading
     setJoinedGroups(swrGroups);
 
-    // Sync filters with initialFilters each time modal opens
     setFilters(prev => {
       const base = { ...DEFAULT, ...(initialFilters || {}) };
-      // If no activeGroups provided, or includes 'all', default to all groups
       if (!initialFilters?.activeGroups || initialFilters.activeGroups.length === 0 || initialFilters.activeGroups.includes('all')) {
         base.activeGroups = swrGroups.map(g => g.id);
       }
@@ -111,9 +111,8 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
       setFilters(prev => {
         let next = { ...prev };
         if (prev.registrantUserIds.length === 0) {
-          const allIds = members
-            .filter(m => m.id !== currentUser?.id)
-            .map(m => m.id);
+          // 自分も含めた全員を選択
+          const allIds = members.map(m => m.id);
           if (allIds.length > 0) next.registrantUserIds = allIds;
         }
         return next;
@@ -124,6 +123,10 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
   const loadMembers = async (ids: string[]) => {
     setLoadingMembers(true);
     const memberMap = new Map<string, Member>();
+    // 自分自身も追加
+    if (currentUser) {
+      memberMap.set(currentUser.id, { id: currentUser.id, name: currentUser.name || '自分' });
+    }
     const gMembersMap: Record<string, string[]> = {};
     await Promise.all(ids.map(async id => {
       const r = await fetch(`/api/groups/${id}/members`);
@@ -144,10 +147,11 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
     setFilters(p => ({ ...p, [k]: v }));
 
   const handleReset = () => {
+    const allIds = members.map(m => m.id);
     setFilters({
       ...DEFAULT,
       activeGroups: groupOptions.map(g => g.id),
-      registrantUserIds: allNonSelfIds
+      registrantUserIds: allIds,
     });
     setGroupSearch(''); setMemberSearch('');
   };
@@ -162,14 +166,11 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
 
   const toggleGroup = async (id: string) => {
     let nextGroups = [...filters.activeGroups];
-    // If we're toggling from an empty visual state, assume all were selected (or none).
-    // Wait, if it's the first time interacting, the default effect should have run.
     const isAdding = !nextGroups.includes(id);
     nextGroups = isAdding ? [...nextGroups, id] : nextGroups.filter(x => x !== id);
     set('activeGroups', nextGroups);
 
     try {
-      // グループメンバー情報をキャッシュから取得、なければフェッチ
       let currentMap = { ...groupMembersMap };
       if (!currentMap[id]) {
         const r = await fetch(`/api/groups/${id}/members`);
@@ -182,16 +183,16 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
       let nextMembers = [...filters.registrantUserIds];
 
       if (isAdding) {
-        // グループを選択 → このグループのメンバーを投稿者に追加（自分自身は除外）
         groupMemberIds.forEach((mId: string) => {
-          if (!nextMembers.includes(mId) && mId !== currentUser?.id) nextMembers.push(mId);
+          if (!nextMembers.includes(mId)) nextMembers.push(mId);
         });
       } else {
-        // グループの選択を解除 → 他の選択中グループに属さないメンバーのチェックを外す
         const keepIds = new Set<string>();
         nextGroups.forEach(gId => {
           (currentMap[gId] || []).forEach((mId: string) => keepIds.add(mId));
         });
+        // 自分のIDは常に保持
+        if (currentUser) keepIds.add(currentUser.id);
         nextMembers = nextMembers.filter(mId => {
           if (groupMemberIds.includes(mId)) return keepIds.has(mId);
           return true;
@@ -210,13 +211,13 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
     return `${filters.activeGroups.length}グループ選択中`;
   };
 
-  /* ── member options ── */
-  const availableMembers = members.filter(m => m.id !== currentUser?.id);
-  const allNonSelfIds = availableMembers.map(m => m.id);
+  /* ── member options (自分含む全員) ── */
+  const availableMembers = members; // 自分も含める
+  const allMemberIds = availableMembers.map(m => m.id);
   const allMembersSelected =
-    allNonSelfIds.length > 0 &&
-    allNonSelfIds.every(id => filters.registrantUserIds.includes(id)) &&
-    filters.registrantUserIds.length === allNonSelfIds.length;
+    allMemberIds.length > 0 &&
+    allMemberIds.every(id => filters.registrantUserIds.includes(id)) &&
+    filters.registrantUserIds.length === allMemberIds.length;
 
   const filteredMembers = availableMembers.filter((m: Member) =>
     (m.name || '').toLowerCase().includes(memberSearch.toLowerCase())
@@ -230,7 +231,6 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
     return `${filters.registrantUserIds.length}名選択中`;
   };
 
-  // Remove hasFilter restriction so dropdown is always enabled
   const memberOptionsEnabled = availableMembers.length > 0;
 
   if (!isOpen) return null;
@@ -281,155 +281,186 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
             </label>
           </section>
 
-          {/* ── Group Combobox ── */}
-          <section className="space-y-2">
-            <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">グループ</label>
-            <div className="relative" ref={groupRef}>
+          {/* ── Filter Mode Toggle ── */}
+          <section className="space-y-3">
+            <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">絞り込み方法</label>
+            <div className="flex p-1 bg-gray-100 rounded-xl gap-1">
               <button
-                type="button"
-                onClick={() => setGroupOpen(v => !v)}
-                className={`w-full flex items-center justify-between border rounded-xl px-4 py-3 text-left transition-all bg-white ${
-                  groupOpen ? 'border-orange-400 ring-2 ring-orange-100' : 'border-gray-200 hover:border-gray-300'
+                onClick={() => setFilterMode('registrant')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-[13px] font-black transition-all ${
+                  filterMode === 'registrant' ? 'bg-white text-orange-500 shadow-sm' : 'text-gray-400'
                 }`}
               >
-                <span className="text-[14px] font-medium text-gray-800 truncate">{groupLabel()}</span>
-                <ChevronDown size={16} className={`text-gray-400 shrink-0 ml-2 transition-transform ${groupOpen ? 'rotate-180' : ''}`} />
+                <User size={14} />
+                投稿者でフィルター
               </button>
-
-              {groupOpen && (
-                <div className="absolute top-full mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
-                  {/* search */}
-                  <div className="px-3 py-2 border-b border-gray-100">
-                    <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5">
-                      <Search size={14} className="text-gray-400 shrink-0" />
-                      <input
-                        value={groupSearch}
-                        onChange={e => setGroupSearch(e.target.value)}
-                        placeholder="グループを検索..."
-                        className="flex-1 bg-transparent text-[13px] text-gray-700 focus:outline-none"
-                        autoFocus
-                      />
-                    </div>
-                  </div>
-                  {/* items */}
-                  <div className="max-h-44 overflow-y-auto py-1">
-                    {groupOptions.length > 0 && (
-                      <label className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={filters.activeGroups.length === groupOptions.length && groupOptions.length > 0}
-                          onChange={() => {
-                            if (filters.activeGroups.length === groupOptions.length) {
-                              setFilters(p => ({ ...p, activeGroups: [], registrantUserIds: [] }));
-                            } else {
-                              const allGroupIds = groupOptions.map(g => g.id);
-                              const allIds = members.filter(m => m.id !== currentUser?.id).map(m => m.id);
-                              setFilters(p => ({ ...p, activeGroups: allGroupIds, registrantUserIds: allIds }));
-                            }
-                          }}
-                          className="w-4 h-4 rounded border-gray-300 accent-orange-500"
-                        />
-                        <span className="text-[14px] text-gray-700">全選択</span>
-                      </label>
-                    )}
-                    {filteredGroups.map(opt => {
-                      const checked = filters.activeGroups.includes(opt.id);
-                      return (
-                        <label key={opt.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition-colors">
-                          <input
-                            type="checkbox"
-                            checked={checked}
-                            onChange={() => toggleGroup(opt.id)}
-                            className="w-4 h-4 rounded border-gray-300 accent-orange-500"
-                          />
-                          <span className="text-[14px] text-gray-700">{opt.label}</span>
-                        </label>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
+              <button
+                onClick={() => setFilterMode('group')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-[13px] font-black transition-all ${
+                  filterMode === 'group' ? 'bg-white text-orange-500 shadow-sm' : 'text-gray-400'
+                }`}
+              >
+                <Users size={14} />
+                グループでフィルター
+              </button>
             </div>
           </section>
 
-          {/* ── Member Combobox ── */}
-          <section className="space-y-2">
-            <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">投稿者</label>
-            {!memberOptionsEnabled ? (
-              <p className="text-[13px] text-gray-400 italic">メンバーがいません</p>
-            ) : (
-              <div className="relative" ref={memberRef}>
+          {/* ── Member Combobox (投稿者モード) ── */}
+          {filterMode === 'registrant' && (
+            <section className="space-y-2">
+              <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">投稿者</label>
+              {!memberOptionsEnabled ? (
+                <p className="text-[13px] text-gray-400 italic">メンバーがいません</p>
+              ) : (
+                <div className="relative" ref={memberRef}>
+                  <button
+                    type="button"
+                    onClick={() => setMemberOpen(v => !v)}
+                    className={`w-full flex items-center justify-between border rounded-xl px-4 py-3 text-left transition-all bg-white ${
+                      memberOpen ? 'border-orange-400 ring-2 ring-orange-100' : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <span className="text-[14px] font-medium text-gray-800 truncate">{memberLabel()}</span>
+                    <ChevronDown size={16} className={`text-gray-400 shrink-0 ml-2 transition-transform ${memberOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {memberOpen && (
+                    <div className="absolute top-full mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                      <div className="px-3 py-2 border-b border-gray-100">
+                        <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5">
+                          <Search size={14} className="text-gray-400 shrink-0" />
+                          <input
+                            value={memberSearch}
+                            onChange={e => setMemberSearch(e.target.value)}
+                            placeholder="メンバーを検索..."
+                            className="flex-1 bg-transparent text-[13px] text-gray-700 focus:outline-none"
+                            autoFocus
+                          />
+                        </div>
+                      </div>
+                      <div className="max-h-44 overflow-y-auto py-1">
+                        {/* 全員 option */}
+                        <label className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={allMembersSelected}
+                            onChange={() => {
+                              if (allMembersSelected) {
+                                set('registrantUserIds', []);
+                              } else {
+                                set('registrantUserIds', allMemberIds);
+                              }
+                            }}
+                            className="w-4 h-4 rounded border-gray-300 accent-orange-500"
+                          />
+                          <span className="text-[14px] text-gray-700">全選択</span>
+                        </label>
+                        {loadingMembers ? (
+                          <div className="px-4 py-3 text-[13px] text-gray-400">読み込み中...</div>
+                        ) : (
+                          filteredMembers.map((m: Member) => {
+                            const isSelected = filters.registrantUserIds.includes(m.id);
+                            const isMe = m.id === currentUser?.id;
+                            return (
+                              <label key={m.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition-colors">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={() => {
+                                    let next = [...filters.registrantUserIds];
+                                    if (isSelected) next = next.filter((id: string) => id !== m.id);
+                                    else next = [...next, m.id];
+                                    set('registrantUserIds', next);
+                                  }}
+                                  className="w-4 h-4 rounded border-gray-300 accent-orange-500"
+                                />
+                                <span className="text-[14px] text-gray-700">{m.name}{isMe ? ' (自分)' : ''}</span>
+                              </label>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </section>
+          )}
+
+          {/* ── Group Combobox (グループモード) ── */}
+          {filterMode === 'group' && (
+            <section className="space-y-2">
+              <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">グループ</label>
+              <div className="relative" ref={groupRef}>
                 <button
                   type="button"
-                  onClick={() => setMemberOpen(v => !v)}
+                  onClick={() => setGroupOpen(v => !v)}
                   className={`w-full flex items-center justify-between border rounded-xl px-4 py-3 text-left transition-all bg-white ${
-                    memberOpen ? 'border-orange-400 ring-2 ring-orange-100' : 'border-gray-200 hover:border-gray-300'
+                    groupOpen ? 'border-orange-400 ring-2 ring-orange-100' : 'border-gray-200 hover:border-gray-300'
                   }`}
                 >
-                  <span className="text-[14px] font-medium text-gray-800 truncate">{memberLabel()}</span>
-                  <ChevronDown size={16} className={`text-gray-400 shrink-0 ml-2 transition-transform ${memberOpen ? 'rotate-180' : ''}`} />
+                  <span className="text-[14px] font-medium text-gray-800 truncate">{groupLabel()}</span>
+                  <ChevronDown size={16} className={`text-gray-400 shrink-0 ml-2 transition-transform ${groupOpen ? 'rotate-180' : ''}`} />
                 </button>
 
-                {memberOpen && (
+                {groupOpen && (
                   <div className="absolute top-full mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                    {/* search */}
                     <div className="px-3 py-2 border-b border-gray-100">
                       <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5">
                         <Search size={14} className="text-gray-400 shrink-0" />
                         <input
-                          value={memberSearch}
-                          onChange={e => setMemberSearch(e.target.value)}
-                          placeholder="メンバーを検索..."
+                          value={groupSearch}
+                          onChange={e => setGroupSearch(e.target.value)}
+                          placeholder="グループを検索..."
                           className="flex-1 bg-transparent text-[13px] text-gray-700 focus:outline-none"
                           autoFocus
                         />
                       </div>
                     </div>
+                    {/* items */}
                     <div className="max-h-44 overflow-y-auto py-1">
-                      {/* "全員" option: 全メンバーのIDをセット */}
-                      <label className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={allMembersSelected}
-                          onChange={() => {
-                            if (allMembersSelected) {
-                              set('registrantUserIds', []);
-                            } else {
-                              set('registrantUserIds', allNonSelfIds);
-                            }
-                          }}
-                          className="w-4 h-4 rounded border-gray-300 accent-orange-500"
-                        />
-                        <span className="text-[14px] text-gray-700">全選択</span>
-                      </label>
-                      {loadingMembers ? (
-                        <div className="px-4 py-3 text-[13px] text-gray-400">読み込み中...</div>
-                      ) : (
-                        filteredMembers.map((m: Member) => {
-                          const isSelected = filters.registrantUserIds.includes(m.id);
-                          return (
-                            <label key={m.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition-colors">
-                              <input
-                                type="checkbox"
-                                checked={isSelected}
-                                onChange={() => {
-                                  let next = [...filters.registrantUserIds];
-                                  if (isSelected) next = next.filter((id: string) => id !== m.id);
-                                  else next = [...next, m.id];
-                                  set('registrantUserIds', next);
-                                }}
-                                className="w-4 h-4 rounded border-gray-300 accent-orange-500"
-                              />
-                              <span className="text-[14px] text-gray-700">{m.name}</span>
-                            </label>
-                          );
-                        })
+                      {groupOptions.length > 0 && (
+                        <label className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={filters.activeGroups.length === groupOptions.length && groupOptions.length > 0}
+                            onChange={() => {
+                              if (filters.activeGroups.length === groupOptions.length) {
+                                setFilters(p => ({ ...p, activeGroups: [], registrantUserIds: [] }));
+                              } else {
+                                const allGroupIds = groupOptions.map(g => g.id);
+                                const allIds = members.map(m => m.id);
+                                setFilters(p => ({ ...p, activeGroups: allGroupIds, registrantUserIds: allIds }));
+                              }
+                            }}
+                            className="w-4 h-4 rounded border-gray-300 accent-orange-500"
+                          />
+                          <span className="text-[14px] text-gray-700">全選択</span>
+                        </label>
                       )}
+                      {filteredGroups.map(opt => {
+                        const checked = filters.activeGroups.includes(opt.id);
+                        return (
+                          <label key={opt.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleGroup(opt.id)}
+                              className="w-4 h-4 rounded border-gray-300 accent-orange-500"
+                            />
+                            <span className="text-[14px] text-gray-700">{opt.label}</span>
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
               </div>
-            )}
-          </section>
+            </section>
+          )}
+
           {/* ── Tag ── */}
           <section className="space-y-2">
             <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">タグ</label>

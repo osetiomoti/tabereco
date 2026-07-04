@@ -99,12 +99,38 @@ export default function MyPage() {
   });
 
   const goToMap = () => {
-    updateFilter({ activeGroups: ['mine'] });
+    if (targetUserId) {
+      // 友達ページからマップ: その人だけフィルター
+      updateFilter({ 
+        activeGroups: [],
+        advancedFilters: { registrantUserIds: [targetUserId], include_mine: false }
+      });
+    } else {
+      // 自分のマイページからマップ: 自分だけ
+      const myId = myUserData?.data?.id;
+      updateFilter({ 
+        activeGroups: [],
+        advancedFilters: myId ? { registrantUserIds: [myId], include_mine: true } : { include_mine: true }
+      });
+    }
     router.push('/map');
   };
 
   const goToCalendar = () => {
-    updateFilter({ activeGroups: ['mine'] });
+    if (targetUserId) {
+      // 友達ページからカレンダー: その人だけフィルター
+      updateFilter({ 
+        activeGroups: [],
+        advancedFilters: { registrantUserIds: [targetUserId], include_mine: false }
+      });
+    } else {
+      // 自分のマイページからカレンダー: 自分だけ
+      const myId = myUserData?.data?.id;
+      updateFilter({ 
+        activeGroups: [],
+        advancedFilters: myId ? { registrantUserIds: [myId], include_mine: true } : { include_mine: true }
+      });
+    }
     router.push('/calendar');
   };
 
@@ -171,7 +197,7 @@ export default function MyPage() {
       )}
 
       {/* Action Row */}
-      <div className={`px-4 mb-5 grid ${targetUserId ? 'grid-cols-2' : 'grid-cols-4'} gap-2`}>
+      <div className={`px-4 mb-5 grid ${targetUserId ? 'grid-cols-4' : 'grid-cols-4'} gap-2`}>
         <button onClick={() => setIsTagSelectorOpen(true)} className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
           <Hash size={20} strokeWidth={2.5} className="mb-0.5" />
           <span className="text-[9px] font-black tracking-wider">タグ</span>
@@ -193,18 +219,14 @@ export default function MyPage() {
             </div>
           )}
         </div>
-        {!targetUserId && (
-          <>
-            <button onClick={goToMap} className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
-              <MapPin size={20} strokeWidth={2.5} className="mb-0.5" />
-              <span className="text-[9px] font-black tracking-wider">マップ</span>
-            </button>
-            <button onClick={goToCalendar} className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
-              <Calendar size={20} strokeWidth={2.5} className="mb-0.5" />
-              <span className="text-[9px] font-black tracking-wider">カレンダー</span>
-            </button>
-          </>
-        )}
+        <button onClick={goToMap} className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+          <MapPin size={20} strokeWidth={2.5} className="mb-0.5" />
+          <span className="text-[9px] font-black tracking-wider">マップ</span>
+        </button>
+        <button onClick={goToCalendar} className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+          <Calendar size={20} strokeWidth={2.5} className="mb-0.5" />
+          <span className="text-[9px] font-black tracking-wider">カレンダー</span>
+        </button>
       </div>
 
       {/* Tags Chips */}
