@@ -72,6 +72,8 @@ model Post {
   created_at  DateTime    @default(now()) 
   is_favorite Boolean     @default(false) 
   is_mine_only Boolean    @default(false)
+  price_min   Int?
+  price_max   Int?
   user        User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
   tags        PostTag[]
   groups      PostGroup[]

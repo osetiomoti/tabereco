@@ -55,6 +55,8 @@ export function PostForm({ post }: Props) {
     latitude: post?.latitude ?? queryLat,
     longitude: post?.longitude ?? queryLng,
     is_mine_only: post?.is_mine_only ?? false,
+    price_min: post?.price_min ?? 1000,
+    price_max: post?.price_max ?? 2000,
   });
 
   const [isTagSelectorOpen, setIsTagSelectorOpen] = useState(false);
@@ -206,6 +208,8 @@ export function PostForm({ post }: Props) {
         latitude: values.latitude || null,
         longitude: values.longitude || null,
         is_mine_only: values.is_mine_only,
+        price_min: values.price_min,
+        price_max: values.price_max,
       };
 
       let result;
@@ -353,6 +357,28 @@ export function PostForm({ post }: Props) {
             rows={4}
             className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-4 focus:ring-[#ff6b95]/5 focus:border-[#ff6b95]/20 focus:bg-white transition-all text-base font-bold resize-none"
           />
+        </div>
+
+        <div className="space-y-1.5">
+          <label className="text-[12px] font-black text-gray-500 tracking-widest ml-1 block">値段帯</label>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              value={values.price_min ?? ''}
+              onChange={(e) => set('price_min', e.target.value ? parseInt(e.target.value, 10) : null)}
+              placeholder="1000"
+              className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 focus:outline-none focus:ring-4 focus:ring-[#ff6b95]/5 focus:bg-white transition-all text-base font-bold"
+            />
+            <span className="text-gray-400 font-bold">〜</span>
+            <input
+              type="number"
+              value={values.price_max ?? ''}
+              onChange={(e) => set('price_max', e.target.value ? parseInt(e.target.value, 10) : null)}
+              placeholder="2000"
+              className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 focus:outline-none focus:ring-4 focus:ring-[#ff6b95]/5 focus:bg-white transition-all text-base font-bold"
+            />
+            <span className="text-gray-400 font-bold shrink-0 text-sm">円</span>
+          </div>
         </div>
 
         <div className="space-y-2.5">

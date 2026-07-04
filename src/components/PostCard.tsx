@@ -325,10 +325,17 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 min-w-0">
               <h2 className="text-[15px] font-black text-gray-900 truncate mb-0.5">{post.title}</h2>
-              <p className="text-gray-500 font-medium text-[12px] truncate flex items-center gap-1">
-                <MapPin size={10} className="text-orange-500" />
-                {post.store_name}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-gray-500 font-medium text-[12px] truncate flex items-center gap-1">
+                  <MapPin size={10} className="text-orange-500" />
+                  {post.store_name}
+                </p>
+                {(post.price_min != null || post.price_max != null) && (
+                  <span className="text-[10px] text-gray-400 font-bold bg-gray-50 px-1.5 py-0.5 rounded-md flex-shrink-0">
+                    ¥{post.price_min?.toLocaleString() ?? ''}〜{post.price_max?.toLocaleString() ?? ''}
+                  </span>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-1 bg-orange-50 px-2 py-1 rounded-lg">
               <Star size={12} className="fill-orange-500 text-orange-500" />

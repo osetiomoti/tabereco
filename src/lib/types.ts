@@ -17,6 +17,8 @@ export type Post = {
   is_public: boolean;
   is_favorite: boolean;
   is_mine_only: boolean;
+  price_min: number | null;
+  price_max: number | null;
   google_place_id: string | null;
   address: string | null;
   latitude: number | null;
@@ -42,6 +44,8 @@ export type PostInsert = {
   is_public?: boolean;
   is_favorite?: boolean;
   is_mine_only?: boolean;
+  price_min?: number | null;
+  price_max?: number | null;
   google_place_id?: string | null;
   address?: string | null;
   latitude?: number | null;
@@ -60,6 +64,8 @@ export type PostUpdate = {
   is_public?: boolean;
   is_favorite?: boolean;
   is_mine_only?: boolean;
+  price_min?: number | null;
+  price_max?: number | null;
   google_place_id?: string | null;
   address?: string | null;
   latitude?: number | null;
@@ -78,6 +84,8 @@ export type PostFormValues = {
   is_public: boolean;
   is_favorite: boolean;
   tags: string[]; // タグ名の配列
+  price_min: number | null;
+  price_max: number | null;
   address?: string;
   google_place_id?: string;
   latitude?: number;

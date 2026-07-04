@@ -236,7 +236,7 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
       </GoogleMap>
 
       {/* Custom Map Controls (Vertical stack on right) */}
-      <div className="absolute right-3 top-24 flex flex-col gap-2 z-10">
+      <div className="absolute right-3 top-24 flex flex-col gap-2 z-[200]">
         <button
           onClick={toggleMapType}
           className="w-10 h-10 bg-white rounded-xl shadow-lg flex items-center justify-center text-gray-600 hover:bg-gray-50 active:scale-95 transition-all border border-gray-100"
