@@ -111,8 +111,8 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
       setFilters(prev => {
         let next = { ...prev };
         if (prev.registrantUserIds.length === 0) {
-          // 自分も含めた全員を選択
-          const allIds = members.map(m => m.id);
+          // 自分以外の全員を選択
+          const allIds = members.filter(m => m.id !== currentUser?.id).map(m => m.id);
           if (allIds.length > 0) next.registrantUserIds = allIds;
         }
         return next;
@@ -147,7 +147,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
     setFilters(p => ({ ...p, [k]: v }));
 
   const handleReset = () => {
-    const allIds = members.map(m => m.id);
+    const allIds = members.filter(m => m.id !== currentUser?.id).map(m => m.id);
     setFilters({
       ...DEFAULT,
       activeGroups: groupOptions.map(g => g.id),
@@ -259,27 +259,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
         {/* Body */}
         <div className="flex-1 overflow-y-auto px-5 py-5 space-y-7 pb-28">
           
-          {/* ── Include Mine Toggle ── */}
-          <section className="bg-orange-50/50 border border-orange-100 rounded-2xl p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm text-orange-500">
-                <Plus size={20} />
-              </div>
-              <div>
-                <p className="text-[14px] font-black text-gray-800">自分の投稿を含める</p>
-                <p className="text-[11px] text-gray-400 font-bold">OFFにすると他人の投稿のみ表示</p>
-              </div>
-            </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-              <input 
-                type="checkbox" 
-                checked={filters.include_mine}
-                onChange={(e) => set('include_mine', e.target.checked)}
-                className="peer sr-only"
-              />
-              <div className="w-12 h-7 bg-gray-200 rounded-full peer peer-checked:after:translate-x-[20px] after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-[20px] after:w-[20px] after:transition-all peer-checked:bg-orange-500 shadow-inner"></div>
-            </label>
-          </section>
+
 
           {/* ── Filter Mode Toggle ── */}
           <section className="space-y-3">
