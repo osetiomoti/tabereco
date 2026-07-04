@@ -79,8 +79,8 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
     // Sync filters with initialFilters each time modal opens
     setFilters(prev => {
       const base = { ...DEFAULT, ...(initialFilters || {}) };
-      // If no activeGroups provided, default to all groups
-      if (!initialFilters?.activeGroups || initialFilters.activeGroups.length === 0) {
+      // If no activeGroups provided, or includes 'all', default to all groups
+      if (!initialFilters?.activeGroups || initialFilters.activeGroups.length === 0 || initialFilters.activeGroups.includes('all')) {
         base.activeGroups = swrGroups.map(g => g.id);
       }
       return base;
@@ -205,7 +205,6 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
   };
 
   const groupLabel = () => {
-    if (filters.activeGroups.includes('all')) return '全選択';
     if (filters.activeGroups.length === groupOptions.length && groupOptions.length > 0) return '全選択';
     if (filters.activeGroups.length === 0) return '選択なし';
     return `${filters.activeGroups.length}グループ選択中`;
@@ -318,7 +317,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
                       <label className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition-colors">
                         <input
                           type="checkbox"
-                          checked={filters.activeGroups.length === groupOptions.length}
+                          checked={filters.activeGroups.length === groupOptions.length && groupOptions.length > 0}
                           onChange={() => {
                             if (filters.activeGroups.length === groupOptions.length) {
                               set('activeGroups', []);

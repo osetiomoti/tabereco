@@ -12,6 +12,7 @@ import { TagSelector } from '@/components/TagSelector';
 import { formatDate } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useSharedFilter } from '@/hooks/useSharedFilter';
+import { useGroups } from '@/hooks/useAppData';
 
 export default function MyPage() {
   const router = useRouter();
@@ -46,11 +47,13 @@ export default function MyPage() {
     () => import('@/lib/api/friends').then(m => m.getFriends())
   );
 
+  const { groups: myGroups } = useGroups();
+
   const user = targetUserId ? targetUserData?.data?.user : myUserData?.data;
   const posts: Post[] = targetUserId ? (targetUserData?.data?.posts || []) : (ownPostsData || []);
   const loading = targetUserId ? !targetUserData : ownPostsLoading;
   const friendsCount = targetUserId ? (targetUserData?.data?.friendsCount || 0) : (friendsData?.length || 0);
-  const groupsCount = targetUserId ? (targetUserData?.data?.groupsCount || 0) : (user?.groups_joined || 0);
+  const groupsCount = targetUserId ? (targetUserData?.data?.groupsCount || 0) : myGroups.length;
 
   const [sortField, setSortField] = useState<'date' | 'rating'>('date');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');

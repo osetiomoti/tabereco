@@ -27,6 +27,7 @@ export default function FriendsPage() {
   const [myId, setMyId] = useState('');
   const [friends, setFriends] = useState<Friend[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // ともだち追加
@@ -52,9 +53,14 @@ export default function FriendsPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const [f, g] = await Promise.all([getFriends(), getJoinedGroups()]);
+    const [f, g, pRes] = await Promise.all([
+      getFriends(),
+      getJoinedGroups(),
+      fetch('/api/friends/pending').then(r => r.json())
+    ]);
     setFriends(f ?? []);
     setGroups(g ?? []);
+    setPendingRequests(pRes.data ?? []);
     setLoading(false);
   }, []);
 
@@ -85,6 +91,22 @@ export default function FriendsPage() {
     if (!confirm('ともだちを削除しますか？')) return;
     await removeFriend(friendshipId);
     load();
+  };
+
+  const handleAcceptRequest = async (friendshipId: string) => {
+    try {
+      const res = await fetch('/api/friends/accept', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ friendshipId }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
+      alert('ともだちになりました！');
+      load();
+    } catch (e: any) {
+      alert(e.message || '承認に失敗しました');
+    }
   };
 
   const copyMyId = () => {
@@ -201,17 +223,24 @@ export default function FriendsPage() {
                         {u.avatar_url ? <Image src={u.avatar_url} alt={u.name} fill className="object-cover" /> : <User size={18} className="text-orange-400" />}
                       </div>
                       <span className="flex-1 font-bold text-sm text-gray-800 truncate">{u.name}</span>
-                      {friendIds.has(u.id) ? (
-                        <span className="text-[11px] font-bold text-green-500 flex items-center gap-1"><UserCheck size={14} />ともだち</span>
-                      ) : (
-                        <button
-                          onClick={() => handleAddFriend(u.id)}
-                          disabled={addingId === u.id}
-                          className="shrink-0 px-3 py-1.5 bg-orange-500 text-white text-[12px] font-black rounded-xl shadow-sm shadow-orange-200 active:scale-95 transition-all disabled:opacity-50"
-                        >
-                          {addingId === u.id ? '追加中...' : '追加'}
-                        </button>
-                      )}
+                      {(() => {
+                        if (friendIds.has(u.id)) {
+                          return <span className="text-[11px] font-bold text-green-500 flex items-center gap-1"><UserCheck size={14} />ともだち</span>;
+                        }
+                        const sentReq = pendingRequests.find(r => r.user.id === u.id && r.type === 'sent');
+                        if (sentReq) {
+                          return <span className="text-[11px] font-bold text-gray-400">リクエスト済み</span>;
+                        }
+                        return (
+                          <button
+                            onClick={() => handleAddFriend(u.id)}
+                            disabled={addingId === u.id}
+                            className="shrink-0 px-3 py-1.5 bg-orange-500 text-white text-[12px] font-black rounded-xl shadow-sm shadow-orange-200 active:scale-95 transition-all disabled:opacity-50"
+                          >
+                            {addingId === u.id ? '追加中...' : '追加'}
+                          </button>
+                        );
+                      })()}
                     </div>
                   ))}
                 </div>
@@ -221,6 +250,29 @@ export default function FriendsPage() {
                 <p className="text-center text-sm text-gray-400 font-bold mt-4">ユーザーが見つかりませんでした</p>
               )}
             </div>
+
+            {/* 届いているリクエスト */}
+            {pendingRequests.filter(r => r.type === 'received').length > 0 && (
+              <div className="bg-pink-50 border border-pink-100 rounded-3xl p-5 shadow-sm">
+                <h2 className="text-[11px] font-black text-pink-400 tracking-widest mb-3">届いているリクエスト</h2>
+                <div className="space-y-2">
+                  {pendingRequests.filter(r => r.type === 'received').map(req => (
+                    <div key={req.friendship_id} className="flex items-center gap-3 p-3 bg-white rounded-2xl shadow-sm border border-pink-100">
+                      <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center overflow-hidden relative flex-shrink-0">
+                        {req.user.avatar_url ? <Image src={req.user.avatar_url} alt={req.user.name} fill className="object-cover" /> : <User size={18} className="text-pink-400" />}
+                      </div>
+                      <span className="flex-1 font-bold text-sm text-gray-800 truncate">{req.user.name}</span>
+                      <button
+                        onClick={() => handleAcceptRequest(req.friendship_id)}
+                        className="shrink-0 px-4 py-2 bg-pink-500 text-white text-[12px] font-black rounded-xl shadow-sm shadow-pink-200 active:scale-95 transition-all"
+                      >
+                        承認する
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* ともだち一覧 */}
             <div>

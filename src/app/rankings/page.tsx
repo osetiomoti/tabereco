@@ -7,7 +7,7 @@ import { saveRankings } from '@/lib/api/friends';
 import { useMyTags, useFriends, useMyProfile } from '@/hooks/useAppData';
 import type { Tag } from '@/lib/types';
 import { Header } from '@/components/Header';
-import useSWR from 'swr';
+import useSWR, { mutate } from 'swr';
 
 // dnd-kit
 import {
@@ -180,6 +180,7 @@ export default function RankingsPage() {
   const handleSave = async () => {
     if (isReadOnly || !rankingTag) return;
     await saveRankings(rankingTag, rankingPosts.map(p => p.id));
+    mutate(key => typeof key === 'string' && key.startsWith('/api/rankings'));
     setRankingSaved(true);
   };
 

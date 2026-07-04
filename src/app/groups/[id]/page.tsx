@@ -40,7 +40,62 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   const [invitingId, setInvitingId] = useState<string | null>(null);
   const [invitedIds, setInvitedIds] = useState<Set<string>>(new Set());
 
+  const [pendingRequests, setPendingRequests] = useState<any[]>([]);
+  const [myUserId, setMyUserId] = useState<string | null>(null);
+
+  const [isEditingGroup, setIsEditingGroup] = useState(false);
+  const [editGroupName, setEditGroupName] = useState('');
+  const [editGroupDescription, setEditGroupDescription] = useState('');
+
   const isAdmin = group?.member_role === 'admin';
+
+  const handleEditGroup = async () => {
+    try {
+      const res = await fetch(`/api/groups/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editGroupName, description: editGroupDescription }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
+      setGroup(prev => prev ? { ...prev, name: editGroupName, description: editGroupDescription } : null);
+      setIsEditingGroup(false);
+    } catch (e: any) {
+      alert(e.message || 'グループの更新に失敗しました');
+    }
+  };
+
+  const handleSendRequest = async (friendId: string) => {
+    try {
+      const res = await fetch('/api/friends', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ friendUserId: friendId }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
+      alert('ともだちリクエストを送信しました');
+      await load();
+    } catch (e: any) {
+      alert(e.message || 'リクエスト送信に失敗しました');
+    }
+  };
+
+  const handleAcceptRequest = async (friendshipId: string) => {
+    try {
+      const res = await fetch('/api/friends/accept', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ friendshipId }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
+      alert('ともだちになりました！');
+      await load();
+    } catch (e: any) {
+      alert(e.message || '承認に失敗しました');
+    }
+  };
 
   const handleRemoveMember = async (memberId: string, memberName: string) => {
     if (!confirm(`${memberName}さんをグループから削除しますか？`)) return;
@@ -65,15 +120,23 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   const load = async () => {
     setLoading(true);
     try {
-      const [joined, membersRes, friendsData] = await Promise.all([
+      const [joined, membersRes, friendsData, pendingData, profileRes] = await Promise.all([
         getJoinedGroups(),
         fetch(`/api/groups/${id}/members`).then(r => r.json()),
         getFriends(),
+        fetch('/api/friends/pending').then(r => r.json()),
+        fetch('/api/profiles/me').then(r => r.json())
       ]);
       const current = joined.find((g: any) => g.id === id);
-      if (current) setGroup(current);
+      if (current) {
+        setGroup(current);
+        setEditGroupName(current.name);
+        setEditGroupDescription(current.description || '');
+      }
       if (membersRes.success) setMembers(membersRes.data);
       setFriends(friendsData ?? []);
+      setPendingRequests(pendingData.data ?? []);
+      setMyUserId(profileRes.data?.id);
     } catch (err) {
       console.error(err);
     } finally {
@@ -146,7 +209,14 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
               <Hash size={28} strokeWidth={3} />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-gray-900 tracking-tight">{group.name}</h1>
+              <h1 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">
+                {group.name}
+                {isAdmin && (
+                  <button onClick={() => setIsEditingGroup(true)} className="text-gray-300 hover:text-orange-500 transition-colors">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" /><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" /></svg>
+                  </button>
+                )}
+              </h1>
               <p className="text-xs text-gray-400 font-bold">{group.description || '美味しいスポットをみんなでシェア！'}</p>
             </div>
           </div>
@@ -254,6 +324,35 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
                       </p>
                     </div>
                   </Link>
+                  {myUserId && member.id !== myUserId && (() => {
+                    const isFriend = friends.some(f => f.id === member.id);
+                    const sentReq = pendingRequests.find(r => r.user.id === member.id && r.type === 'sent');
+                    const recvReq = pendingRequests.find(r => r.user.id === member.id && r.type === 'received');
+
+                    if (isFriend) {
+                      return <span className="text-[10px] text-gray-400 font-bold bg-gray-50 px-2 py-1 rounded-lg shrink-0">ともだち</span>;
+                    } else if (recvReq) {
+                      return (
+                        <button
+                          onClick={() => handleAcceptRequest(recvReq.friendship_id)}
+                          className="px-3 py-1.5 bg-pink-500 text-white text-[10px] font-black rounded-lg shrink-0 hover:bg-pink-600 transition-colors"
+                        >
+                          承認する
+                        </button>
+                      );
+                    } else if (sentReq) {
+                      return <span className="text-[10px] text-gray-400 font-bold bg-gray-50 px-2 py-1 rounded-lg shrink-0">リクエスト済み</span>;
+                    } else {
+                      return (
+                        <button
+                          onClick={() => handleSendRequest(member.id)}
+                          className="px-3 py-1.5 bg-orange-100 text-orange-600 text-[10px] font-black rounded-lg shrink-0 hover:bg-orange-200 transition-colors flex items-center gap-1"
+                        >
+                          <UserPlus size={12} /> 追加
+                        </button>
+                      );
+                    }
+                  })()}
                   {isAdmin && member.role !== 'admin' && (
                     <button
                       onClick={() => handleRemoveMember(member.id, member.name)}
@@ -284,6 +383,54 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
           </section>
         )}
       </main>
+
+      {/* Edit Group Modal */}
+      {isEditingGroup && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center animate-in fade-in duration-200">
+          <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setIsEditingGroup(false)} />
+          <div className="bg-white rounded-3xl shadow-xl w-[90%] max-w-sm relative z-10 overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="px-6 py-5 border-b border-gray-100">
+              <h2 className="text-[17px] font-black text-gray-900">グループを編集</h2>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-xs font-bold text-gray-500 mb-1 block">グループ名</label>
+                <input
+                  type="text"
+                  value={editGroupName}
+                  onChange={(e) => setEditGroupName(e.target.value)}
+                  className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-sm font-bold text-gray-900 focus:ring-2 focus:ring-orange-200"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-bold text-gray-500 mb-1 block">ひとこと（説明）</label>
+                <textarea
+                  value={editGroupDescription}
+                  onChange={(e) => setEditGroupDescription(e.target.value)}
+                  rows={2}
+                  className="w-full bg-gray-50 border-none rounded-xl px-4 py-3 text-sm font-bold text-gray-900 focus:ring-2 focus:ring-orange-200 resize-none"
+                  placeholder="グループの説明..."
+                />
+              </div>
+            </div>
+            <div className="px-6 py-4 bg-gray-50/50 flex gap-3 border-t border-gray-100">
+              <button
+                onClick={() => setIsEditingGroup(false)}
+                className="flex-1 py-3 bg-white text-gray-500 font-black text-sm rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors"
+              >
+                キャンセル
+              </button>
+              <button
+                onClick={handleEditGroup}
+                disabled={!editGroupName.trim()}
+                className="flex-1 py-3 bg-orange-500 text-white font-black text-sm rounded-xl hover:bg-orange-600 transition-colors disabled:opacity-50"
+              >
+                保存する
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

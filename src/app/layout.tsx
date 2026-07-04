@@ -17,6 +17,13 @@ const notoSansJP = Noto_Sans_JP({
   weight: ['300', '400', '500', '700'],
 });
 
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+};
+
 export const metadata: Metadata = {
   title: '食べレコ',
   description: 'あなたの食の記録を、もっと楽しく。食事の写真・評価・コメントを記録しよう。',

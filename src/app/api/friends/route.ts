@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
       }
 
       const friendship = await prisma.friendship.create({
-        data: { user_id: auth.userId, friend_id: friendUserId, status: 'accepted' },
+        data: { user_id: auth.userId, friend_id: friendUserId, status: 'pending' },
         include: {
           friend: { select: { id: true, name: true, avatar_url: true } },
         },

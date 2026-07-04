@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { mutate } from 'swr';
 import { ImageUpload } from './ImageUpload';
 import { StarInput } from './StarRating';
 import { createPost, updatePost } from '@/lib/api/posts';
@@ -191,7 +192,7 @@ export function PostForm({ post }: Props) {
       const primaryImageUrl = finalImageUrls.length > 0 ? finalImageUrls[0] : null;
 
       const postData = {
-        title: values.title?.trim() || `${values.store_name.trim()}での記録`,
+        title: values.title?.trim() || values.store_name.trim(),
         store_name: values.store_name.trim(),
         comment: values.comment.trim() || null,
         rating: values.rating,
@@ -213,6 +214,7 @@ export function PostForm({ post }: Props) {
         if (result) {
           const { sharePostToGroups } = await import('@/lib/api/groups');
           await sharePostToGroups(post.id, selectedGroupIds);
+          mutate('/api/posts');
           router.push(`/posts/${post.id}`);
         }
       } else {
@@ -220,6 +222,7 @@ export function PostForm({ post }: Props) {
         if (result?.id) {
           const { sharePostToGroups } = await import('@/lib/api/groups');
           await sharePostToGroups(result.id, selectedGroupIds);
+          mutate('/api/posts');
           router.push(`/posts/${result.id}`);
         }
       }
