@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState, useRef, useEffect } from 'react';
+import { Fragment, useCallback, useState, useRef, useEffect } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
 import type { Post } from '@/lib/types';
 import Link from 'next/link';
@@ -171,20 +171,22 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
           gestureHandling: 'greedy',
         }}
       >
-        {posts.map((post) => (
-          post.latitude && post.longitude && (
-            <Marker
-              key={post.id}
-              position={{ lat: post.latitude, lng: post.longitude }}
-              onClick={() => setSelectedPost(post)}
-              icon={{
-                url: post.status === 'visited' ? VISITED_ICON : WANT_ICON,
-                scaledSize: new window.google.maps.Size(36, 46),
-                anchor: new window.google.maps.Point(18, 46),
-              }}
-            />
-          )
-        ))}
+        <Fragment key={posts.map(p => p.id).join(',')}>
+          {posts.map((post) => (
+            post.latitude && post.longitude && (
+              <Marker
+                key={post.id}
+                position={{ lat: post.latitude, lng: post.longitude }}
+                onClick={() => setSelectedPost(post)}
+                icon={{
+                  url: post.status === 'visited' ? VISITED_ICON : WANT_ICON,
+                  scaledSize: new window.google.maps.Size(36, 46),
+                  anchor: new window.google.maps.Point(18, 46),
+                }}
+              />
+            )
+          ))}
+        </Fragment>
 
         {selectedPost && selectedPost.latitude && selectedPost.longitude && (
           <InfoWindow

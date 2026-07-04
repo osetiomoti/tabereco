@@ -16,7 +16,7 @@ export function useFilteredPosts() {
   const [memberUsers, setMemberUsers] = useState<{ id: string; name: string }[]>([]);
 
   // 1. Fetch own posts
-  const { data: ownPostsData, isLoading: ownLoading } = useSWR<Post[]>('/api/posts', () => getPosts(), {
+  const { data: ownPostsData, isLoading: ownLoading } = useSWR<Post[]>(['/api/posts', 'own_filtered'], () => getPosts(), {
     revalidateOnFocus: false,
     dedupingInterval: 10000,
   });
