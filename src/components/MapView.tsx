@@ -98,23 +98,6 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
     }
   }, [setTempMarker]);
 
-  // postsが変わった時にバウンズを再計算してマップを更新する
-  useEffect(() => {
-    if (mapRef.current && posts.length > 0) {
-      const bounds = new window.google.maps.LatLngBounds();
-      let hasValidCoords = false;
-      posts.forEach(p => {
-        if (p.latitude && p.longitude) {
-          bounds.extend({ lat: p.latitude, lng: p.longitude });
-          hasValidCoords = true;
-        }
-      });
-      if (hasValidCoords) {
-        mapRef.current.fitBounds(bounds);
-      }
-    }
-  }, [posts]);
-
   const onUnmount = useCallback(() => {
     mapRef.current = null;
   }, []);

@@ -149,6 +149,9 @@ export function useFilteredPosts() {
 
     if (advancedFilters?.registrantUserIds !== undefined && advancedFilters.registrantUserIds.length > 0) {
       result = result.filter((p: Post) => {
+        // 自分の投稿は include_mine で既に処理済み → registrantUserIds フィルター対象外
+        // (include_mine=false の場合はステップ①で既に除外済み)
+        if (ownPostIds.has(p.id)) return true;
         return advancedFilters.registrantUserIds.includes(p.user_id);
       });
     }
