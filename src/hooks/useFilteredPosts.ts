@@ -34,12 +34,14 @@ export function useFilteredPosts() {
     if (joinedGroups.length > 0) {
       const loadAllMembers = async () => {
         const map = new Map<string, { id: string; name: string }>();
+        let myId = '';
         // Add own profile first
         try {
           const profileRes = await fetch('/api/profiles/me');
           const profileJson = await profileRes.json();
           if (profileJson.data) {
-            map.set(profileJson.data.id, { id: profileJson.data.id, name: profileJson.data.name || '自分' });
+            myId = profileJson.data.id;
+            map.set(myId, { id: myId, name: profileJson.data.name || '自分' });
           }
         } catch (e) {
           console.error(e);
@@ -58,11 +60,24 @@ export function useFilteredPosts() {
             }
           })
         );
-        setMemberUsers(Array.from(map.values()));
+        const membersList = Array.from(map.values());
+        setMemberUsers(membersList);
+
+        // デフォルトの registrantUserIds が未設定の場合、自分以外を全選択状態として初期設定する
+        if (advancedFilters?.registrantUserIds === undefined && myId) {
+          const allIds = membersList.filter(m => m.id !== myId).map(m => m.id);
+          updateFilter({
+            advancedFilters: {
+              ...(advancedFilters || {}),
+              registrantUserIds: allIds,
+              include_mine: false,
+            }
+          });
+        }
       };
       loadAllMembers();
     }
-  }, [joinedGroups]);
+  }, [joinedGroups, advancedFilters, updateFilter]);
 
   // 3. Fetch group posts for each group
   // We need to fetch multiple groups. SWR doesn't support multiple keys easily, 

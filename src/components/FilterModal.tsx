@@ -104,15 +104,16 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
     return () => document.removeEventListener('mousedown', fn);
   }, []);
 
-  /* ── デフォルト全選択: メンバー読み込み後、未選択なら全員を選択 ── */
+  /* ── デフォルト全選択: メンバー読み込み後かつcurrentUser確定後、未選択なら全員を選択 ── */
   useEffect(() => {
-    if (members.length > 0 && !hasDefaulted.current) {
+    // currentUserがまだ読み込まれていない場合は待機する
+    if (members.length > 0 && currentUser && !hasDefaulted.current) {
       hasDefaulted.current = true;
       setFilters(prev => {
         let next = { ...prev };
         if (prev.registrantUserIds.length === 0) {
           // 自分以外の全員を選択
-          const allIds = members.filter(m => m.id !== currentUser?.id).map(m => m.id);
+          const allIds = members.filter(m => m.id !== currentUser.id).map(m => m.id);
           if (allIds.length > 0) next.registrantUserIds = allIds;
         }
         return next;
