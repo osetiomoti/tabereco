@@ -59,7 +59,7 @@ export async function middleware(request: NextRequest) {
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/api/auth');
   const isDevPage = pathname.startsWith('/dev') || pathname.startsWith('/api/dev');
   const isSetupPage = pathname.startsWith('/api/setup');
-  const isStaticFile = pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|ico)$/);
+  const isStaticFile = pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|ico|json)$/) || pathname === '/manifest.json';
 
   // 1. 公開ページや静的ファイルはスルー
   if (isAuthPage || isDevPage || isSetupPage || isStaticFile) {
