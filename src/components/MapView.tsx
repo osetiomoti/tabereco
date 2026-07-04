@@ -1,7 +1,7 @@
 'use client';
 
-import { Fragment, useCallback, useState, useRef, useEffect } from 'react';
-import { GoogleMap, useJsApiLoader, Marker, InfoWindow } from '@react-google-maps/api';
+import { useCallback, useState, useRef, useEffect } from 'react';
+import { GoogleMap, useJsApiLoader, InfoWindow } from '@react-google-maps/api';
 import type { Post } from '@/lib/types';
 import Link from 'next/link';
 import { Star, MapPin, Navigation, Layers, Plus, Minus } from 'lucide-react';
@@ -19,8 +19,8 @@ const createMarkerIcon = (color: string) => `data:image/svg+xml;charset=UTF-8,${
 `)}`;
 
 const VISITED_ICON = createMarkerIcon('#f43f5e'); // rose-500
-const WANT_ICON = createMarkerIcon('#fb923c'); // orange-400
-const TEMP_ICON = createMarkerIcon('#8b5cf6'); // violet-500
+const WANT_ICON = createMarkerIcon('#fb923c');    // orange-400
+const TEMP_ICON = createMarkerIcon('#8b5cf6');    // violet-500
 
 type Props = {
   posts: Post[];
@@ -43,34 +43,103 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
   });
 
   const mapRef = useRef<google.maps.Map | null>(null);
+  const markersRef = useRef<Map<string, google.maps.Marker>>(new Map());
+  const tempMarkerRef = useRef<google.maps.Marker | null>(null);
   const [mapTypeId, setMapTypeId] = useState<string>('roadmap');
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
 
+  // ─── imperative marker management ───
+  // posts が変わるたびに古いマーカーを削除して新しいマーカーを追加する
+  useEffect(() => {
+    if (!mapRef.current || !isLoaded) return;
+
+    const map = mapRef.current;
+    const incoming = new Set(posts.map(p => p.id));
+
+    // 不要になったマーカーを削除
+    markersRef.current.forEach((marker, id) => {
+      if (!incoming.has(id)) {
+        marker.setMap(null);
+        markersRef.current.delete(id);
+      }
+    });
+
+    // 新しいマーカーを追加
+    posts.forEach(post => {
+      if (!post.latitude || !post.longitude) return;
+      if (markersRef.current.has(post.id)) return; // 既存はスキップ
+
+      const marker = new window.google.maps.Marker({
+        position: { lat: post.latitude, lng: post.longitude },
+        map,
+        icon: {
+          url: post.status === 'visited' ? VISITED_ICON : WANT_ICON,
+          scaledSize: new window.google.maps.Size(36, 46),
+          anchor: new window.google.maps.Point(18, 46),
+        },
+      });
+
+      marker.addListener('click', () => setSelectedPost(post));
+      markersRef.current.set(post.id, marker);
+    });
+
+    // selectedPost がフィルタ後に含まれなければ閉じる
+    setSelectedPost(prev => {
+      if (!prev) return null;
+      return incoming.has(prev.id) ? prev : null;
+    });
+  }, [posts, isLoaded]);
+
+  // initialSelectedPostId が変わったら対応する投稿を選択
   useEffect(() => {
     if (initialSelectedPostId) {
       const post = posts.find(p => p.id === initialSelectedPostId);
-      if (post) {
-        setSelectedPost(post);
-      }
+      if (post) setSelectedPost(post);
     }
   }, [initialSelectedPostId, posts]);
 
+  // tempMarker の管理
+  useEffect(() => {
+    if (!mapRef.current || !isLoaded) return;
+    if (tempMarkerRef.current) {
+      tempMarkerRef.current.setMap(null);
+      tempMarkerRef.current = null;
+    }
+    if (tempMarker?.lat && tempMarker?.lng) {
+      tempMarkerRef.current = new window.google.maps.Marker({
+        position: { lat: tempMarker.lat, lng: tempMarker.lng },
+        map: mapRef.current,
+        icon: {
+          url: TEMP_ICON,
+          scaledSize: new window.google.maps.Size(36, 46),
+          anchor: new window.google.maps.Point(18, 46),
+        },
+      });
+    }
+  }, [tempMarker, isLoaded]);
+
+  // コンポーネントのアンマウント時にすべてのマーカーを削除
+  useEffect(() => {
+    return () => {
+      markersRef.current.forEach(m => m.setMap(null));
+      markersRef.current.clear();
+      if (tempMarkerRef.current) tempMarkerRef.current.setMap(null);
+    };
+  }, []);
+
   const onLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
-    
-    // 初回ロード時のバウンズ調整は useEffect に任せる
+
     if (setTempMarker) {
       const cleanAddress = (addr: string) =>
         addr.replace(/^日本、\s*/, '').replace(/^〒\d{3}-\d{4}\s*/, '');
 
-      // Use native listener to capture POI clicks that React onClick misses
       window.google.maps.event.addListener(map, 'click', (e: any) => {
         if (!e.latLng) return;
         const lat = e.latLng.lat();
         const lng = e.latLng.lng();
         const placeId = e.placeId;
 
-        // Set preliminary marker immediately
         setTempMarker({ lat, lng, placeId, name: '', address: '' });
 
         if (placeId) {
@@ -102,20 +171,14 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
     mapRef.current = null;
   }, []);
 
-  const toggleMapType = () => {
-    setMapTypeId(prev => prev === 'roadmap' ? 'satellite' : 'roadmap');
-  };
+  const toggleMapType = () => setMapTypeId(prev => prev === 'roadmap' ? 'satellite' : 'roadmap');
 
   const handleZoomIn = () => {
-    if (mapRef.current) {
-      mapRef.current.setZoom((mapRef.current.getZoom() || 0) + 1);
-    }
+    if (mapRef.current) mapRef.current.setZoom((mapRef.current.getZoom() || 0) + 1);
   };
 
   const handleZoomOut = () => {
-    if (mapRef.current) {
-      mapRef.current.setZoom((mapRef.current.getZoom() || 0) - 1);
-    }
+    if (mapRef.current) mapRef.current.setZoom((mapRef.current.getZoom() || 0) - 1);
   };
 
   const handleCurrentLocation = () => {
@@ -138,7 +201,6 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
         <MapPin className="text-red-500 mb-4" size={48} />
         <h2 className="text-xl font-bold text-gray-900 mb-2">Google Maps の読み込みエラー</h2>
         <p className="text-red-500 text-sm max-w-xs">{loadError.message}</p>
-        <p className="text-gray-400 text-[10px] mt-4">APIキー、支払い設定、またはAPIの有効化を確認してください</p>
       </div>
     );
   }
@@ -161,7 +223,6 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
         zoom={zoom}
         onLoad={onLoad}
         onUnmount={onUnmount}
-        onClick={undefined}
         mapTypeId={mapTypeId}
         options={{
           zoomControl: false,
@@ -171,22 +232,7 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
           gestureHandling: 'greedy',
         }}
       >
-        <Fragment key={posts.map(p => p.id).join(',')}>
-          {posts.map((post) => (
-            post.latitude && post.longitude && (
-              <Marker
-                key={post.id}
-                position={{ lat: post.latitude, lng: post.longitude }}
-                onClick={() => setSelectedPost(post)}
-                icon={{
-                  url: post.status === 'visited' ? VISITED_ICON : WANT_ICON,
-                  scaledSize: new window.google.maps.Size(36, 46),
-                  anchor: new window.google.maps.Point(18, 46),
-                }}
-              />
-            )
-          ))}
-        </Fragment>
+        {/* マーカーは useEffect で命令的に管理しているため、ここには描画しない */}
 
         {selectedPost && selectedPost.latitude && selectedPost.longitude && (
           <InfoWindow
@@ -207,7 +253,7 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
                   <Star key={s} size={11} fill={s <= (selectedPost.rating || 0) ? '#f59e0b' : 'none'} className={s <= (selectedPost.rating || 0) ? 'text-amber-500' : 'text-gray-200'} />
                 ))}
               </div>
-              <Link 
+              <Link
                 href={`/posts/${selectedPost.id}`}
                 className="block w-full text-center py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-lg transition-colors"
               >
@@ -216,57 +262,29 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
             </div>
           </InfoWindow>
         )}
-
-        {tempMarker && tempMarker.lat && tempMarker.lng && (
-          <Marker
-            position={{ lat: tempMarker.lat, lng: tempMarker.lng }}
-            icon={{
-              url: TEMP_ICON,
-              scaledSize: new window.google.maps.Size(36, 46),
-              anchor: new window.google.maps.Point(18, 46),
-            }}
-          />
-        )}
       </GoogleMap>
 
-      {/* Custom Map Controls (Vertical stack on right) */}
+      {/* Custom Map Controls */}
       <div className="absolute right-3 top-24 flex flex-col gap-2 z-[200]">
-        <button
-          onClick={toggleMapType}
-          className="w-10 h-10 bg-white rounded-xl shadow-lg flex items-center justify-center text-gray-600 hover:bg-gray-50 active:scale-95 transition-all border border-gray-100"
-          title="航空写真切り替え"
-        >
+        <button onClick={toggleMapType} className="w-10 h-10 bg-white rounded-xl shadow-lg flex items-center justify-center text-gray-600 hover:bg-gray-50 active:scale-95 transition-all border border-gray-100" title="航空写真切り替え">
           <Layers size={20} className={mapTypeId === 'satellite' ? 'text-orange-500' : ''} />
         </button>
-        <button
-          onClick={handleCurrentLocation}
-          className="w-10 h-10 bg-white rounded-xl shadow-lg flex items-center justify-center text-gray-600 hover:bg-gray-50 active:scale-95 transition-all border border-gray-100"
-          title="現在地"
-        >
+        <button onClick={handleCurrentLocation} className="w-10 h-10 bg-white rounded-xl shadow-lg flex items-center justify-center text-gray-600 hover:bg-gray-50 active:scale-95 transition-all border border-gray-100" title="現在地">
           <Navigation size={20} />
         </button>
-        <button
-          onClick={handleZoomIn}
-          className="w-10 h-10 bg-white rounded-xl shadow-lg flex items-center justify-center text-gray-600 hover:bg-gray-50 active:scale-95 transition-all border border-gray-100 font-bold text-xl"
-          title="拡大"
-        >
+        <button onClick={handleZoomIn} className="w-10 h-10 bg-white rounded-xl shadow-lg flex items-center justify-center text-gray-600 hover:bg-gray-50 active:scale-95 transition-all border border-gray-100 font-bold text-xl" title="拡大">
           <Plus size={20} />
         </button>
-        <button
-          onClick={handleZoomOut}
-          className="w-10 h-10 bg-white rounded-xl shadow-lg flex items-center justify-center text-gray-600 hover:bg-gray-50 active:scale-95 transition-all border border-gray-100 font-bold text-xl"
-          title="縮小"
-        >
+        <button onClick={handleZoomOut} className="w-10 h-10 bg-white rounded-xl shadow-lg flex items-center justify-center text-gray-600 hover:bg-gray-50 active:scale-95 transition-all border border-gray-100 font-bold text-xl" title="縮小">
           <Minus size={20} />
         </button>
       </div>
 
-      {/* Modern Bottom Sheet for Temporary Marker */}
+      {/* Bottom Sheet for Temporary Marker */}
       {tempMarker && tempMarker.lat && tempMarker.lng && (
         <div className="absolute bottom-6 left-4 right-4 sm:fixed sm:bottom-8 sm:left-1/2 sm:-translate-x-1/2 sm:w-[500px] z-[100] animate-in slide-in-from-bottom-8 duration-500">
           <div className="bg-white/95 backdrop-blur-xl rounded-[2rem] p-5 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] border border-gray-100/50 flex flex-col items-center">
             <div className="w-10 h-1.5 bg-gray-200 rounded-full mb-4" />
-            
             <div className="flex flex-col items-center text-center mb-5 w-full">
               <h3 className="font-black text-gray-900 text-lg leading-tight mb-2 flex items-center justify-center gap-1.5 w-full">
                 <MapPin className="text-pink-500 flex-shrink-0" size={20} />
@@ -278,9 +296,8 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
                 </p>
               )}
             </div>
-            
             <div className="w-full flex flex-col gap-2">
-              <Link 
+              <Link
                 href={`/posts/new?lat=${tempMarker.lat}&lng=${tempMarker.lng}${tempMarker.placeId ? `&placeId=${tempMarker.placeId}` : ''}${tempMarker.name ? `&name=${encodeURIComponent(tempMarker.name)}` : ''}${tempMarker.address ? `&address=${encodeURIComponent(tempMarker.address)}` : ''}`}
                 className="w-full py-4 bg-gradient-to-r from-pink-500 to-rose-400 hover:from-pink-400 hover:to-rose-300 text-white text-[15px] font-black rounded-[1.5rem] transition-all shadow-xl shadow-pink-500/25 flex items-center justify-center gap-2 active:scale-[0.98]"
               >

@@ -98,17 +98,25 @@ export default function MyPage() {
     }
   });
 
-  const goToMap = () => {
+  const goToMap = async () => {
     if (targetUserId) {
-      // 友達ページからマップ: その人だけフィルター
-      updateFilter({ 
+      // 友達ページからマップに遷移: その人だけフィルター
+      updateFilter({
         activeGroups: ['all'],
         advancedFilters: { registrantUserIds: [targetUserId], include_mine: false }
       });
     } else {
-      // 自分のマイページからマップ: 自分だけ
-      const myId = myUserData?.data?.id;
-      updateFilter({ 
+      // 自分のマイページからマップに遷移: 自分だけ
+      let myId = myUserData?.data?.id;
+      if (!myId) {
+        // まだ読み込まれていない場合は直接取得
+        try {
+          const r = await fetch('/api/profiles/me');
+          const j = await r.json();
+          myId = j.data?.id;
+        } catch (e) {}
+      }
+      updateFilter({
         activeGroups: [],
         advancedFilters: myId ? { registrantUserIds: [myId], include_mine: true } : { include_mine: true }
       });
@@ -116,17 +124,24 @@ export default function MyPage() {
     router.push('/map');
   };
 
-  const goToCalendar = () => {
+  const goToCalendar = async () => {
     if (targetUserId) {
-      // 友達ページからカレンダー: その人だけフィルター
-      updateFilter({ 
+      // 友達ページからカレンダーに遷移: その人だけフィルター
+      updateFilter({
         activeGroups: ['all'],
         advancedFilters: { registrantUserIds: [targetUserId], include_mine: false }
       });
     } else {
-      // 自分のマイページからカレンダー: 自分だけ
-      const myId = myUserData?.data?.id;
-      updateFilter({ 
+      // 自分のマイページからカレンダーに遷移: 自分だけ
+      let myId = myUserData?.data?.id;
+      if (!myId) {
+        try {
+          const r = await fetch('/api/profiles/me');
+          const j = await r.json();
+          myId = j.data?.id;
+        } catch (e) {}
+      }
+      updateFilter({
         activeGroups: [],
         advancedFilters: myId ? { registrantUserIds: [myId], include_mine: true } : { include_mine: true }
       });
