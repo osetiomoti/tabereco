@@ -57,16 +57,8 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
 
   const onLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
-    if (posts.length > 0) {
-      const bounds = new window.google.maps.LatLngBounds();
-      posts.forEach(p => {
-        if (p.latitude && p.longitude) {
-          bounds.extend({ lat: p.latitude, lng: p.longitude });
-        }
-      });
-      map.fitBounds(bounds);
-    }
-
+    
+    // 初回ロード時のバウンズ調整は useEffect に任せる
     if (setTempMarker) {
       const cleanAddress = (addr: string) =>
         addr.replace(/^日本、\s*/, '').replace(/^〒\d{3}-\d{4}\s*/, '');
@@ -104,7 +96,24 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
         }
       });
     }
-  }, [posts, setTempMarker]);
+  }, [setTempMarker]);
+
+  // postsが変わった時にバウンズを再計算してマップを更新する
+  useEffect(() => {
+    if (mapRef.current && posts.length > 0) {
+      const bounds = new window.google.maps.LatLngBounds();
+      let hasValidCoords = false;
+      posts.forEach(p => {
+        if (p.latitude && p.longitude) {
+          bounds.extend({ lat: p.latitude, lng: p.longitude });
+          hasValidCoords = true;
+        }
+      });
+      if (hasValidCoords) {
+        mapRef.current.fitBounds(bounds);
+      }
+    }
+  }, [posts]);
 
   const onUnmount = useCallback(() => {
     mapRef.current = null;
