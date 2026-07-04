@@ -99,37 +99,7 @@ function MapPageInner() {
             users={memberUsers}
           />
 
-          {/* Floating Fast Tags */}
-          {uniqueTags.length > 0 && (
-            (activeTab && activeTab !== 'all') ||
-            (keyword && keyword.trim() !== '') ||
-            (advancedFilters && (
-              (advancedFilters.tags && advancedFilters.tags.length > 0) ||
-              (advancedFilters.period && advancedFilters.period !== 'all') ||
-              advancedFilters.is_favorite ||
-              (advancedFilters.registrantUserIds && advancedFilters.registrantUserIds.length > 0) ||
-              advancedFilters.is_mine_only
-            )) ||
-            activeMapTag !== null
-          ) && (
-            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2 pointer-events-auto">
-              <button
-                 onClick={() => updateFilter({ activeMapTag: null })}
-                 className={`px-4 py-2 rounded-xl text-[11px] font-black whitespace-nowrap transition-all shadow-md ${!activeMapTag ? 'bg-orange-500 text-white' : 'bg-white/95 backdrop-blur-xl text-gray-500 hover:bg-white'}`}
-              >
-                 ALL
-              </button>
-              {uniqueTags.map(tag => (
-                <button
-                  key={tag}
-                  onClick={() => updateFilter({ activeMapTag: tag })}
-                  className={`px-4 py-2 rounded-xl text-[11px] font-black whitespace-nowrap transition-all shadow-md ${activeMapTag === tag ? 'bg-orange-500 text-white' : 'bg-white/95 backdrop-blur-xl text-gray-500 hover:bg-white'}`}
-                >
-                  #{tag}
-                </button>
-              ))}
-            </div>
-          )}
+
         </div>
 
         {/* Map Area */}

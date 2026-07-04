@@ -320,9 +320,11 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
                           checked={filters.activeGroups.length === groupOptions.length && groupOptions.length > 0}
                           onChange={() => {
                             if (filters.activeGroups.length === groupOptions.length) {
-                              set('activeGroups', []);
+                              setFilters(p => ({ ...p, activeGroups: [], registrantUserIds: [] }));
                             } else {
-                              set('activeGroups', groupOptions.map(g => g.id));
+                              const allGroupIds = groupOptions.map(g => g.id);
+                              const allIds = members.filter(m => m.id !== currentUser?.id).map(m => m.id);
+                              setFilters(p => ({ ...p, activeGroups: allGroupIds, registrantUserIds: allIds }));
                             }
                           }}
                           className="w-4 h-4 rounded border-gray-300 accent-orange-500"

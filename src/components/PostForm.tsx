@@ -59,6 +59,11 @@ export function PostForm({ post }: Props) {
     price_max: post?.price_max ?? 2000,
   });
 
+  const isCustomPrice = post ? 
+    !['1-1000', '1000-2000', '2000-3000', '3000-4000', '4000-5000', '5000-10000', '10000-'].includes(`${post.price_min}-${post.price_max || ''}`)
+    : false;
+  const [priceMode, setPriceMode] = useState<'preset' | 'custom'>(isCustomPrice ? 'custom' : 'preset');
+
   const [isTagSelectorOpen, setIsTagSelectorOpen] = useState(false);
   const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
   const [addressLanguage, setAddressLanguage] = useState<'ja' | 'en'>('ja');
@@ -361,23 +366,55 @@ export function PostForm({ post }: Props) {
 
         <div className="space-y-1.5">
           <label className="text-[12px] font-black text-gray-500 tracking-widest ml-1 block">値段帯</label>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              value={values.price_min ?? ''}
-              onChange={(e) => set('price_min', e.target.value ? parseInt(e.target.value, 10) : null)}
-              placeholder="1000"
-              className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 focus:outline-none focus:ring-4 focus:ring-[#ff6b95]/5 focus:bg-white transition-all text-base font-bold"
-            />
-            <span className="text-gray-400 font-bold">〜</span>
-            <input
-              type="number"
-              value={values.price_max ?? ''}
-              onChange={(e) => set('price_max', e.target.value ? parseInt(e.target.value, 10) : null)}
-              placeholder="2000"
-              className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 focus:outline-none focus:ring-4 focus:ring-[#ff6b95]/5 focus:bg-white transition-all text-base font-bold"
-            />
-            <span className="text-gray-400 font-bold shrink-0 text-sm">円</span>
+          <div className="flex flex-col gap-2 relative">
+            <select
+              value={priceMode === 'custom' ? 'custom' : `${values.price_min}-${values.price_max || ''}`}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (val === 'custom') {
+                  setPriceMode('custom');
+                } else {
+                  setPriceMode('preset');
+                  const [min, max] = val.split('-');
+                  set('price_min', parseInt(min, 10));
+                  set('price_max', max ? parseInt(max, 10) : null);
+                }
+              }}
+              className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 focus:outline-none focus:ring-4 focus:ring-[#ff6b95]/5 focus:bg-white transition-all text-base font-bold appearance-none cursor-pointer"
+            >
+              <option value="1-1000">1〜1,000円</option>
+              <option value="1000-2000">1,000〜2,000円</option>
+              <option value="2000-3000">2,000〜3,000円</option>
+              <option value="3000-4000">3,000〜4,000円</option>
+              <option value="4000-5000">4,000〜5,000円</option>
+              <option value="5000-10000">5,000〜10,000円</option>
+              <option value="10000-">10,000円以上</option>
+              <option value="custom">カスタム（自由入力）</option>
+            </select>
+            <div className="absolute right-5 top-4 pointer-events-none text-gray-400">
+              <ChevronDown size={20} />
+            </div>
+
+            {priceMode === 'custom' && (
+              <div className="flex items-center gap-2 animate-in slide-in-from-top-2 mt-1">
+                <input
+                  type="number"
+                  value={values.price_min ?? ''}
+                  onChange={(e) => set('price_min', e.target.value ? parseInt(e.target.value, 10) : null)}
+                  placeholder="下限"
+                  className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-3 text-gray-900 focus:outline-none focus:ring-4 focus:ring-[#ff6b95]/5 focus:bg-white transition-all text-base font-bold"
+                />
+                <span className="text-gray-400 font-bold">〜</span>
+                <input
+                  type="number"
+                  value={values.price_max ?? ''}
+                  onChange={(e) => set('price_max', e.target.value ? parseInt(e.target.value, 10) : null)}
+                  placeholder="上限"
+                  className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-3 text-gray-900 focus:outline-none focus:ring-4 focus:ring-[#ff6b95]/5 focus:bg-white transition-all text-base font-bold"
+                />
+                <span className="text-gray-400 font-bold shrink-0 text-sm">円</span>
+              </div>
+            )}
           </div>
         </div>
 
