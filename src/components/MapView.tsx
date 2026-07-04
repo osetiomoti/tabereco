@@ -43,6 +43,7 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
   });
 
   const mapRef = useRef<google.maps.Map | null>(null);
+  const [mapReady, setMapReady] = useState(false);
   const markersRef = useRef<Map<string, google.maps.Marker>>(new Map());
   const tempMarkerRef = useRef<google.maps.Marker | null>(null);
   const [mapTypeId, setMapTypeId] = useState<string>('roadmap');
@@ -88,7 +89,7 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
       if (!prev) return null;
       return incoming.has(prev.id) ? prev : null;
     });
-  }, [posts, isLoaded]);
+  }, [posts, isLoaded, mapReady]);
 
   // initialSelectedPostId が変わったら対応する投稿を選択
   useEffect(() => {
@@ -116,7 +117,7 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
         },
       });
     }
-  }, [tempMarker, isLoaded]);
+  }, [tempMarker, isLoaded, mapReady]);
 
   // コンポーネントのアンマウント時にすべてのマーカーを削除
   useEffect(() => {
@@ -129,6 +130,7 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
 
   const onLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
+    setMapReady(true);
 
     if (setTempMarker) {
       const cleanAddress = (addr: string) =>
@@ -169,6 +171,7 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
 
   const onUnmount = useCallback(() => {
     mapRef.current = null;
+    setMapReady(false);
   }, []);
 
   const toggleMapType = () => setMapTypeId(prev => prev === 'roadmap' ? 'satellite' : 'roadmap');

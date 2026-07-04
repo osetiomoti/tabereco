@@ -63,8 +63,8 @@ export function useFilteredPosts() {
         const membersList = Array.from(map.values());
         setMemberUsers(membersList);
 
-        // デフォルトの registrantUserIds が未設定の場合、自分以外を全選択状態として初期設定する
-        if (advancedFilters?.registrantUserIds === undefined && myId) {
+        // デフォルトの registrantUserIds が未設定または空の場合、自分以外を全選択状態として初期設定する
+        if ((advancedFilters?.registrantUserIds === undefined || advancedFilters.registrantUserIds.length === 0) && myId) {
           const allIds = membersList.filter(m => m.id !== myId).map(m => m.id);
           updateFilter({
             advancedFilters: {
