@@ -303,25 +303,25 @@ export default function FriendsPage() {
   return (
     <>
       <Header title="ともだち" />
-      <main className="max-w-2xl mx-auto px-4 pt-4 pb-32 animate-in fade-in duration-500">
+      <main className="w-full max-w-2xl mx-auto px-4 pt-4 pb-32 animate-in fade-in duration-500 overflow-x-hidden">
 
         {/* Tab Toggle */}
-        <div className="flex w-full bg-gray-100/80 rounded-full p-1.5 border border-black/5 shadow-inner mb-6">
+        <div className="flex w-full bg-gray-100/80 rounded-full p-1 border border-black/5 shadow-inner mb-6">
           <button
             onClick={() => setTab('friends')}
-            className={`flex-1 py-2.5 text-[13px] font-black rounded-full transition-all duration-300 flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2.5 text-[12px] font-black rounded-full transition-all duration-300 flex items-center justify-center gap-1 ${
               tab === 'friends' ? 'bg-white text-gray-900 shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : 'text-gray-400'
             }`}
           >
-            <User size={14} />ともだち
+            <User size={13} /><span>ともだち</span>
           </button>
           <button
             onClick={() => setTab('groups')}
-            className={`flex-1 py-2.5 text-[13px] font-black rounded-full transition-all duration-300 flex items-center justify-center gap-1.5 ${
+            className={`flex-1 py-2.5 text-[12px] font-black rounded-full transition-all duration-300 flex items-center justify-center gap-1 ${
               tab === 'groups' ? 'bg-white text-gray-900 shadow-[0_2px_8px_rgba(0,0,0,0.08)]' : 'text-gray-400'
             }`}
           >
-            <Users size={14} />グループ
+            <Users size={13} /><span>グループ</span>
           </button>
         </div>
 
@@ -329,17 +329,17 @@ export default function FriendsPage() {
         {tab === 'friends' && (
           <div className="space-y-6">
             {/* 自分のID */}
-            <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100 rounded-3xl p-5">
+            <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100 rounded-3xl p-4">
               <p className="text-[11px] font-black text-orange-400 tracking-widest mb-2">あなたのID</p>
-              <div className="flex items-center gap-3">
-                <p className="flex-1 min-w-0 font-mono text-xs text-gray-600 font-bold truncate bg-white/70 px-3 py-2 rounded-xl border border-orange-100">
+              <div className="flex items-center gap-2">
+                <p className="flex-1 min-w-0 font-mono text-[11px] text-gray-600 font-bold truncate bg-white/70 px-3 py-2 rounded-xl border border-orange-100">
                   {myId || '読み込み中...'}
                 </p>
                 <button
                   onClick={copyMyId}
-                  className="shrink-0 flex items-center gap-1.5 px-4 py-2 bg-orange-500 text-white rounded-xl text-xs font-black shadow-md shadow-orange-200 active:scale-95 transition-all"
+                  className="shrink-0 flex items-center gap-1 px-3 py-2 bg-orange-500 text-white rounded-xl text-[11px] font-black shadow-md shadow-orange-200 active:scale-95 transition-all whitespace-nowrap"
                 >
-                  {copiedMyId ? <><CheckCircle size={14} />コピー済み</> : <><Copy size={14} />コピー</>}
+                  {copiedMyId ? <><CheckCircle size={12} /><span>コピー済み</span></> : <><Copy size={12} /><span>コピー</span></>}
                 </button>
               </div>
               <p className="text-[10px] text-orange-300 font-bold mt-2 break-words leading-relaxed">このIDを相手に教えてともだち追加してもらおう</p>
