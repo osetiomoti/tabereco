@@ -185,7 +185,7 @@ export default function FriendsPage() {
                   {copiedMyId ? <><CheckCircle size={14} />コピー済み</> : <><Copy size={14} />コピー</>}
                 </button>
               </div>
-              <p className="text-[10px] text-orange-300 font-bold mt-2">このIDを相手に教えてともだち追加してもらおう</p>
+              <p className="text-[10px] text-orange-300 font-bold mt-2 break-words leading-relaxed">このIDを相手に教えてともだち追加してもらおう</p>
             </div>
 
             {/* 検索・追加 */}
@@ -222,7 +222,7 @@ export default function FriendsPage() {
                       <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center overflow-hidden relative flex-shrink-0">
                         {u.avatar_url ? <Image src={u.avatar_url} alt={u.name} fill className="object-cover" /> : <User size={18} className="text-orange-400" />}
                       </div>
-                      <span className="flex-1 font-bold text-sm text-gray-800 truncate">{u.name}</span>
+                      <span className="flex-1 min-w-0 font-bold text-sm text-gray-800 truncate">{u.name}</span>
                       {(() => {
                         if (friendIds.has(u.id)) {
                           return <span className="text-[11px] font-bold text-green-500 flex items-center gap-1"><UserCheck size={14} />ともだち</span>;
@@ -261,7 +261,7 @@ export default function FriendsPage() {
                       <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center overflow-hidden relative flex-shrink-0">
                         {req.user.avatar_url ? <Image src={req.user.avatar_url} alt={req.user.name} fill className="object-cover" /> : <User size={18} className="text-pink-400" />}
                       </div>
-                      <span className="flex-1 font-bold text-sm text-gray-800 truncate">{req.user.name}</span>
+                      <span className="flex-1 min-w-0 font-bold text-sm text-gray-800 truncate">{req.user.name}</span>
                       <button
                         onClick={() => handleAcceptRequest(req.friendship_id)}
                         className="shrink-0 px-4 py-2 bg-pink-500 text-white text-[12px] font-black rounded-xl shadow-sm shadow-pink-200 active:scale-95 transition-all"
@@ -359,16 +359,17 @@ export default function FriendsPage() {
                 <div className="space-y-3">
                   {groups.map(group => (
                     <div key={group.id} className="relative group/card">
-                      <Link href={`/groups/${group.id}`} className="flex items-center gap-4 p-5 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-0.5 transition-all duration-300 pr-28">
-                        <div className="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center text-orange-500 shadow-inner">
+                      <Link href={`/groups/${group.id}`} className="flex items-center gap-4 p-5 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-0.5 transition-all duration-300 pr-[88px]">
+                        <div className="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center text-orange-500 shadow-inner shrink-0">
                           <Hash size={22} strokeWidth={3} />
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 flex-1">
                           <h3 className="text-base font-black text-gray-900 leading-tight group-hover/card:text-orange-500 transition-colors truncate">{group.name}</h3>
                           <p className="text-xs text-gray-400 font-bold mt-0.5 truncate">{group.description || '美味しいスポットをシェア！'}</p>
                         </div>
-                        <ChevronRight className="ml-auto text-gray-200 group-hover/card:text-orange-400 transition-colors flex-shrink-0" />
+                        <ChevronRight className="ml-auto text-gray-200 group-hover/card:text-orange-400 transition-colors shrink-0" />
                       </Link>
+
                       <button
                         onClick={() => copyCode(group.invite_code)}
                         className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-gray-50 hover:bg-orange-50 text-[10px] font-black px-2.5 py-1.5 rounded-xl border border-gray-100 transition-all active:scale-95"
