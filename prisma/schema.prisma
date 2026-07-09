@@ -63,7 +63,7 @@ model Post {
   rating      Float
   image_url   String?      
   image_urls  String[]    @default([])
-  visited_at  DateTime    @db.Date
+  visited_at  DateTime?   @db.Date
   status      String      @default("visited")
   address     String?
   google_place_id String?

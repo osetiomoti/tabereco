@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
           rating,
           image_url,
           image_urls: image_urls || [],
-          visited_at: new Date(visited_at),
+          visited_at: visited_at ? new Date(visited_at) : null,
           status: status || 'visited',
           address,
           google_place_id,

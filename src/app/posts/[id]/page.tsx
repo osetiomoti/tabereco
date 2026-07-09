@@ -1,18 +1,16 @@
 import { prisma } from '@/lib/prisma';
 import { Header } from '@/components/Header';
 import { formatDate } from '@/lib/utils';
-import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { User, ChevronDown, MapPin } from 'lucide-react';
 import type { Metadata } from 'next';
-import { DeleteButton } from '@/components/DeleteButton';
-import { ShareButton } from '@/components/ShareButton';
 import { cookies } from 'next/headers';
 
 import { PostMenu } from '@/components/PostMenu';
 import { FavoriteToggle } from '@/components/FavoriteToggle';
 import { StarDisplay } from '@/components/StarRating';
+import { ImageCarousel } from '@/components/ImageCarousel';
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -69,37 +67,41 @@ export default async function PostDetailPage({ params }: Props) {
     ? `https://maps.googleapis.com/maps/api/staticmap?center=${post.latitude},${post.longitude}&zoom=16&size=600x300&markers=color:0xf43f5e%7C${post.latitude},${post.longitude}&key=${apiKey}`
     : null;
 
+  // Collect all images: image_urls array, falling back to image_url
+  const allImages: string[] = post.image_urls && post.image_urls.length > 0
+    ? post.image_urls
+    : (post.image_url ? [post.image_url] : []);
+
   return (
     <main className="w-full max-w-md mx-auto bg-white min-h-screen pb-32 shadow-sm border-x border-gray-50 relative">
-      {/* 1. Updated Global Header for SubPage */}
-      <Header title={post.store_name || post.title} showBackButton hideSettings>
+      {/* 1. Header */}
+      <Header title={post.store_name || post.title || ''} showBackButton hideSettings>
         <div className="flex items-center gap-2">
-          <FavoriteToggle postId={post.id} initialValue={post.is_favorite} />
+          {allImages.length === 0 && (
+            <FavoriteToggle postId={post.id} initialValue={post.is_favorite} />
+          )}
           <PostMenu postId={post.id} postUserId={post.user_id} isOwner={isOwner} />
         </div>
       </Header>
 
-      {/* 2. 画像エリア */}
-      {post.image_url && (
-        <div className="relative w-full aspect-square">
-          <Image
-            src={post.image_url}
-            alt={post.title || ''}
-            fill
-            className="object-cover"
-            priority
-          />
+      {/* 2. 画像カルーセルエリア */}
+      {allImages.length > 0 ? (
+        <div className="relative">
+          <ImageCarousel images={allImages} alt={post.store_name || post.title || ''} />
+          {/* お気に入りボタン: 画像右上 */}
+          <div className="absolute top-3 right-3 z-20">
+            <FavoriteToggle postId={post.id} initialValue={post.is_favorite} />
+          </div>
+        </div>
+      ) : (
+        <div className="w-full aspect-square bg-gray-50 flex items-center justify-center text-gray-200">
+          <span className="text-5xl">🍽️</span>
         </div>
       )}
 
-      {/* 3. 写真追加エリア */}
-      {post.image_url && (
-        <div className="bg-gray-50 flex items-center justify-center py-2">
-          <div className="w-2.5 h-2.5 rounded-full bg-[#5d4037]"></div>
-        </div>
-      )}
+      {/* ドットインジケーター（ImageCarousel内蔵なので削除済み） */}
 
-      {/* 4. ユーザー情報と評価 */}
+      {/* 3. ユーザー情報と評価 */}
       <div className="px-4 py-4 flex items-center justify-between border-b border-gray-100">
         <div className="flex items-center gap-3">
           <div className="w-[34px] h-[34px] rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
@@ -113,14 +115,16 @@ export default async function PostDetailPage({ params }: Props) {
         </div>
       </div>
 
-      {/* 5. 訪問日、メモ、タグ */}
+      {/* 4. 訪問日、メモ、タグ */}
       <div className="divide-y divide-gray-100/50">
-        <div className="px-5 py-4 flex justify-between items-center bg-gray-50/20">
-           <div className="flex items-center gap-5">
-             <span className="font-bold text-[15px] text-gray-900 tracking-widest">訪問日</span>
-             <span className="text-gray-500 text-[13.5px]">{formatDate(post.visited_at.toISOString())}</span>
-           </div>
-        </div>
+        {post.visited_at && (
+          <div className="px-5 py-4 flex justify-between items-center bg-gray-50/20">
+             <div className="flex items-center gap-5">
+               <span className="font-bold text-[15px] text-gray-900 tracking-widest">訪問日</span>
+               <span className="text-gray-500 text-[13.5px]">{formatDate(post.visited_at.toISOString())}</span>
+             </div>
+          </div>
+        )}
 
         {(post.price_min != null || post.price_max != null) && (
           <div className="px-5 py-4 flex justify-between items-center bg-gray-50/20">
@@ -158,7 +162,7 @@ export default async function PostDetailPage({ params }: Props) {
         </div>
       </div>
 
-      {/* 6. 店舗情報 */}
+      {/* 5. 店舗情報 */}
       <div className="mt-2">
         <div className="bg-[#a68c7e] text-white px-5 py-3 font-bold text-sm tracking-widest">
            店舗情報
@@ -229,3 +233,4 @@ export default async function PostDetailPage({ params }: Props) {
     </main>
   );
 }
+

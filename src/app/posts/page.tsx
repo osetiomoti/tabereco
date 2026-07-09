@@ -6,12 +6,13 @@ import { PostCard, FilterChips } from '@/components/PostCard';
 import { PostCardSkeleton } from '@/components/Skeleton';
 import { FilterModal } from '@/components/FilterModal';
 import { useFilteredPosts } from '@/hooks/useFilteredPosts';
-import { Filter, Search, UtensilsCrossed, List, Calendar as CalendarIcon } from 'lucide-react';
+import { Filter, Search, UtensilsCrossed, List, Calendar as CalendarIcon, RefreshCw } from 'lucide-react';
 import { FloatingActionButton } from '@/components/FloatingActionButton';
 import { format, startOfMonth, endOfMonth, isSameDay, addMonths, subMonths, getDay, addDays, startOfWeek, isSameMonth } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import Image from 'next/image';
 import Link from 'next/link';
+import { mutate } from 'swr';
 
 function CalendarView({ posts }: { posts: any[] }) {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -132,10 +133,25 @@ export default function PostsPage() {
   const { activeTab, keyword, activeGroups, advancedFilters } = filterState;
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await mutate(() => true, undefined, { revalidate: true });
+    setTimeout(() => setIsRefreshing(false), 800);
+  };
 
   return (
     <>
       <Header title="タイムライン">
+        <button
+          onClick={handleRefresh}
+          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+            isRefreshing ? 'bg-orange-100 text-orange-400' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+          }`}
+        >
+          <RefreshCw size={17} className={isRefreshing ? 'animate-spin' : ''} />
+        </button>
         <button
           onClick={() => setIsFilterModalOpen(true)}
           className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-all ${

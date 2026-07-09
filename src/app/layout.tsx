@@ -24,6 +24,7 @@ export const viewport = {
   minimumScale: 1,
   userScalable: false,
   viewportFit: 'cover',
+  themeColor: '#fcfcfc',
 };
 
 export const metadata: Metadata = {
@@ -39,7 +40,6 @@ export const metadata: Metadata = {
     ],
   },
   manifest: '/manifest.json',
-  themeColor: '#fcfcfc',
 };
 
 export default function RootLayout({

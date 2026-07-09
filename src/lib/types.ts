@@ -11,7 +11,7 @@ export type Post = {
   rating: number;
   image_url?: string | null;
   image_urls: string[];
-  visited_at: string; // YYYY-MM-DD
+  visited_at?: string | null; // YYYY-MM-DD
   created_at: string;
   status: PostStatus;
   is_public: boolean;
@@ -39,7 +39,7 @@ export type PostInsert = {
   rating: number;
   image_url?: string | null;
   image_urls?: string[];
-  visited_at: string;
+  visited_at?: string | null;
   status?: PostStatus;
   is_public?: boolean;
   is_favorite?: boolean;
@@ -77,7 +77,7 @@ export type PostFormValues = {
   title?: string;     // 任意項目
   comment: string;
   rating: number;
-  visited_at: string;
+  visited_at: string; // empty string when not set
   images: File[];
   image_urls: string[]; // for keeping existing images during edit
   status: PostStatus;

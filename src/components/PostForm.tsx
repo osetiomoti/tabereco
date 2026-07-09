@@ -43,7 +43,7 @@ export function PostForm({ post }: Props) {
     store_name: post?.store_name ?? queryName,
     comment: post?.comment ?? '',
     rating: post?.rating ?? 3,
-    visited_at: post?.visited_at ?? todayString(),
+    visited_at: post?.visited_at ? post.visited_at.split('T')[0] : '',
     images: [] as File[],
     image_urls: post?.image_urls ?? (post?.image_url ? [post.image_url] : []),
     status: post?.status ?? 'visited',
@@ -318,12 +318,23 @@ export function PostForm({ post }: Props) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           <div className="space-y-1.5">
             <label className="text-[12px] font-black text-gray-500 tracking-widest ml-1 block">訪問日</label>
-            <input
-              type="date"
-              value={values.visited_at}
-              onChange={(e) => set('visited_at', e.target.value)}
-              className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 focus:outline-none focus:ring-4 focus:ring-[#ff6b95]/5 focus:bg-white transition-all text-base font-bold [color-scheme:light]"
-            />
+            <div className="relative">
+              <input
+                type="date"
+                value={values.visited_at || ''}
+                onChange={(e) => set('visited_at', e.target.value)}
+                className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 focus:outline-none focus:ring-4 focus:ring-[#ff6b95]/5 focus:bg-white transition-all text-base font-bold [color-scheme:light]"
+              />
+              {values.visited_at && (
+                <button
+                  type="button"
+                  onClick={() => set('visited_at', '')}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 w-6 h-6 bg-gray-200 hover:bg-gray-300 text-gray-500 rounded-full flex items-center justify-center transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
           </div>
           <div className="space-y-1.5">
             <label className="text-[12px] font-black text-gray-500 tracking-widest ml-1 block">評価</label>

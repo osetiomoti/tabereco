@@ -74,8 +74,8 @@ export async function PATCH(
         }
       }
 
-      if (values.visited_at) {
-        values.visited_at = new Date(values.visited_at);
+      if ('visited_at' in values) {
+        values.visited_at = values.visited_at ? new Date(values.visited_at) : null;
       }
 
       const post = await prisma.post.update({

@@ -40,7 +40,7 @@ export default function CalendarPage() {
   const calendarStart = startOfWeek(monthStart);
   const daysInMonth = Array.from({ length: 42 }).map((_, i) => addDays(calendarStart, i));
 
-  const selectedPosts = posts.filter(p => isSameDay(new Date(p.visited_at), selectedDate));
+  const selectedPosts = posts.filter(p => p.visited_at && isSameDay(new Date(p.visited_at), selectedDate));
 
   return (
     <div className="min-h-screen bg-gray-50 pb-32">
@@ -78,10 +78,11 @@ export default function CalendarPage() {
 
           <div className="grid grid-cols-7 gap-y-1">
             {daysInMonth.map((date) => {
-              const dayPosts = posts.filter(p => isSameDay(new Date(p.visited_at), date));
+              const dayPosts = posts.filter(p => p.visited_at && isSameDay(new Date(p.visited_at), date));
               const isSelected = isSameDay(date, selectedDate);
               const isCurrentMonth = isSameMonth(date, currentDate);
-              const hasImage = isCurrentMonth && dayPosts.length > 0 && !!dayPosts[0].image_url;
+              const firstImg = dayPosts[0]?.image_urls?.[0] || dayPosts[0]?.image_url;
+              const hasImage = isCurrentMonth && dayPosts.length > 0 && !!firstImg;
               const dIndex = getDay(date);
 
               return (
@@ -120,11 +121,11 @@ export default function CalendarPage() {
                     )}
                   </div>
 
-                  {/* Thumbnail Image */}
-                  {hasImage && (
+                  {/* Thumbnail Image - always visible when exists */}
+                  {hasImage && firstImg && (
                     <div className="absolute inset-0 -z-10">
-                       <Image src={dayPosts[0].image_url!} alt="" fill className="object-cover" />
-                       <div className={`absolute inset-0 ${isSelected ? 'bg-orange-500/40' : 'bg-white/20'}`} />
+                       <Image src={firstImg} alt="" fill className="object-cover" />
+                       <div className={`absolute inset-0 ${isSelected ? 'bg-orange-500/50' : 'bg-white/55'}`} />
                     </div>
                   )}
                 </button>

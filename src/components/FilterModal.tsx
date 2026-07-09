@@ -9,13 +9,19 @@ import { TagSelector } from './TagSelector';
 type FilterState = {
   tags: string[];
   period: string;
+  period_start?: string;
+  period_end?: string;
+  filterMode: 'registrant' | 'group';
   registrantUserIds: string[];
   status: 'all' | 'visited' | 'want_to_go';
   is_favorite: boolean;
   is_mine_only: boolean;
   include_mine: boolean;
   activeGroups: string[];
-  filterMode: 'registrant' | 'group';
+  price_min?: number;
+  price_max?: number;
+  rating_min?: number;
+  sort_order: 'created_desc' | 'rating_asc' | 'rating_desc' | 'price_asc' | 'price_desc';
 };
 
 type Member = { id: string; name: string; avatar_url?: string };
@@ -35,18 +41,20 @@ const PERIOD_OPTIONS = [
   { label: '過去3ヶ月', value: 'last_3_months' },
   { label: '今年', value: 'this_year' },
   { label: '昨年', value: 'last_year' },
+  { label: 'カスタム', value: 'custom' },
 ];
 
 const DEFAULT: FilterState = {
   tags: [],
   period: 'all',
+  filterMode: 'group',
   registrantUserIds: [],
   status: 'all',
   is_favorite: false,
   is_mine_only: false,
   include_mine: true,
   activeGroups: [],
-  filterMode: 'registrant',
+  sort_order: 'created_desc',
 };
 
 export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialTags }: Props) {
@@ -59,11 +67,6 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
   const [loadingMembers, setLoadingMembers] = useState(false);
   const [groupMembersMap, setGroupMembersMap] = useState<Record<string, string[]>>({});
   const hasDefaulted = useRef(false);
-
-  // フィルターモード: 'registrant' or 'group'
-  const [filterMode, setFilterMode] = useState<'registrant' | 'group'>(
-    (initialFilters as any)?.filterMode || 'registrant'
-  );
 
   // combobox state
   const [groupSearch,  setGroupSearch]  = useState('');
@@ -162,9 +165,22 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
   };
 
   /* ── group options ── */
-  const groupOptions = [
-    ...joinedGroups.map(g => ({ id: g.id, label: g.name })),
-  ];
+  let sortedGroups = [...joinedGroups];
+  try {
+    const savedGOrder = localStorage.getItem('groups_order');
+    if (savedGOrder) {
+      const order = JSON.parse(savedGOrder) as string[];
+      sortedGroups.sort((a, b) => {
+        const idxA = order.indexOf(a.id);
+        const idxB = order.indexOf(b.id);
+        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+        if (idxA !== -1) return -1;
+        if (idxB !== -1) return 1;
+        return 0;
+      });
+    }
+  } catch(e) {}
+  const groupOptions = sortedGroups.map(g => ({ id: g.id, label: g.name }));
   const filteredGroups = groupOptions.filter(o =>
     o.label.toLowerCase().includes(groupSearch.toLowerCase())
   );
@@ -217,7 +233,11 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
   };
 
   /* ── member options (自分含む全員) ── */
-  const availableMembers = members; // 自分も含める
+  let availableMembers = [...members];
+  // 友達の並び順に近い形でソート (friendshipのIDとuserのIDは異なるが、friendsの並び順からuser_idの並び順を抽出できればよい)
+  // 簡単のため、そのままにするか、friendshipがあればそれを使うか
+  // ここでは名前順にしておく、もしくはそのまま(API返却順)
+  
   const allMemberIds = availableMembers.map(m => m.id);
   const allMembersSelected =
     allMemberIds.length > 0 &&
@@ -271,18 +291,18 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
             <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">絞り込み方法</label>
             <div className="flex p-1 bg-gray-100 rounded-xl gap-1">
               <button
-                onClick={() => setFilterMode('registrant')}
+                onClick={() => set('filterMode', 'registrant')}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-[13px] font-black transition-all ${
-                  filterMode === 'registrant' ? 'bg-white text-orange-500 shadow-sm' : 'text-gray-400'
+                  filters.filterMode === 'registrant' ? 'bg-white text-orange-500 shadow-sm' : 'text-gray-400'
                 }`}
               >
                 <User size={14} />
                 投稿者でフィルター
               </button>
               <button
-                onClick={() => setFilterMode('group')}
+                onClick={() => set('filterMode', 'group')}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-[13px] font-black transition-all ${
-                  filterMode === 'group' ? 'bg-white text-orange-500 shadow-sm' : 'text-gray-400'
+                  filters.filterMode === 'group' ? 'bg-white text-orange-500 shadow-sm' : 'text-gray-400'
                 }`}
               >
                 <Users size={14} />
@@ -292,7 +312,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
           </section>
 
           {/* ── Member Combobox (投稿者モード) ── */}
-          {filterMode === 'registrant' && (
+          {filters.filterMode === 'registrant' && (
             <section className="space-y-2">
               <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">投稿者</label>
               {!memberOptionsEnabled ? (
@@ -374,7 +394,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
           )}
 
           {/* ── Group Combobox (グループモード) ── */}
-          {filterMode === 'group' && (
+          {filters.filterMode === 'group' && (
             <section className="space-y-2">
               <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">グループ</label>
               <div className="relative" ref={groupRef}>
@@ -502,6 +522,23 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
               </select>
               <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
             </div>
+            {filters.period === 'custom' && (
+              <div className="flex items-center gap-2 mt-2 animate-in slide-in-from-top-2">
+                <input
+                  type="date"
+                  value={filters.period_start || ''}
+                  onChange={e => set('period_start', e.target.value)}
+                  className="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-[13px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all [color-scheme:light]"
+                />
+                <span className="text-gray-400 font-bold">〜</span>
+                <input
+                  type="date"
+                  value={filters.period_end || ''}
+                  onChange={e => set('period_end', e.target.value)}
+                  className="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-[13px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all [color-scheme:light]"
+                />
+              </div>
+            )}
           </section>
 
           {/* ── Status ── */}
@@ -528,6 +565,66 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
             </div>
           </section>
 
+          {/* ── Sort Order ── */}
+          <section className="space-y-2">
+            <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">並び替え</label>
+            <div className="relative">
+              <select
+                value={filters.sort_order}
+                onChange={e => set('sort_order', e.target.value)}
+                className="w-full appearance-none bg-white border border-gray-200 rounded-xl py-3 px-4 text-[14px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all font-medium"
+              >
+                <option value="created_desc">登録日が新しい順</option>
+                <option value="rating_desc">評価が高い順</option>
+                <option value="rating_asc">評価が低い順</option>
+                <option value="price_desc">値段帯が高い順</option>
+                <option value="price_asc">値段帯が安い順</option>
+              </select>
+              <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            </div>
+          </section>
+
+          {/* ── Rating Filter ── */}
+          <section className="space-y-2">
+            <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">評価フィルター</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                min="0"
+                max="5"
+                step="0.5"
+                value={filters.rating_min ?? ''}
+                onChange={e => set('rating_min', e.target.value ? parseFloat(e.target.value) : undefined)}
+                placeholder="例: 4.0"
+                className="flex-1 bg-white border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all font-medium"
+              />
+              <span className="text-[14px] font-bold text-gray-500">以上</span>
+            </div>
+          </section>
+
+          {/* ── Price Filter ── */}
+          <section className="space-y-2">
+            <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">値段帯フィルター</label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={filters.price_min ?? ''}
+                onChange={e => set('price_min', e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                placeholder="下限"
+                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all font-medium"
+              />
+              <span className="text-gray-400 font-bold">〜</span>
+              <input
+                type="number"
+                value={filters.price_max ?? ''}
+                onChange={e => set('price_max', e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                placeholder="上限"
+                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all font-medium"
+              />
+              <span className="text-[14px] font-bold text-gray-500 shrink-0">円</span>
+            </div>
+          </section>
+
           {/* ── Toggles ── */}
           <section className="space-y-2">
             <button
@@ -545,9 +642,9 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
         </div>
 
         {/* Action Button */}
-        <div className="absolute bottom-0 left-0 right-0 px-5 py-4 bg-white/95 backdrop-blur-sm border-t border-gray-100">
+        <div className="absolute bottom-0 left-0 right-0 px-5 py-4 bg-white/95 backdrop-blur-sm border-t border-gray-100 flex items-center justify-center">
           <button
-            onClick={() => { onApply({ ...filters, filterMode }); onClose(); }}
+            onClick={() => { onApply({ ...filters }); onClose(); }}
             className="w-full py-3.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold text-[15px] active:scale-98 transition-all shadow-sm"
           >
             絞り込みを適用する

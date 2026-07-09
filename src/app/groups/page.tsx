@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { Header } from '@/components/Header';
 import { getJoinedGroups, createGroup, joinGroup } from '@/lib/api/groups';
 import { getFriends, addFriend, removeFriend, searchUsers } from '@/lib/api/friends';
@@ -58,8 +58,41 @@ export default function FriendsPage() {
       getJoinedGroups(),
       fetch('/api/friends/pending').then(r => r.json())
     ]);
-    setFriends(f ?? []);
-    setGroups(g ?? []);
+    
+    // localStorageからソート順を復元
+    let sortedF = f ?? [];
+    let sortedG = g ?? [];
+    try {
+      const savedFOrder = localStorage.getItem('friends_order');
+      if (savedFOrder) {
+        const order = JSON.parse(savedFOrder) as string[];
+        sortedF = [...sortedF].sort((a, b) => {
+          const idxA = order.indexOf(a.friendship_id);
+          const idxB = order.indexOf(b.friendship_id);
+          if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+          if (idxA !== -1) return -1;
+          if (idxB !== -1) return 1;
+          return 0;
+        });
+      }
+      const savedGOrder = localStorage.getItem('groups_order');
+      if (savedGOrder) {
+        const order = JSON.parse(savedGOrder) as string[];
+        sortedG = [...sortedG].sort((a, b) => {
+          const idxA = order.indexOf(a.id);
+          const idxB = order.indexOf(b.id);
+          if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+          if (idxA !== -1) return -1;
+          if (idxB !== -1) return 1;
+          return 0;
+        });
+      }
+    } catch (e) {
+      console.error('Failed to parse order from localStorage', e);
+    }
+    
+    setFriends(sortedF);
+    setGroups(sortedG);
     setPendingRequests(pRes.data ?? []);
     setLoading(false);
   }, []);
@@ -142,6 +175,90 @@ export default function FriendsPage() {
   };
 
   const friendIds = new Set(friends.map(f => f.id));
+
+  // --- ドラッグ&ドロップ ハンドラー ---
+  const dragItemRef = useRef<number | null>(null);
+  const dragOverItemRef = useRef<number | null>(null);
+
+  // ともだち用
+  const handleDragStartF = (index: number) => { dragItemRef.current = index; };
+  const handleDragOverF = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (dragItemRef.current === null || dragItemRef.current === index) return;
+    const newItems = [...friends];
+    const [moved] = newItems.splice(dragItemRef.current, 1);
+    newItems.splice(index, 0, moved);
+    dragItemRef.current = index;
+    setFriends(newItems);
+  };
+  const handleDragEndF = () => {
+    dragItemRef.current = null;
+    localStorage.setItem('friends_order', JSON.stringify(friends.map(f => f.friendship_id)));
+  };
+
+  // タッチ対応（ともだち用）
+  const touchDragFRef = useRef<number | null>(null);
+  const handleTouchStartF = (e: React.TouchEvent, index: number) => { touchDragFRef.current = index; };
+  const handleTouchMoveF = (e: React.TouchEvent) => {
+    e.preventDefault();
+    if (touchDragFRef.current === null) return;
+    const touch = e.touches[0];
+    const elements = document.querySelectorAll('[data-friend-item]');
+    elements.forEach((el, i) => {
+      const rect = el.getBoundingClientRect();
+      if (touch.clientY >= rect.top && touch.clientY <= rect.bottom && i !== touchDragFRef.current) {
+        const newItems = [...friends];
+        const [moved] = newItems.splice(touchDragFRef.current!, 1);
+        newItems.splice(i, 0, moved);
+        touchDragFRef.current = i;
+        setFriends(newItems);
+      }
+    });
+  };
+  const handleTouchEndF = () => {
+    touchDragFRef.current = null;
+    localStorage.setItem('friends_order', JSON.stringify(friends.map(f => f.friendship_id)));
+  };
+
+  // グループ用
+  const handleDragStartG = (index: number) => { dragItemRef.current = index; };
+  const handleDragOverG = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (dragItemRef.current === null || dragItemRef.current === index) return;
+    const newItems = [...groups];
+    const [moved] = newItems.splice(dragItemRef.current, 1);
+    newItems.splice(index, 0, moved);
+    dragItemRef.current = index;
+    setGroups(newItems);
+  };
+  const handleDragEndG = () => {
+    dragItemRef.current = null;
+    localStorage.setItem('groups_order', JSON.stringify(groups.map(g => g.id)));
+  };
+
+  // タッチ対応（グループ用）
+  const touchDragGRef = useRef<number | null>(null);
+  const handleTouchStartG = (e: React.TouchEvent, index: number) => { touchDragGRef.current = index; };
+  const handleTouchMoveG = (e: React.TouchEvent) => {
+    e.preventDefault();
+    if (touchDragGRef.current === null) return;
+    const touch = e.touches[0];
+    const elements = document.querySelectorAll('[data-group-item]');
+    elements.forEach((el, i) => {
+      const rect = el.getBoundingClientRect();
+      if (touch.clientY >= rect.top && touch.clientY <= rect.bottom && i !== touchDragGRef.current) {
+        const newItems = [...groups];
+        const [moved] = newItems.splice(touchDragGRef.current!, 1);
+        newItems.splice(i, 0, moved);
+        touchDragGRef.current = i;
+        setGroups(newItems);
+      }
+    });
+  };
+  const handleTouchEndG = () => {
+    touchDragGRef.current = null;
+    localStorage.setItem('groups_order', JSON.stringify(groups.map(g => g.id)));
+  };
 
   return (
     <>
@@ -289,8 +406,19 @@ export default function FriendsPage() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {friends.map(f => (
-                    <div key={f.friendship_id} className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm">
+                  {friends.map((f, i) => (
+                    <div 
+                      key={f.friendship_id} 
+                      data-friend-item
+                      draggable
+                      onDragStart={() => handleDragStartF(i)}
+                      onDragOver={(e) => handleDragOverF(e, i)}
+                      onDragEnd={handleDragEndF}
+                      onTouchStart={(e) => handleTouchStartF(e, i)}
+                      onTouchMove={handleTouchMoveF}
+                      onTouchEnd={handleTouchEndF}
+                      className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm cursor-grab active:cursor-grabbing active:scale-[0.99] transition-transform"
+                    >
                       <Link href={`/mypage?userId=${f.id}`} className="flex items-center gap-4 flex-1 min-w-0 hover:opacity-85 transition-opacity">
                         <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center overflow-hidden relative flex-shrink-0 border-2 border-white shadow">
                           {f.avatar_url ? <Image src={f.avatar_url} alt={f.name} fill className="object-cover" /> : <User size={20} className="text-orange-400" />}
@@ -301,7 +429,7 @@ export default function FriendsPage() {
                       </Link>
                       <button
                         onClick={() => handleRemoveFriend(f.friendship_id)}
-                        className="w-9 h-9 flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 rounded-xl transition-all"
+                        className="w-9 h-9 flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 rounded-xl transition-all z-10"
                       >
                         <Trash2 size={16} />
                       </button>
@@ -357,8 +485,19 @@ export default function FriendsPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {groups.map(group => (
-                    <div key={group.id} className="relative group/card">
+                  {groups.map((group, i) => (
+                    <div 
+                      key={group.id} 
+                      data-group-item
+                      draggable
+                      onDragStart={() => handleDragStartG(i)}
+                      onDragOver={(e) => handleDragOverG(e, i)}
+                      onDragEnd={handleDragEndG}
+                      onTouchStart={(e) => handleTouchStartG(e, i)}
+                      onTouchMove={handleTouchMoveG}
+                      onTouchEnd={handleTouchEndG}
+                      className="relative group/card cursor-grab active:cursor-grabbing active:scale-[0.99] transition-transform"
+                    >
                       <Link href={`/groups/${group.id}`} className="flex items-center gap-4 p-5 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-0.5 transition-all duration-300 pr-[88px]">
                         <div className="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center text-orange-500 shadow-inner shrink-0">
                           <Hash size={22} strokeWidth={3} />
@@ -371,8 +510,8 @@ export default function FriendsPage() {
                       </Link>
 
                       <button
-                        onClick={() => copyCode(group.invite_code)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-gray-50 hover:bg-orange-50 text-[10px] font-black px-2.5 py-1.5 rounded-xl border border-gray-100 transition-all active:scale-95"
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); copyCode(group.invite_code); }}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-gray-50 hover:bg-orange-50 text-[10px] font-black px-2.5 py-1.5 rounded-xl border border-gray-100 transition-all active:scale-95 z-10"
                       >
                         {copiedCode === group.invite_code ? (
                           <><CheckCircle size={12} className="text-green-500" /><span className="text-green-600">コピー済み</span></>

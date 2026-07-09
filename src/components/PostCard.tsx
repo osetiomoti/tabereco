@@ -51,7 +51,7 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
                 </span>
                 <span className="text-[10px] opacity-30">•</span>
                 <span className="text-[10px] font-medium bg-gray-50 px-2 py-0.5 rounded-full">
-                  {formatDate(post.visited_at)}
+                  {post.visited_at ? formatDate(typeof post.visited_at === 'string' ? post.visited_at : (post.visited_at as Date).toISOString()) : ''}
                 </span>
               </div>
               {/* グループ表示 (Horizontal) */}
@@ -135,7 +135,7 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
             </h3>
             <div className="flex items-center justify-between mt-auto">
               <span className="text-[10px] text-gray-500 font-bold bg-gray-50 px-2 py-0.5 rounded-md">
-                {formatDate(post.visited_at).replace(/-/g, '/')}
+                {post.visited_at ? formatDate(typeof post.visited_at === 'string' ? post.visited_at : (post.visited_at as Date).toISOString()).replace(/-/g, '/') : ''}
               </span>
               {/* グループ表示 */}
               {((post as any).__group_name || (post as any).__is_mine) && (

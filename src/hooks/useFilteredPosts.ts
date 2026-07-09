@@ -166,7 +166,80 @@ export function useFilteredPosts() {
       result = result.filter(p => p.status === advancedFilters.status);
     }
 
-    return result.sort((a: Post, b: Post) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    // ── 期間フィルター ──
+    const period = advancedFilters?.period;
+    if (period && period !== 'all') {
+      const now = new Date();
+      let startDate: Date | null = null;
+      let endDate: Date | null = null;
+
+      if (period === 'this_month') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      } else if (period === 'last_3_months') {
+        startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+        endDate = now;
+      } else if (period === 'this_year') {
+        startDate = new Date(now.getFullYear(), 0, 1);
+        endDate = new Date(now.getFullYear(), 11, 31);
+      } else if (period === 'last_year') {
+        startDate = new Date(now.getFullYear() - 1, 0, 1);
+        endDate = new Date(now.getFullYear() - 1, 11, 31);
+      } else if (period === 'custom') {
+        if (advancedFilters?.period_start) startDate = new Date(advancedFilters.period_start);
+        if (advancedFilters?.period_end) endDate = new Date(advancedFilters.period_end);
+      }
+
+      if (startDate || endDate) {
+        result = result.filter(p => {
+          if (!p.visited_at) return false;
+          const d = new Date(p.visited_at);
+          if (startDate && d < startDate) return false;
+          if (endDate && d > endDate) return false;
+          return true;
+        });
+      }
+    }
+
+    
+    if (advancedFilters?.rating_min !== undefined) {
+      result = result.filter(p => p.rating >= advancedFilters.rating_min);
+    }
+    if (advancedFilters?.price_min !== undefined) {
+      result = result.filter(p => p.price_min !== null && p.price_min >= advancedFilters.price_min);
+    }
+    if (advancedFilters?.price_max !== undefined) {
+      // 登録時の価格帯は min-max で保存されているため、price_max を比較
+      // price_max が null の場合は設定されていないか、○○円以上（青天井）という意味合いになる
+      // そのため上限フィルターが指定された場合、上限より高い価格帯は除外する
+      // また min が max を超えるような価格帯も除外
+      result = result.filter(p => {
+        if (p.price_min === null) return false;
+        return p.price_min <= advancedFilters.price_max;
+      });
+    }
+
+    const sortOrder = advancedFilters?.sort_order || 'created_desc';
+    result.sort((a: Post, b: Post) => {
+      switch (sortOrder) {
+        case 'rating_desc':
+          return b.rating - a.rating;
+        case 'rating_asc':
+          return a.rating - b.rating;
+        case 'price_desc':
+          return (b.price_min || 0) - (a.price_min || 0);
+        case 'price_asc': {
+          const pA = a.price_min !== null ? a.price_min : Infinity;
+          const pB = b.price_min !== null ? b.price_min : Infinity;
+          return pA - pB;
+        }
+        case 'created_desc':
+        default:
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      }
+    });
+
+    return result;
   }, [activeGroups, activeTab, keyword, advancedFilters, ownPostsCache, groupPostsCache]);
 
 
@@ -193,7 +266,7 @@ export function useFilteredPosts() {
   const activeFilterCount = useMemo(() => {
     return advancedFilters
       ? Object.entries(advancedFilters).filter(([k, v]: [string, any]) =>
-          v && v !== 'all' && v !== '' && v !== false && k !== 'activeGroups' && k !== 'tags' && k !== 'registrantUserIds'
+          v !== undefined && v !== null && v !== 'all' && v !== '' && v !== false && k !== 'activeGroups' && k !== 'tags' && k !== 'registrantUserIds' && k !== 'sort_order'
         ).length + (advancedFilters.tags?.length || 0) + (advancedFilters.registrantUserIds?.length || 0) + (activeGroups.filter((x: string) => x !== 'all').length > 0 ? 1 : 0)
       : activeGroups.filter((x: string) => x !== 'all').length;
   }, [advancedFilters, activeGroups]);

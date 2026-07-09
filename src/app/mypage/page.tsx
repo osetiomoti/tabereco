@@ -306,7 +306,7 @@ export default function MyPage() {
               <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
                 <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
                 <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate mt-0.5 opacity-80">
-                  {post.store_name} • {formatDate(post.visited_at).split('-').slice(1).join('/')}
+                  {post.store_name} • {post.visited_at ? formatDate(post.visited_at).split('-').slice(1).join('/') : ''}
                 </span>
               </div>
 
