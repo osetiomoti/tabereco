@@ -175,7 +175,7 @@ export default function FriendsPage() {
             <div className="bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100 rounded-3xl p-5">
               <p className="text-[11px] font-black text-orange-400 tracking-widest mb-2">あなたのID</p>
               <div className="flex items-center gap-3">
-                <p className="flex-1 font-mono text-xs text-gray-600 font-bold truncate bg-white/70 px-3 py-2 rounded-xl border border-orange-100">
+                <p className="flex-1 min-w-0 font-mono text-xs text-gray-600 font-bold truncate bg-white/70 px-3 py-2 rounded-xl border border-orange-100">
                   {myId || '読み込み中...'}
                 </p>
                 <button
