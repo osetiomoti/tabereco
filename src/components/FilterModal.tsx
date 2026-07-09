@@ -44,6 +44,8 @@ const PERIOD_OPTIONS = [
   { label: 'カスタム', value: 'custom' },
 ];
 
+const PRICE_OPTIONS = [0, 1000, 2000, 3000, 4000, 5000, 10000];
+
 const DEFAULT: FilterState = {
   tags: [],
   period: 'all',
@@ -76,6 +78,15 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
   const groupRef  = useRef<HTMLDivElement>(null);
   const memberRef = useRef<HTMLDivElement>(null);
   const [isTagSelectorOpen, setIsTagSelectorOpen] = useState(false);
+
+  const [priceMinMode, setPriceMinMode] = useState<'select' | 'custom'>(() => {
+    if (initialFilters?.price_min === undefined) return 'select';
+    return PRICE_OPTIONS.includes(initialFilters.price_min) ? 'select' : 'custom';
+  });
+  const [priceMaxMode, setPriceMaxMode] = useState<'select' | 'custom'>(() => {
+    if (initialFilters?.price_max === undefined) return 'select';
+    return PRICE_OPTIONS.includes(initialFilters.price_max) ? 'select' : 'custom';
+  });
 
   /* ── load on open ── */
   useEffect(() => {
@@ -605,23 +616,83 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
           {/* ── Price Filter ── */}
           <section className="space-y-2">
             <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">値段帯フィルター</label>
-            <div className="flex items-center gap-2">
-              <input
-                type="number"
-                value={filters.price_min ?? ''}
-                onChange={e => set('price_min', e.target.value ? parseInt(e.target.value, 10) : undefined)}
-                placeholder="下限"
-                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all font-medium"
-              />
-              <span className="text-gray-400 font-bold">〜</span>
-              <input
-                type="number"
-                value={filters.price_max ?? ''}
-                onChange={e => set('price_max', e.target.value ? parseInt(e.target.value, 10) : undefined)}
-                placeholder="上限"
-                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all font-medium"
-              />
-              <span className="text-[14px] font-bold text-gray-500 shrink-0">円</span>
+            
+            <div className="flex flex-col gap-3">
+              {/* 下限 */}
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] font-bold text-gray-400 w-8">下限</span>
+                <div className="relative flex-1">
+                  <select
+                    value={priceMinMode === 'custom' ? 'custom' : (filters.price_min ?? '')}
+                    onChange={(e) => {
+                      if (e.target.value === 'custom') {
+                        setPriceMinMode('custom');
+                      } else {
+                        setPriceMinMode('select');
+                        set('price_min', e.target.value ? parseInt(e.target.value, 10) : undefined);
+                      }
+                    }}
+                    className="w-full appearance-none bg-white border border-gray-200 rounded-xl py-2.5 px-3 text-[14px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all font-medium"
+                  >
+                    <option value="">選択なし</option>
+                    {PRICE_OPTIONS.map(val => (
+                      <option key={val} value={val}>{val.toLocaleString()}円</option>
+                    ))}
+                    <option value="custom">カスタム（自由入力）</option>
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                </div>
+                {priceMinMode === 'custom' && (
+                  <div className="flex items-center gap-1 flex-1 animate-in fade-in zoom-in duration-200">
+                    <input
+                      type="number"
+                      value={filters.price_min ?? ''}
+                      onChange={e => set('price_min', e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                      placeholder="下限"
+                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-[14px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all font-medium"
+                    />
+                    <span className="text-[13px] font-bold text-gray-500 shrink-0">円</span>
+                  </div>
+                )}
+              </div>
+
+              {/* 上限 */}
+              <div className="flex items-center gap-2">
+                <span className="text-[13px] font-bold text-gray-400 w-8">上限</span>
+                <div className="relative flex-1">
+                  <select
+                    value={priceMaxMode === 'custom' ? 'custom' : (filters.price_max ?? '')}
+                    onChange={(e) => {
+                      if (e.target.value === 'custom') {
+                        setPriceMaxMode('custom');
+                      } else {
+                        setPriceMaxMode('select');
+                        set('price_max', e.target.value ? parseInt(e.target.value, 10) : undefined);
+                      }
+                    }}
+                    className="w-full appearance-none bg-white border border-gray-200 rounded-xl py-2.5 px-3 text-[14px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all font-medium"
+                  >
+                    <option value="">選択なし</option>
+                    {PRICE_OPTIONS.map(val => (
+                      <option key={val} value={val}>{val.toLocaleString()}円</option>
+                    ))}
+                    <option value="custom">カスタム（自由入力）</option>
+                  </select>
+                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                </div>
+                {priceMaxMode === 'custom' && (
+                  <div className="flex items-center gap-1 flex-1 animate-in fade-in zoom-in duration-200">
+                    <input
+                      type="number"
+                      value={filters.price_max ?? ''}
+                      onChange={e => set('price_max', e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                      placeholder="上限"
+                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-[14px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all font-medium"
+                    />
+                    <span className="text-[13px] font-bold text-gray-500 shrink-0">円</span>
+                  </div>
+                )}
+              </div>
             </div>
           </section>
 
