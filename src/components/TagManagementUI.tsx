@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-import { Trash2, GripVertical, Plus, ChevronLeft, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Trash2, GripVertical, ChevronLeft, Loader2 } from 'lucide-react';
 import { getUserTags, deleteTag, updateTagOrder } from '@/lib/api/posts';
 import type { Tag } from '@/lib/types';
 import Link from 'next/link';
@@ -11,13 +11,18 @@ export function TagManagementUI({ initialTags }: { initialTags?: Tag[] }) {
   const [newTagName, setNewTagName] = useState('');
   const [isLoading, setIsLoading] = useState(!initialTags);
   const [isActionLoading, setIsActionLoading] = useState(false);
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+
+  // Desktop drag refs
   const dragIndexRef = useRef<number | null>(null);
-  const dragOverIndexRef = useRef<number | null>(null);
+
+  // Touch drag refs (for passive:false registration)
+  const touchDragIndex = useRef<number | null>(null);
+  const tagsRef = useRef<Tag[]>([]);
+  tagsRef.current = tags;
 
   useEffect(() => {
-    if (!initialTags) {
-      loadTags();
-    }
+    if (!initialTags) loadTags();
   }, [initialTags]);
 
   const loadTags = async () => {
@@ -31,6 +36,14 @@ export function TagManagementUI({ initialTags }: { initialTags?: Tag[] }) {
       setIsLoading(false);
     }
   };
+
+  const saveOrder = useCallback(async (ordered: Tag[]) => {
+    try {
+      await updateTagOrder(ordered.map((t, i) => ({ id: t.id, sort_order: i })));
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
 
   const handleAddTag = async () => {
     if (!newTagName.trim()) return;
@@ -60,67 +73,82 @@ export function TagManagementUI({ initialTags }: { initialTags?: Tag[] }) {
     }
   };
 
-  // ── Drag & Drop handlers ──
+  // ── Desktop Drag & Drop ──
   const handleDragStart = (index: number) => {
     dragIndexRef.current = index;
+    setDraggingIndex(index);
   };
 
   const handleDragOver = (e: React.DragEvent, index: number) => {
     e.preventDefault();
-    dragOverIndexRef.current = index;
     if (dragIndexRef.current === null || dragIndexRef.current === index) return;
-    const newTags = [...tags];
+    const newTags = [...tagsRef.current];
     const [moved] = newTags.splice(dragIndexRef.current, 1);
     newTags.splice(index, 0, moved);
     dragIndexRef.current = index;
+    setDraggingIndex(index);
     setTags(newTags);
   };
 
   const handleDragEnd = async () => {
+    setDraggingIndex(null);
     dragIndexRef.current = null;
-    dragOverIndexRef.current = null;
-    // Save order
-    try {
-      await updateTagOrder(tags.map((t, i) => ({ id: t.id, sort_order: i })));
-    } catch (e) {
-      console.error(e);
-    }
+    await saveOrder(tagsRef.current);
   };
 
-  // ── Touch Drag Support ──
-  const touchStartY = useRef<number>(0);
-  const touchDragIndex = useRef<number | null>(null);
+  // ── Touch Drag (passive:false via useEffect) ──
+  // We attach listeners imperatively so we can pass { passive: false }
+  const listRef = useRef<HTMLDivElement>(null);
 
-  const handleTouchStart = (e: React.TouchEvent, index: number) => {
-    touchStartY.current = e.touches[0].clientY;
-    touchDragIndex.current = index;
-  };
+  useEffect(() => {
+    const container = listRef.current;
+    if (!container) return;
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    e.preventDefault();
-    if (touchDragIndex.current === null) return;
-    const touch = e.touches[0];
-    const elements = document.querySelectorAll('[data-tag-item]');
-    elements.forEach((el, i) => {
-      const rect = el.getBoundingClientRect();
-      if (touch.clientY >= rect.top && touch.clientY <= rect.bottom && i !== touchDragIndex.current) {
-        const newTags = [...tags];
-        const [moved] = newTags.splice(touchDragIndex.current!, 1);
-        newTags.splice(i, 0, moved);
-        touchDragIndex.current = i;
-        setTags(newTags);
-      }
-    });
-  };
+    const onTouchStart = (e: TouchEvent) => {
+      const target = e.target as HTMLElement;
+      const item = target.closest('[data-tag-item]') as HTMLElement | null;
+      if (!item) return;
+      const idx = parseInt(item.dataset.tagIndex || '-1', 10);
+      if (idx < 0) return;
+      touchDragIndex.current = idx;
+      setDraggingIndex(idx);
+    };
 
-  const handleTouchEnd = async () => {
-    touchDragIndex.current = null;
-    try {
-      await updateTagOrder(tags.map((t, i) => ({ id: t.id, sort_order: i })));
-    } catch (e) {
-      console.error(e);
-    }
-  };
+    const onTouchMove = (e: TouchEvent) => {
+      if (touchDragIndex.current === null) return;
+      e.preventDefault(); // needs passive:false
+      const touch = e.touches[0];
+      const elements = container.querySelectorAll('[data-tag-item]');
+      elements.forEach((el, i) => {
+        const rect = el.getBoundingClientRect();
+        if (touch.clientY >= rect.top && touch.clientY <= rect.bottom && i !== touchDragIndex.current) {
+          const newTags = [...tagsRef.current];
+          const [moved] = newTags.splice(touchDragIndex.current!, 1);
+          newTags.splice(i, 0, moved);
+          touchDragIndex.current = i;
+          setDraggingIndex(i);
+          setTags(newTags);
+        }
+      });
+    };
+
+    const onTouchEnd = async () => {
+      if (touchDragIndex.current === null) return;
+      touchDragIndex.current = null;
+      setDraggingIndex(null);
+      await saveOrder(tagsRef.current);
+    };
+
+    container.addEventListener('touchstart', onTouchStart, { passive: true });
+    container.addEventListener('touchmove', onTouchMove, { passive: false });
+    container.addEventListener('touchend', onTouchEnd, { passive: true });
+
+    return () => {
+      container.removeEventListener('touchstart', onTouchStart);
+      container.removeEventListener('touchmove', onTouchMove);
+      container.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [saveOrder]);
 
   return (
     <div className="w-full max-w-xl mx-auto min-h-screen bg-[#fcfcfc] flex flex-col">
@@ -170,7 +198,7 @@ export function TagManagementUI({ initialTags }: { initialTags?: Tag[] }) {
             </span>
           </div>
 
-          <div className="divide-y divide-gray-50">
+          <div className="divide-y divide-gray-50" ref={listRef}>
             {isLoading ? (
               <div className="py-12 flex justify-center">
                 <Loader2 className="text-pink-200 animate-spin" size={32} />
@@ -182,21 +210,21 @@ export function TagManagementUI({ initialTags }: { initialTags?: Tag[] }) {
                 <div
                   key={tag.id}
                   data-tag-item
+                  data-tag-index={index}
                   draggable
                   onDragStart={() => handleDragStart(index)}
                   onDragOver={(e) => handleDragOver(e, index)}
                   onDragEnd={handleDragEnd}
-                  onTouchStart={(e) => handleTouchStart(e, index)}
-                  onTouchMove={handleTouchMove}
-                  onTouchEnd={handleTouchEnd}
-                  className="flex items-center justify-between px-6 py-5 group hover:bg-gray-50/50 transition-colors cursor-grab active:cursor-grabbing active:bg-pink-50/30 active:scale-[0.99]"
+                  className={`flex items-center justify-between px-6 py-5 group transition-colors cursor-grab active:cursor-grabbing select-none ${
+                    draggingIndex === index ? 'bg-pink-50/50 opacity-70 scale-[0.99]' : 'hover:bg-gray-50/50'
+                  }`}
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-gray-300 font-bold text-lg">#</span>
                     <span className="text-gray-700 font-bold">{tag.name}</span>
                   </div>
                   <div className="flex items-center gap-4">
-                    <button 
+                    <button
                       onClick={() => handleDeleteTag(tag.id)}
                       className="p-2 text-pink-200 hover:text-pink-400 hover:bg-pink-50 rounded-xl transition-all"
                     >

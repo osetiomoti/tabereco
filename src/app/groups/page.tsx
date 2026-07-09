@@ -176,16 +176,19 @@ export default function FriendsPage() {
 
   const friendIds = new Set(friends.map(f => f.id));
 
-  // --- ドラッグ&ドロップ ハンドラー ---
-  const dragItemRef = useRef<number | null>(null);
-  const dragOverItemRef = useRef<number | null>(null);
+  // Mutable refs so useEffect callbacks always see latest state
+  const friendsRef = useRef<Friend[]>([]);
+  friendsRef.current = friends;
+  const groupsRef = useRef<Group[]>([]);
+  groupsRef.current = groups;
 
-  // ともだち用
+  // ── Desktop Drag (friends) ──
+  const dragItemRef = useRef<number | null>(null);
   const handleDragStartF = (index: number) => { dragItemRef.current = index; };
   const handleDragOverF = (e: React.DragEvent, index: number) => {
     e.preventDefault();
     if (dragItemRef.current === null || dragItemRef.current === index) return;
-    const newItems = [...friends];
+    const newItems = [...friendsRef.current];
     const [moved] = newItems.splice(dragItemRef.current, 1);
     newItems.splice(index, 0, moved);
     dragItemRef.current = index;
@@ -193,72 +196,109 @@ export default function FriendsPage() {
   };
   const handleDragEndF = () => {
     dragItemRef.current = null;
-    localStorage.setItem('friends_order', JSON.stringify(friends.map(f => f.friendship_id)));
+    localStorage.setItem('friends_order', JSON.stringify(friendsRef.current.map(f => f.friendship_id)));
   };
 
-  // タッチ対応（ともだち用）
-  const touchDragFRef = useRef<number | null>(null);
-  const handleTouchStartF = (e: React.TouchEvent, index: number) => { touchDragFRef.current = index; };
-  const handleTouchMoveF = (e: React.TouchEvent) => {
-    e.preventDefault();
-    if (touchDragFRef.current === null) return;
-    const touch = e.touches[0];
-    const elements = document.querySelectorAll('[data-friend-item]');
-    elements.forEach((el, i) => {
-      const rect = el.getBoundingClientRect();
-      if (touch.clientY >= rect.top && touch.clientY <= rect.bottom && i !== touchDragFRef.current) {
-        const newItems = [...friends];
-        const [moved] = newItems.splice(touchDragFRef.current!, 1);
-        newItems.splice(i, 0, moved);
-        touchDragFRef.current = i;
-        setFriends(newItems);
-      }
-    });
-  };
-  const handleTouchEndF = () => {
-    touchDragFRef.current = null;
-    localStorage.setItem('friends_order', JSON.stringify(friends.map(f => f.friendship_id)));
-  };
-
-  // グループ用
-  const handleDragStartG = (index: number) => { dragItemRef.current = index; };
+  // ── Desktop Drag (groups) ──
+  const dragGroupRef = useRef<number | null>(null);
+  const handleDragStartG = (index: number) => { dragGroupRef.current = index; };
   const handleDragOverG = (e: React.DragEvent, index: number) => {
     e.preventDefault();
-    if (dragItemRef.current === null || dragItemRef.current === index) return;
-    const newItems = [...groups];
-    const [moved] = newItems.splice(dragItemRef.current, 1);
+    if (dragGroupRef.current === null || dragGroupRef.current === index) return;
+    const newItems = [...groupsRef.current];
+    const [moved] = newItems.splice(dragGroupRef.current, 1);
     newItems.splice(index, 0, moved);
-    dragItemRef.current = index;
+    dragGroupRef.current = index;
     setGroups(newItems);
   };
   const handleDragEndG = () => {
-    dragItemRef.current = null;
-    localStorage.setItem('groups_order', JSON.stringify(groups.map(g => g.id)));
+    dragGroupRef.current = null;
+    localStorage.setItem('groups_order', JSON.stringify(groupsRef.current.map(g => g.id)));
   };
 
-  // タッチ対応（グループ用）
-  const touchDragGRef = useRef<number | null>(null);
-  const handleTouchStartG = (e: React.TouchEvent, index: number) => { touchDragGRef.current = index; };
-  const handleTouchMoveG = (e: React.TouchEvent) => {
-    e.preventDefault();
-    if (touchDragGRef.current === null) return;
-    const touch = e.touches[0];
-    const elements = document.querySelectorAll('[data-group-item]');
-    elements.forEach((el, i) => {
-      const rect = el.getBoundingClientRect();
-      if (touch.clientY >= rect.top && touch.clientY <= rect.bottom && i !== touchDragGRef.current) {
-        const newItems = [...groups];
-        const [moved] = newItems.splice(touchDragGRef.current!, 1);
-        newItems.splice(i, 0, moved);
-        touchDragGRef.current = i;
-        setGroups(newItems);
-      }
-    });
-  };
-  const handleTouchEndG = () => {
-    touchDragGRef.current = null;
-    localStorage.setItem('groups_order', JSON.stringify(groups.map(g => g.id)));
-  };
+  // ── Touch Drag (friends) - passive:false via useEffect ──
+  const friendsListRef = useRef<HTMLDivElement>(null);
+  const touchFIndex = useRef<number | null>(null);
+
+  useEffect(() => {
+    const container = friendsListRef.current;
+    if (!container) return;
+    const onStart = (e: TouchEvent) => {
+      const item = (e.target as HTMLElement).closest('[data-friend-item]') as HTMLElement | null;
+      if (!item) return;
+      touchFIndex.current = parseInt(item.dataset.friendIndex || '-1', 10);
+    };
+    const onMove = (e: TouchEvent) => {
+      if (touchFIndex.current === null || touchFIndex.current < 0) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      container.querySelectorAll('[data-friend-item]').forEach((el, i) => {
+        const rect = el.getBoundingClientRect();
+        if (touch.clientY >= rect.top && touch.clientY <= rect.bottom && i !== touchFIndex.current) {
+          const newItems = [...friendsRef.current];
+          const [moved] = newItems.splice(touchFIndex.current!, 1);
+          newItems.splice(i, 0, moved);
+          touchFIndex.current = i;
+          setFriends(newItems);
+        }
+      });
+    };
+    const onEnd = () => {
+      if (touchFIndex.current === null) return;
+      touchFIndex.current = null;
+      localStorage.setItem('friends_order', JSON.stringify(friendsRef.current.map(f => f.friendship_id)));
+    };
+    container.addEventListener('touchstart', onStart, { passive: true });
+    container.addEventListener('touchmove', onMove, { passive: false });
+    container.addEventListener('touchend', onEnd, { passive: true });
+    return () => {
+      container.removeEventListener('touchstart', onStart);
+      container.removeEventListener('touchmove', onMove);
+      container.removeEventListener('touchend', onEnd);
+    };
+  }, []);
+
+  // ── Touch Drag (groups) - passive:false via useEffect ──
+  const groupsListRef = useRef<HTMLDivElement>(null);
+  const touchGIndex = useRef<number | null>(null);
+
+  useEffect(() => {
+    const container = groupsListRef.current;
+    if (!container) return;
+    const onStart = (e: TouchEvent) => {
+      const item = (e.target as HTMLElement).closest('[data-group-item]') as HTMLElement | null;
+      if (!item) return;
+      touchGIndex.current = parseInt(item.dataset.groupIndex || '-1', 10);
+    };
+    const onMove = (e: TouchEvent) => {
+      if (touchGIndex.current === null || touchGIndex.current < 0) return;
+      e.preventDefault();
+      const touch = e.touches[0];
+      container.querySelectorAll('[data-group-item]').forEach((el, i) => {
+        const rect = el.getBoundingClientRect();
+        if (touch.clientY >= rect.top && touch.clientY <= rect.bottom && i !== touchGIndex.current) {
+          const newItems = [...groupsRef.current];
+          const [moved] = newItems.splice(touchGIndex.current!, 1);
+          newItems.splice(i, 0, moved);
+          touchGIndex.current = i;
+          setGroups(newItems);
+        }
+      });
+    };
+    const onEnd = () => {
+      if (touchGIndex.current === null) return;
+      touchGIndex.current = null;
+      localStorage.setItem('groups_order', JSON.stringify(groupsRef.current.map(g => g.id)));
+    };
+    container.addEventListener('touchstart', onStart, { passive: true });
+    container.addEventListener('touchmove', onMove, { passive: false });
+    container.addEventListener('touchend', onEnd, { passive: true });
+    return () => {
+      container.removeEventListener('touchstart', onStart);
+      container.removeEventListener('touchmove', onMove);
+      container.removeEventListener('touchend', onEnd);
+    };
+  }, []);
 
   return (
     <>
@@ -405,19 +445,17 @@ export default function FriendsPage() {
                   <p className="text-gray-300 font-bold text-xs mt-1">IDで検索して追加しよう</p>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-2" ref={friendsListRef}>
                   {friends.map((f, i) => (
                     <div 
                       key={f.friendship_id} 
                       data-friend-item
+                      data-friend-index={i}
                       draggable
                       onDragStart={() => handleDragStartF(i)}
                       onDragOver={(e) => handleDragOverF(e, i)}
                       onDragEnd={handleDragEndF}
-                      onTouchStart={(e) => handleTouchStartF(e, i)}
-                      onTouchMove={handleTouchMoveF}
-                      onTouchEnd={handleTouchEndF}
-                      className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm cursor-grab active:cursor-grabbing active:scale-[0.99] transition-transform"
+                      className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm cursor-grab active:cursor-grabbing active:scale-[0.99] transition-transform select-none"
                     >
                       <Link href={`/mypage?userId=${f.id}`} className="flex items-center gap-4 flex-1 min-w-0 hover:opacity-85 transition-opacity">
                         <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center overflow-hidden relative flex-shrink-0 border-2 border-white shadow">
@@ -484,19 +522,17 @@ export default function FriendsPage() {
                   <p className="text-gray-400 font-bold text-sm">まだグループがありません</p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-3" ref={groupsListRef}>
                   {groups.map((group, i) => (
                     <div 
                       key={group.id} 
                       data-group-item
+                      data-group-index={i}
                       draggable
                       onDragStart={() => handleDragStartG(i)}
                       onDragOver={(e) => handleDragOverG(e, i)}
                       onDragEnd={handleDragEndG}
-                      onTouchStart={(e) => handleTouchStartG(e, i)}
-                      onTouchMove={handleTouchMoveG}
-                      onTouchEnd={handleTouchEndG}
-                      className="relative group/card cursor-grab active:cursor-grabbing active:scale-[0.99] transition-transform"
+                      className="relative group/card cursor-grab active:cursor-grabbing active:scale-[0.99] transition-transform select-none"
                     >
                       <Link href={`/groups/${group.id}`} className="flex items-center gap-4 p-5 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-0.5 transition-all duration-300 pr-[88px]">
                         <div className="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center text-orange-500 shadow-inner shrink-0">
