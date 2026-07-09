@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { X, Heart, ChevronDown, Plus, Hash, Search, Users, User } from 'lucide-react';
-import { useMyTags, useGroups, useMyProfile } from '@/hooks/useAppData';
+import { useMyTags, useGroups, useMyProfile, useFriends } from '@/hooks/useAppData';
 import type { Tag } from '@/lib/types';
 import { TagSelector } from './TagSelector';
 
@@ -63,6 +63,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
   const [filters, setFilters] = useState<FilterState>({ ...DEFAULT, ...(initialFilters || {}) });
   const { tags: swrTags } = useMyTags();
   const { groups: swrGroups } = useGroups();
+  const { friends: swrFriends } = useFriends();
   const { profile: currentUser } = useMyProfile();
   const [joinedGroups, setJoinedGroups] = useState<Group[]>([]);
   const [members, setMembers]           = useState<Member[]>([]);
@@ -176,22 +177,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
   };
 
   /* ── group options ── */
-  let sortedGroups = [...joinedGroups];
-  try {
-    const savedGOrder = localStorage.getItem('groups_order');
-    if (savedGOrder) {
-      const order = JSON.parse(savedGOrder) as string[];
-      sortedGroups.sort((a, b) => {
-        const idxA = order.indexOf(a.id);
-        const idxB = order.indexOf(b.id);
-        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-        if (idxA !== -1) return -1;
-        if (idxB !== -1) return 1;
-        return 0;
-      });
-    }
-  } catch(e) {}
-  const groupOptions = sortedGroups.map(g => ({ id: g.id, label: g.name }));
+  const groupOptions = joinedGroups.map(g => ({ id: g.id, label: g.name }));
   const filteredGroups = groupOptions.filter(o =>
     o.label.toLowerCase().includes(groupSearch.toLowerCase())
   );
@@ -245,9 +231,20 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
 
   /* ── member options (自分含む全員) ── */
   let availableMembers = [...members];
-  // 友達の並び順に近い形でソート (friendshipのIDとuserのIDは異なるが、friendsの並び順からuser_idの並び順を抽出できればよい)
-  // 簡単のため、そのままにするか、friendshipがあればそれを使うか
-  // ここでは名前順にしておく、もしくはそのまま(API返却順)
+  // 友達の並び順に基づいてソート
+  availableMembers.sort((a, b) => {
+    // 自分自身は常に一番上
+    if (a.id === currentUser?.id) return -1;
+    if (b.id === currentUser?.id) return 1;
+
+    const idxA = swrFriends.findIndex((f: any) => f.id === a.id);
+    const idxB = swrFriends.findIndex((f: any) => f.id === b.id);
+    
+    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+    if (idxA !== -1) return -1;
+    if (idxB !== -1) return 1;
+    return 0;
+  });
   
   const allMemberIds = availableMembers.map(m => m.id);
   const allMembersSelected =
