@@ -8,12 +8,29 @@ import { User, ChevronDown, MapPin } from 'lucide-react';
 import type { Metadata } from 'next';
 import { DeleteButton } from '@/components/DeleteButton';
 import { ShareButton } from '@/components/ShareButton';
+import { cookies } from 'next/headers';
 
 import { PostMenu } from '@/components/PostMenu';
 import { FavoriteToggle } from '@/components/FavoriteToggle';
 import { StarDisplay } from '@/components/StarRating';
 
 type Props = { params: Promise<{ id: string }> };
+
+/** サーバー側でログイン中のユーザーIDを取得（JWTデコードのみ・検証なし） */
+async function getCurrentUserId(): Promise<string | null> {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('access_token')?.value;
+    if (!token) return null;
+    const payload = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString());
+    const cognitoSub: string = payload.sub;
+    if (!cognitoSub) return null;
+    const user = await prisma.user.findUnique({ where: { cognito_sub: cognitoSub }, select: { id: true } });
+    return user?.id ?? null;
+  } catch {
+    return null;
+  }
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
@@ -27,19 +44,24 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function PostDetailPage({ params }: Props) {
   const { id } = await params;
   
-  const post = await prisma.post.findUnique({
-    where: { id },
-    include: {
-      tags: {
-        include: {
-          tag: true,
+  const [post, currentUserId] = await Promise.all([
+    prisma.post.findUnique({
+      where: { id },
+      include: {
+        tags: {
+          include: {
+            tag: true,
+          },
         },
+        user: true,
       },
-      user: true,
-    },
-  });
+    }),
+    getCurrentUserId(),
+  ]);
 
   if (!post) notFound();
+
+  const isOwner = currentUserId !== null && currentUserId === post.user_id;
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
   const hasCoords = post.latitude !== null && post.longitude !== null;
@@ -53,7 +75,7 @@ export default async function PostDetailPage({ params }: Props) {
       <Header title={post.store_name || post.title} showBackButton hideSettings>
         <div className="flex items-center gap-2">
           <FavoriteToggle postId={post.id} initialValue={post.is_favorite} />
-          <PostMenu postId={post.id} postUserId={post.user_id} />
+          <PostMenu postId={post.id} postUserId={post.user_id} isOwner={isOwner} />
         </div>
       </Header>
 

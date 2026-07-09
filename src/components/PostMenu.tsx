@@ -5,14 +5,32 @@ import { MoreHorizontal, Pencil } from 'lucide-react';
 import Link from 'next/link';
 import useSWR from 'swr';
 
-export function PostMenu({ postId, postUserId }: { postId: string; postUserId?: string }) {
+type Props = {
+  postId: string;
+  postUserId?: string;
+  /** サーバー側で判定済みの場合に渡す。渡された場合はAPIコールをスキップ */
+  isOwner?: boolean;
+};
+
+export function PostMenu({ postId, postUserId, isOwner: isOwnerProp }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // 自分のプロフィールを取得して、投稿者と照合
-  const { data: meData } = useSWR('/api/profiles/me', (url: string) => fetch(url).then(r => r.json()));
-  const myId = meData?.data?.id;
-  const isOwner = !postUserId || (myId && myId === postUserId);
+  // サーバー側から isOwner が渡された場合はSWRをスキップ
+  const skipFetch = isOwnerProp !== undefined;
+  const { data: meData } = useSWR(
+    skipFetch ? null : '/api/profiles/me',
+    (url: string) => fetch(url).then(r => r.json())
+  );
+
+  let isOwner: boolean;
+  if (isOwnerProp !== undefined) {
+    // サーバー判定を優先
+    isOwner = isOwnerProp;
+  } else {
+    const myId = meData?.data?.id;
+    isOwner = !postUserId || (myId && myId === postUserId);
+  }
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

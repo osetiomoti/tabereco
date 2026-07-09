@@ -132,6 +132,16 @@ export async function withAuth(
         path: '/',
       });
     }
+    // refresh_token クッキーの有効期限を30日にリセット（ローリングセッション）
+    if (refreshToken) {
+      response.cookies.set('refresh_token', refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 30 * 24 * 60 * 60, // 30日
+        path: '/',
+      });
+    }
   }
 
   return response;

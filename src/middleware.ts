@@ -92,6 +92,8 @@ export async function middleware(request: NextRequest) {
       if (newTokens.id_token) {
         response.cookies.set('id_token', newTokens.id_token, cookieOptions(newTokens.expires_in));
       }
+      // refresh_token クッキーの有効期限を30日にリセット（ローリングセッション）
+      response.cookies.set('refresh_token', refreshToken, cookieOptions(30 * 24 * 60 * 60));
       return response;
     }
   }
