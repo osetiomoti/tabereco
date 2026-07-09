@@ -11,8 +11,126 @@ import {
 import Link from 'next/link';
 import Image from 'next/image';
 
+// dnd-kit
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
 type Friend = { id: string; name: string; avatar_url?: string | null; friendship_id: string };
 type Group = { id: string; name: string; description?: string | null; invite_code: string };
+
+// ─── Sortable Friend Row ──────────────────────────────────────────────────
+function SortableFriendRow({ f, handleRemoveFriend }: { f: Friend, handleRemoveFriend: (id: string) => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: f.friendship_id,
+  });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : 1,
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 transition-all select-none relative ${
+        isDragging ? 'shadow-lg border-orange-300' : 'shadow-sm hover:border-gray-200'
+      }`}
+    >
+      <Link href={`/mypage?userId=${f.id}`} className="flex items-center gap-4 flex-1 min-w-0 hover:opacity-85 transition-opacity">
+        <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center overflow-hidden relative flex-shrink-0 border-2 border-white shadow">
+          {f.avatar_url ? <Image src={f.avatar_url} alt={f.name} fill className="object-cover" /> : <User size={20} className="text-orange-400" />}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="font-black text-gray-900 truncate">{f.name}</p>
+        </div>
+      </Link>
+      <button
+        onClick={() => handleRemoveFriend(f.friendship_id)}
+        className="w-9 h-9 flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 rounded-xl transition-all z-10"
+      >
+        <Trash2 size={16} />
+      </button>
+      <div
+        {...attributes}
+        {...listeners}
+        className="p-2 text-gray-300 hover:text-gray-500 transition-colors cursor-grab active:cursor-grabbing touch-none z-10"
+      >
+        <svg width="16" height="20" viewBox="0 0 16 20" fill="currentColor">
+          <circle cx="5" cy="4" r="2" /><circle cx="11" cy="4" r="2" />
+          <circle cx="5" cy="10" r="2" /><circle cx="11" cy="10" r="2" />
+          <circle cx="5" cy="16" r="2" /><circle cx="11" cy="16" r="2" />
+        </svg>
+      </div>
+    </div>
+  );
+}
+
+// ─── Sortable Group Row ──────────────────────────────────────────────────
+function SortableGroupRow({ group, copyCode, copiedCode }: { group: Group, copyCode: (code: string) => void, copiedCode: string | null }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: group.id,
+  });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : 1,
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`relative group/card transition-all select-none ${isDragging ? 'shadow-lg border-orange-300' : ''}`}
+    >
+      <Link href={`/groups/${group.id}`} className="flex items-center gap-4 p-5 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-0.5 transition-all duration-300 pr-[88px]">
+        <div className="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center text-orange-500 shadow-inner shrink-0">
+          <Hash size={22} strokeWidth={3} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-base font-black text-gray-900 leading-tight group-hover/card:text-orange-500 transition-colors truncate">{group.name}</h3>
+          <p className="text-xs text-gray-400 font-bold mt-0.5 truncate">{group.description || '美味しいスポットをシェア！'}</p>
+        </div>
+        <ChevronRight className="ml-2 text-gray-200 group-hover/card:text-orange-400 transition-colors shrink-0" />
+      </Link>
+      <button
+        onClick={(e) => { e.preventDefault(); e.stopPropagation(); copyCode(group.invite_code); }}
+        className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-gray-50 hover:bg-orange-50 text-[10px] font-black px-2.5 py-1.5 rounded-xl border border-gray-100 transition-all active:scale-95 z-10"
+      >
+        {copiedCode === group.invite_code ? (
+          <><CheckCircle size={12} className="text-green-500" /><span className="text-green-600">コピー済み</span></>
+        ) : (
+          <><Copy size={12} className="text-gray-400" /><span className="text-gray-400">{group.invite_code}</span></>
+        )}
+      </button>
+      <div
+        {...attributes}
+        {...listeners}
+        className="absolute right-12 top-1/2 -translate-y-1/2 p-2 text-gray-300 hover:text-gray-500 transition-colors cursor-grab active:cursor-grabbing touch-none z-10 mr-12"
+      >
+        <svg width="16" height="20" viewBox="0 0 16 20" fill="currentColor">
+          <circle cx="5" cy="4" r="2" /><circle cx="11" cy="4" r="2" />
+          <circle cx="5" cy="10" r="2" /><circle cx="11" cy="10" r="2" />
+          <circle cx="5" cy="16" r="2" /><circle cx="11" cy="16" r="2" />
+        </svg>
+      </div>
+    </div>
+  );
+}
 
 export default function FriendsPage() {
   const [tab, setTab] = useState<'friends' | 'groups'>('friends');
@@ -179,126 +297,35 @@ export default function FriendsPage() {
   // Mutable refs so useEffect callbacks always see latest state
   const friendsRef = useRef<Friend[]>([]);
   friendsRef.current = friends;
-  const groupsRef = useRef<Group[]>([]);
-  groupsRef.current = groups;
+  // dnd-kit sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
+  );
 
-  // ── Desktop Drag (friends) ──
-  const dragItemRef = useRef<number | null>(null);
-  const handleDragStartF = (index: number) => { dragItemRef.current = index; };
-  const handleDragOverF = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    if (dragItemRef.current === null || dragItemRef.current === index) return;
-    const newItems = [...friendsRef.current];
-    const [moved] = newItems.splice(dragItemRef.current, 1);
-    newItems.splice(index, 0, moved);
-    dragItemRef.current = index;
-    setFriends(newItems);
-  };
-  const handleDragEndF = () => {
-    dragItemRef.current = null;
-    localStorage.setItem('friends_order', JSON.stringify(friendsRef.current.map(f => f.friendship_id)));
+  const handleDragEndFriends = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setFriends((prev) => {
+      const oldIdx = prev.findIndex(f => f.friendship_id === active.id);
+      const newIdx = prev.findIndex(f => f.friendship_id === over.id);
+      const newOrder = arrayMove(prev, oldIdx, newIdx);
+      localStorage.setItem('friends_order', JSON.stringify(newOrder.map(f => f.friendship_id)));
+      return newOrder;
+    });
   };
 
-  // ── Desktop Drag (groups) ──
-  const dragGroupRef = useRef<number | null>(null);
-  const handleDragStartG = (index: number) => { dragGroupRef.current = index; };
-  const handleDragOverG = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    if (dragGroupRef.current === null || dragGroupRef.current === index) return;
-    const newItems = [...groupsRef.current];
-    const [moved] = newItems.splice(dragGroupRef.current, 1);
-    newItems.splice(index, 0, moved);
-    dragGroupRef.current = index;
-    setGroups(newItems);
+  const handleDragEndGroups = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setGroups((prev) => {
+      const oldIdx = prev.findIndex(g => g.id === active.id);
+      const newIdx = prev.findIndex(g => g.id === over.id);
+      const newOrder = arrayMove(prev, oldIdx, newIdx);
+      localStorage.setItem('groups_order', JSON.stringify(newOrder.map(g => g.id)));
+      return newOrder;
+    });
   };
-  const handleDragEndG = () => {
-    dragGroupRef.current = null;
-    localStorage.setItem('groups_order', JSON.stringify(groupsRef.current.map(g => g.id)));
-  };
-
-  // ── Touch Drag (friends) - passive:false via useEffect ──
-  const friendsListRef = useRef<HTMLDivElement>(null);
-  const touchFIndex = useRef<number | null>(null);
-
-  useEffect(() => {
-    const container = friendsListRef.current;
-    if (!container) return;
-    const onStart = (e: TouchEvent) => {
-      const item = (e.target as HTMLElement).closest('[data-friend-item]') as HTMLElement | null;
-      if (!item) return;
-      touchFIndex.current = parseInt(item.dataset.friendIndex || '-1', 10);
-    };
-    const onMove = (e: TouchEvent) => {
-      if (touchFIndex.current === null || touchFIndex.current < 0) return;
-      e.preventDefault();
-      const touch = e.touches[0];
-      container.querySelectorAll('[data-friend-item]').forEach((el, i) => {
-        const rect = el.getBoundingClientRect();
-        if (touch.clientY >= rect.top && touch.clientY <= rect.bottom && i !== touchFIndex.current) {
-          const newItems = [...friendsRef.current];
-          const [moved] = newItems.splice(touchFIndex.current!, 1);
-          newItems.splice(i, 0, moved);
-          touchFIndex.current = i;
-          setFriends(newItems);
-        }
-      });
-    };
-    const onEnd = () => {
-      if (touchFIndex.current === null) return;
-      touchFIndex.current = null;
-      localStorage.setItem('friends_order', JSON.stringify(friendsRef.current.map(f => f.friendship_id)));
-    };
-    container.addEventListener('touchstart', onStart, { passive: true });
-    container.addEventListener('touchmove', onMove, { passive: false });
-    container.addEventListener('touchend', onEnd, { passive: true });
-    return () => {
-      container.removeEventListener('touchstart', onStart);
-      container.removeEventListener('touchmove', onMove);
-      container.removeEventListener('touchend', onEnd);
-    };
-  }, []);
-
-  // ── Touch Drag (groups) - passive:false via useEffect ──
-  const groupsListRef = useRef<HTMLDivElement>(null);
-  const touchGIndex = useRef<number | null>(null);
-
-  useEffect(() => {
-    const container = groupsListRef.current;
-    if (!container) return;
-    const onStart = (e: TouchEvent) => {
-      const item = (e.target as HTMLElement).closest('[data-group-item]') as HTMLElement | null;
-      if (!item) return;
-      touchGIndex.current = parseInt(item.dataset.groupIndex || '-1', 10);
-    };
-    const onMove = (e: TouchEvent) => {
-      if (touchGIndex.current === null || touchGIndex.current < 0) return;
-      e.preventDefault();
-      const touch = e.touches[0];
-      container.querySelectorAll('[data-group-item]').forEach((el, i) => {
-        const rect = el.getBoundingClientRect();
-        if (touch.clientY >= rect.top && touch.clientY <= rect.bottom && i !== touchGIndex.current) {
-          const newItems = [...groupsRef.current];
-          const [moved] = newItems.splice(touchGIndex.current!, 1);
-          newItems.splice(i, 0, moved);
-          touchGIndex.current = i;
-          setGroups(newItems);
-        }
-      });
-    };
-    const onEnd = () => {
-      if (touchGIndex.current === null) return;
-      touchGIndex.current = null;
-      localStorage.setItem('groups_order', JSON.stringify(groupsRef.current.map(g => g.id)));
-    };
-    container.addEventListener('touchstart', onStart, { passive: true });
-    container.addEventListener('touchmove', onMove, { passive: false });
-    container.addEventListener('touchend', onEnd, { passive: true });
-    return () => {
-      container.removeEventListener('touchstart', onStart);
-      container.removeEventListener('touchmove', onMove);
-      container.removeEventListener('touchend', onEnd);
-    };
-  }, []);
 
   return (
     <>
@@ -445,35 +472,15 @@ export default function FriendsPage() {
                   <p className="text-gray-300 font-bold text-xs mt-1">IDで検索して追加しよう</p>
                 </div>
               ) : (
-                <div className="space-y-2" ref={friendsListRef}>
-                  {friends.map((f, i) => (
-                    <div 
-                      key={f.friendship_id} 
-                      data-friend-item
-                      data-friend-index={i}
-                      draggable
-                      onDragStart={() => handleDragStartF(i)}
-                      onDragOver={(e) => handleDragOverF(e, i)}
-                      onDragEnd={handleDragEndF}
-                      className="flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm cursor-grab active:cursor-grabbing active:scale-[0.99] transition-transform select-none"
-                    >
-                      <Link href={`/mypage?userId=${f.id}`} className="flex items-center gap-4 flex-1 min-w-0 hover:opacity-85 transition-opacity">
-                        <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center overflow-hidden relative flex-shrink-0 border-2 border-white shadow">
-                          {f.avatar_url ? <Image src={f.avatar_url} alt={f.name} fill className="object-cover" /> : <User size={20} className="text-orange-400" />}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-black text-gray-900 truncate">{f.name}</p>
-                        </div>
-                      </Link>
-                      <button
-                        onClick={() => handleRemoveFriend(f.friendship_id)}
-                        className="w-9 h-9 flex items-center justify-center text-gray-300 hover:text-red-400 hover:bg-red-50 rounded-xl transition-all z-10"
-                      >
-                        <Trash2 size={16} />
-                      </button>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEndFriends}>
+                  <SortableContext items={friends.map(f => f.friendship_id)} strategy={verticalListSortingStrategy}>
+                    <div className="space-y-2">
+                      {friends.map((f) => (
+                        <SortableFriendRow key={f.friendship_id} f={f} handleRemoveFriend={handleRemoveFriend} />
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </SortableContext>
+                </DndContext>
               )}
             </div>
           </div>
@@ -522,42 +529,15 @@ export default function FriendsPage() {
                   <p className="text-gray-400 font-bold text-sm">まだグループがありません</p>
                 </div>
               ) : (
-                <div className="space-y-3" ref={groupsListRef}>
-                  {groups.map((group, i) => (
-                    <div 
-                      key={group.id} 
-                      data-group-item
-                      data-group-index={i}
-                      draggable
-                      onDragStart={() => handleDragStartG(i)}
-                      onDragOver={(e) => handleDragOverG(e, i)}
-                      onDragEnd={handleDragEndG}
-                      className="relative group/card cursor-grab active:cursor-grabbing active:scale-[0.99] transition-transform select-none"
-                    >
-                      <Link href={`/groups/${group.id}`} className="flex items-center gap-4 p-5 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-0.5 transition-all duration-300 pr-[88px]">
-                        <div className="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center text-orange-500 shadow-inner shrink-0">
-                          <Hash size={22} strokeWidth={3} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h3 className="text-base font-black text-gray-900 leading-tight group-hover/card:text-orange-500 transition-colors truncate">{group.name}</h3>
-                          <p className="text-xs text-gray-400 font-bold mt-0.5 truncate">{group.description || '美味しいスポットをシェア！'}</p>
-                        </div>
-                        <ChevronRight className="ml-auto text-gray-200 group-hover/card:text-orange-400 transition-colors shrink-0" />
-                      </Link>
-
-                      <button
-                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); copyCode(group.invite_code); }}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1.5 bg-gray-50 hover:bg-orange-50 text-[10px] font-black px-2.5 py-1.5 rounded-xl border border-gray-100 transition-all active:scale-95 z-10"
-                      >
-                        {copiedCode === group.invite_code ? (
-                          <><CheckCircle size={12} className="text-green-500" /><span className="text-green-600">コピー済み</span></>
-                        ) : (
-                          <><Copy size={12} className="text-gray-400" /><span className="text-gray-400">{group.invite_code}</span></>
-                        )}
-                      </button>
+                <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEndGroups}>
+                  <SortableContext items={groups.map(g => g.id)} strategy={verticalListSortingStrategy}>
+                    <div className="space-y-3">
+                      {groups.map((group) => (
+                        <SortableGroupRow key={group.id} group={group} copyCode={copyCode} copiedCode={copiedCode} />
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </SortableContext>
+                </DndContext>
               )}
             </div>
           </div>

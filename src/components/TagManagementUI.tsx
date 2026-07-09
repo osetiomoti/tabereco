@@ -1,25 +1,77 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Trash2, GripVertical, ChevronLeft, Loader2 } from 'lucide-react';
 import { getUserTags, deleteTag, updateTagOrder } from '@/lib/api/posts';
 import type { Tag } from '@/lib/types';
 import Link from 'next/link';
+
+// dnd-kit
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// ─── Sortable Tag Row ──────────────────────────────────────────────────────
+function SortableTagRow({ tag, onDelete }: { tag: Tag; onDelete: (id: string) => void }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: tag.id,
+  });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center justify-between px-6 py-5 group transition-all bg-white select-none ${
+        isDragging ? 'shadow-lg border-y border-pink-200 z-10' : 'hover:bg-gray-50/50'
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <span className="text-gray-300 font-bold text-lg">#</span>
+        <span className="text-gray-700 font-bold">{tag.name}</span>
+      </div>
+      <div className="flex items-center gap-4">
+        <button
+          onClick={() => onDelete(tag.id)}
+          className="p-2 text-pink-200 hover:text-pink-400 hover:bg-pink-50 rounded-xl transition-all relative z-10"
+        >
+          <Trash2 size={20} />
+        </button>
+        <div
+          {...attributes}
+          {...listeners}
+          className="p-2 text-gray-300 hover:text-gray-500 transition-colors cursor-grab active:cursor-grabbing touch-none"
+        >
+          <GripVertical size={20} />
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function TagManagementUI({ initialTags }: { initialTags?: Tag[] }) {
   const [tags, setTags] = useState<Tag[]>(initialTags || []);
   const [newTagName, setNewTagName] = useState('');
   const [isLoading, setIsLoading] = useState(!initialTags);
   const [isActionLoading, setIsActionLoading] = useState(false);
-  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
-
-  // Desktop drag refs
-  const dragIndexRef = useRef<number | null>(null);
-
-  // Touch drag refs (for passive:false registration)
-  const touchDragIndex = useRef<number | null>(null);
-  const tagsRef = useRef<Tag[]>([]);
-  tagsRef.current = tags;
 
   useEffect(() => {
     if (!initialTags) loadTags();
@@ -73,82 +125,30 @@ export function TagManagementUI({ initialTags }: { initialTags?: Tag[] }) {
     }
   };
 
-  // ── Desktop Drag & Drop ──
-  const handleDragStart = (index: number) => {
-    dragIndexRef.current = index;
-    setDraggingIndex(index);
-  };
+  // dnd-kit sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
+  );
 
-  const handleDragOver = (e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    if (dragIndexRef.current === null || dragIndexRef.current === index) return;
-    const newTags = [...tagsRef.current];
-    const [moved] = newTags.splice(dragIndexRef.current, 1);
-    newTags.splice(index, 0, moved);
-    dragIndexRef.current = index;
-    setDraggingIndex(index);
-    setTags(newTags);
-  };
-
-  const handleDragEnd = async () => {
-    setDraggingIndex(null);
-    dragIndexRef.current = null;
-    await saveOrder(tagsRef.current);
-  };
-
-  // ── Touch Drag (passive:false via useEffect) ──
-  // We attach listeners imperatively so we can pass { passive: false }
-  const listRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const container = listRef.current;
-    if (!container) return;
-
-    const onTouchStart = (e: TouchEvent) => {
-      const target = e.target as HTMLElement;
-      const item = target.closest('[data-tag-item]') as HTMLElement | null;
-      if (!item) return;
-      const idx = parseInt(item.dataset.tagIndex || '-1', 10);
-      if (idx < 0) return;
-      touchDragIndex.current = idx;
-      setDraggingIndex(idx);
-    };
-
-    const onTouchMove = (e: TouchEvent) => {
-      if (touchDragIndex.current === null) return;
-      e.preventDefault(); // needs passive:false
-      const touch = e.touches[0];
-      const elements = container.querySelectorAll('[data-tag-item]');
-      elements.forEach((el, i) => {
-        const rect = el.getBoundingClientRect();
-        if (touch.clientY >= rect.top && touch.clientY <= rect.bottom && i !== touchDragIndex.current) {
-          const newTags = [...tagsRef.current];
-          const [moved] = newTags.splice(touchDragIndex.current!, 1);
-          newTags.splice(i, 0, moved);
-          touchDragIndex.current = i;
-          setDraggingIndex(i);
-          setTags(newTags);
-        }
+  const handleDragEnd = useCallback(
+    async (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over || active.id === over.id) return;
+      
+      let newTags = [...tags];
+      setTags(prev => {
+        const oldIdx = prev.findIndex(t => t.id === active.id);
+        const newIdx = prev.findIndex(t => t.id === over.id);
+        newTags = arrayMove(prev, oldIdx, newIdx);
+        return newTags;
       });
-    };
-
-    const onTouchEnd = async () => {
-      if (touchDragIndex.current === null) return;
-      touchDragIndex.current = null;
-      setDraggingIndex(null);
-      await saveOrder(tagsRef.current);
-    };
-
-    container.addEventListener('touchstart', onTouchStart, { passive: true });
-    container.addEventListener('touchmove', onTouchMove, { passive: false });
-    container.addEventListener('touchend', onTouchEnd, { passive: true });
-
-    return () => {
-      container.removeEventListener('touchstart', onTouchStart);
-      container.removeEventListener('touchmove', onTouchMove);
-      container.removeEventListener('touchend', onTouchEnd);
-    };
-  }, [saveOrder]);
+      
+      // Save order in background
+      await saveOrder(newTags);
+    },
+    [tags, saveOrder]
+  );
 
   return (
     <div className="w-full max-w-xl mx-auto min-h-screen bg-[#fcfcfc] flex flex-col">
@@ -198,7 +198,7 @@ export function TagManagementUI({ initialTags }: { initialTags?: Tag[] }) {
             </span>
           </div>
 
-          <div className="divide-y divide-gray-50" ref={listRef}>
+          <div className="divide-y divide-gray-50">
             {isLoading ? (
               <div className="py-12 flex justify-center">
                 <Loader2 className="text-pink-200 animate-spin" size={32} />
@@ -206,36 +206,13 @@ export function TagManagementUI({ initialTags }: { initialTags?: Tag[] }) {
             ) : tags.length === 0 ? (
               <div className="py-12 text-center text-gray-400 text-sm italic">タグがありません</div>
             ) : (
-              tags.map((tag, index) => (
-                <div
-                  key={tag.id}
-                  data-tag-item
-                  data-tag-index={index}
-                  draggable
-                  onDragStart={() => handleDragStart(index)}
-                  onDragOver={(e) => handleDragOver(e, index)}
-                  onDragEnd={handleDragEnd}
-                  className={`flex items-center justify-between px-6 py-5 group transition-colors cursor-grab active:cursor-grabbing select-none ${
-                    draggingIndex === index ? 'bg-pink-50/50 opacity-70 scale-[0.99]' : 'hover:bg-gray-50/50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-gray-300 font-bold text-lg">#</span>
-                    <span className="text-gray-700 font-bold">{tag.name}</span>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <button
-                      onClick={() => handleDeleteTag(tag.id)}
-                      className="p-2 text-pink-200 hover:text-pink-400 hover:bg-pink-50 rounded-xl transition-all"
-                    >
-                      <Trash2 size={20} />
-                    </button>
-                    <div className="p-2 text-gray-300 touch-none">
-                      <GripVertical size={20} />
-                    </div>
-                  </div>
-                </div>
-              ))
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={tags.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                  {tags.map((tag) => (
+                    <SortableTagRow key={tag.id} tag={tag} onDelete={handleDeleteTag} />
+                  ))}
+                </SortableContext>
+              </DndContext>
             )}
           </div>
         </div>
