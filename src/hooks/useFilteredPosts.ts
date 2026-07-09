@@ -107,51 +107,55 @@ export function useFilteredPosts() {
 
   // Compute displayed posts locally
   const posts = useMemo(() => {
-    let combinedMap = new Map();
+    const filterMode: 'registrant' | 'group' = (advancedFilters as any)?.filterMode || 'registrant';
 
-    // Always start with own posts as base
-    ownPostsCache.forEach((p: Post) => combinedMap.set(p.id, p));
+    let result: Post[] = [];
 
-    // Merge group posts on top
-    if (activeGroups.includes('all')) {
-      // If 'all', show all joined groups' posts
+    if (filterMode === 'group') {
+      // ── グループモード: グループ投稿のみ、activeGroups でフィルター ──
+      const combinedMap = new Map<string, Post>();
+
+      if (activeGroups.includes('all')) {
+        groupPostsCache.forEach((g: any) => g.posts.forEach((p: Post) => combinedMap.set(p.id, p)));
+      } else if (activeGroups.length > 0) {
+        groupPostsCache.forEach((g: any) => {
+          if (activeGroups.includes(g.groupId)) {
+            g.posts.forEach((p: Post) => combinedMap.set(p.id, p));
+          }
+        });
+      }
+
+      result = Array.from(combinedMap.values());
+    } else {
+      // ── 投稿者モード: 自分の投稿ベース、グループフィルターは無視 ──
+      // 自分の投稿 + グループ内の他者投稿をすべてマージしてから registrantUserIds でフィルター
+      const combinedMap = new Map<string, Post>();
+      ownPostsCache.forEach((p: Post) => combinedMap.set(p.id, p));
+      // グループ投稿も含める（メンバーフィルターで絞る）
       groupPostsCache.forEach((g: any) => g.posts.forEach((p: Post) => combinedMap.set(p.id, p)));
-    } else if (activeGroups.length > 0) {
-      // Only selected groups
-      groupPostsCache.forEach((g: any) => {
-        if (activeGroups.includes(g.groupId)) {
-          g.posts.forEach((p: Post) => combinedMap.set(p.id, p));
-        }
-      });
+
+      result = Array.from(combinedMap.values());
+
+      // registrantUserIds フィルター（投稿者選択）
+      if (advancedFilters?.registrantUserIds !== undefined && advancedFilters.registrantUserIds.length > 0) {
+        result = result.filter((p: Post) => advancedFilters.registrantUserIds.includes(p.user_id));
+      }
     }
 
-    let result = Array.from(combinedMap.values()) as Post[];
-
-    // 自分の投稿を識別するためのセットとID
-    const ownPostIds = new Set(ownPostsCache.map((p: Post) => p.id));
-    const myId = ownPostsCache[0]?.user_id;
-
-    // ① 「自分の投稿を含める」がOFFの場合、自分の投稿を除外
-    // デフォルト（advancedFilters 未設定時）は true = 自分の投稿を表示
-    const includeMine = advancedFilters?.include_mine ?? true;
-    if (!includeMine) {
-      result = result.filter(p => myId ? p.user_id !== myId : !ownPostIds.has(p.id));
-    }
-
+    // ── 共通フィルター ──
     if (activeTab !== 'all') {
       result = result.filter(p => p.status === activeTab);
     }
-    
+
     if (keyword) {
       const lowerReq = keyword.toLowerCase();
-      result = result.filter(p => 
+      result = result.filter(p =>
         p.title?.toLowerCase().includes(lowerReq) ||
         p.store_name?.toLowerCase().includes(lowerReq) ||
         p.comment?.toLowerCase().includes(lowerReq)
       );
     }
 
-    // Advanced filters
     if (advancedFilters?.tags && advancedFilters.tags.length > 0) {
       result = result.filter(p => advancedFilters.tags.every((tag: string) => p.tags?.some((t: any) => t.name === tag)));
     }
@@ -162,14 +166,9 @@ export function useFilteredPosts() {
       result = result.filter(p => p.status === advancedFilters.status);
     }
 
-    if (advancedFilters?.registrantUserIds !== undefined && advancedFilters.registrantUserIds.length > 0) {
-      result = result.filter((p: Post) => {
-        return advancedFilters.registrantUserIds.includes(p.user_id);
-      });
-    }
-    
     return result.sort((a: Post, b: Post) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [activeGroups, activeTab, keyword, advancedFilters, ownPostsCache, groupPostsCache]);
+
 
   const removeFilter = (key: string | string[]) => {
     let next = { ...advancedFilters };

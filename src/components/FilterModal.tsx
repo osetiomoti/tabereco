@@ -15,6 +15,7 @@ type FilterState = {
   is_mine_only: boolean;
   include_mine: boolean;
   activeGroups: string[];
+  filterMode: 'registrant' | 'group';
 };
 
 type Member = { id: string; name: string; avatar_url?: string };
@@ -45,6 +46,7 @@ const DEFAULT: FilterState = {
   is_mine_only: false,
   include_mine: true,
   activeGroups: [],
+  filterMode: 'registrant',
 };
 
 export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialTags }: Props) {
@@ -59,7 +61,9 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
   const hasDefaulted = useRef(false);
 
   // フィルターモード: 'registrant' or 'group'
-  const [filterMode, setFilterMode] = useState<'registrant' | 'group'>('registrant');
+  const [filterMode, setFilterMode] = useState<'registrant' | 'group'>(
+    (initialFilters as any)?.filterMode || 'registrant'
+  );
 
   // combobox state
   const [groupSearch,  setGroupSearch]  = useState('');
@@ -543,7 +547,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
         {/* Action Button */}
         <div className="absolute bottom-0 left-0 right-0 px-5 py-4 bg-white/95 backdrop-blur-sm border-t border-gray-100">
           <button
-            onClick={() => { onApply(filters); onClose(); }}
+            onClick={() => { onApply({ ...filters, filterMode }); onClose(); }}
             className="w-full py-3.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold text-[15px] active:scale-98 transition-all shadow-sm"
           >
             絞り込みを適用する

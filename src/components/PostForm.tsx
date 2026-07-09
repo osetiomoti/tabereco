@@ -10,7 +10,7 @@ import { useUpload } from '@/hooks/useUpload';
 import { todayString } from '@/lib/utils';
 import { getExifGPS } from '@/lib/exif';
 import type { Post, PostFormValues, PostStatus } from '@/lib/types';
-import { Loader2, MapPin, Globe, Hash, Check, Tag as TagIcon, Plus, X, Users, Heart, ChevronDown } from 'lucide-react';
+import { Loader2, MapPin, Globe, Hash, Check, Tag as TagIcon, Plus, X, Heart, ChevronDown, Lock } from 'lucide-react';
 
 import { PlaceAutocomplete } from './PlaceAutocomplete';
 import { TagSelector } from './TagSelector';
@@ -68,26 +68,10 @@ export function PostForm({ post }: Props) {
   const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
   const [addressLanguage, setAddressLanguage] = useState<'ja' | 'en'>('ja');
   const [loading, setLoading] = useState(false);
-  const [groups, setGroups] = useState<any[]>([]);
-  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [extractingGps, setExtractingGps] = useState(false);
   const [orderedImages, setOrderedImages] = useState<(File | string)[]>([...(post?.image_urls ?? (post?.image_url ? [post.image_url] : []))]);
 
-  useEffect(() => {
-    async function loadGroups() {
-      try {
-        const { getJoinedGroups } = await import('@/lib/api/groups');
-        const data = await getJoinedGroups();
-        setGroups(data);
-        // Default: select all groups
-        setSelectedGroupIds(data.map((g: any) => g.id));
-      } catch (e) {
-        console.error('Failed to load groups:', e);
-      }
-    }
-    loadGroups();
-  }, []);
 
   const set = <K extends keyof PostFormValues>(key: K, val: PostFormValues[K]) =>
     setValues((prev) => ({ ...prev, [key]: val }));
@@ -221,16 +205,12 @@ export function PostForm({ post }: Props) {
       if (isEdit && post) {
         result = await updatePost(post.id, postData, values.tags);
         if (result) {
-          const { sharePostToGroups } = await import('@/lib/api/groups');
-          await sharePostToGroups(post.id, selectedGroupIds);
           mutate('/api/posts');
           router.push(`/posts/${post.id}`);
         }
       } else {
         result = await createPost(postData, values.tags);
         if (result?.id) {
-          const { sharePostToGroups } = await import('@/lib/api/groups');
-          await sharePostToGroups(result.id, selectedGroupIds);
           mutate('/api/posts');
           router.push(`/posts/${result.id}`);
         }
@@ -446,68 +426,57 @@ export function PostForm({ post }: Props) {
         </div>
       </section>
 
-      {/* 4. 共有・プライバシー */}
+      {/* 4. プライバシー */}
       <section className="bg-white sm:border border-gray-100 sm:rounded-[2.5rem] sm:p-8 p-4">
-        <div className="space-y-6">
-          {groups.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center justify-between px-1">
-                <label className="text-[12px] font-black text-gray-500 tracking-widest">共有先グループ</label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (selectedGroupIds.length === groups.length) setSelectedGroupIds([]);
-                    else setSelectedGroupIds(groups.map((g: any) => g.id));
-                  }}
-                  className="text-[10px] font-black text-[#ff6b95] hover:underline"
-                >
-                  {selectedGroupIds.length === groups.length ? '全解除' : '全選択'}
-                </button>
+        <div className="space-y-3">
+          {/* お気に入り */}
+          <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl border border-gray-100">
+            <span className="text-[14px] font-black text-gray-700 flex items-center gap-3">
+              <div className={`p-2 rounded-lg ${values.is_favorite ? 'bg-pink-100 text-pink-500' : 'bg-gray-100 text-gray-400'}`}>
+                <Heart size={18} className={values.is_favorite ? "fill-pink-500" : ""} />
               </div>
-              <div className="flex flex-wrap gap-2.5">
-                {groups.map((group: any) => {
-                  const isSelected = selectedGroupIds.includes(group.id);
-                  return (
-                    <button
-                      key={group.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedGroupIds(prev =>
-                          isSelected ? prev.filter(id => id !== group.id) : [...prev, group.id]
-                        );
-                      }}
-                      className={`px-4 py-2.5 rounded-2xl text-[12px] font-black transition-all border-2 ${
-                        isSelected
-                        ? 'bg-[#ff6b95] border-[#ff6b95] text-white shadow-lg shadow-[#ff6b95]/20'
-                        : 'bg-white border-gray-100 text-gray-400'
-                      }`}
-                    >
-                      {group.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+              お気に入り登録
+            </span>
+            <label className="relative inline-flex items-center cursor-pointer">
+              <input
+                type="checkbox"
+                checked={values.is_favorite}
+                onChange={(e) => set('is_favorite', e.target.checked)}
+                className="peer sr-only"
+              />
+              <div className="w-12 h-7 bg-gray-200 rounded-full peer peer-checked:after:translate-x-[20px] after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-[20px] after:w-[20px] after:transition-all peer-checked:bg-pink-500 shadow-inner"></div>
+            </label>
+          </div>
 
-          <div className="grid grid-cols-1 gap-3">
-            <div className="flex items-center justify-between p-4 bg-gray-50/50 rounded-2xl border border-gray-100">
-              <span className="text-[14px] font-black text-gray-700 flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${values.is_favorite ? 'bg-pink-100 text-pink-500' : 'bg-gray-100 text-gray-400'}`}>
-                  <Heart size={18} className={values.is_favorite ? "fill-pink-500" : ""} />
-                </div>
-                お気に入り登録
-              </span>
-              <label className="relative inline-flex items-center cursor-pointer">
-                <input 
-                  type="checkbox" 
-                  checked={values.is_favorite}
-                  onChange={(e) => set('is_favorite', e.target.checked)}
-                  className="peer sr-only"
-                />
-                <div className="w-12 h-7 bg-gray-200 rounded-full peer peer-checked:after:translate-x-[20px] after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-[20px] after:w-[20px] after:transition-all peer-checked:bg-pink-500 shadow-inner"></div>
-              </label>
-            </div>
+          {/* 自分だけに公開 */}
+          <div
+            className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer ${
+              values.is_mine_only
+                ? 'bg-indigo-50 border-indigo-200'
+                : 'bg-gray-50/50 border-gray-100'
+            }`}
+            onClick={() => set('is_mine_only', !values.is_mine_only)}
+          >
+            <span className="text-[14px] font-black text-gray-700 flex items-center gap-3">
+              <div className={`p-2 rounded-lg ${values.is_mine_only ? 'bg-indigo-100 text-indigo-500' : 'bg-gray-100 text-gray-400'}`}>
+                <Lock size={18} />
+              </div>
+              <div>
+                <p className={`${values.is_mine_only ? 'text-indigo-700' : 'text-gray-700'}`}>自分だけに公開</p>
+                <p className="text-[11px] font-medium text-gray-400 mt-0.5">
+                  {values.is_mine_only ? 'グループメンバーには表示されません' : 'グループメンバーにも表示されます'}
+                </p>
+              </div>
+            </span>
+            <label className="relative inline-flex items-center cursor-pointer" onClick={e => e.stopPropagation()}>
+              <input
+                type="checkbox"
+                checked={values.is_mine_only}
+                onChange={(e) => set('is_mine_only', e.target.checked)}
+                className="peer sr-only"
+              />
+              <div className="w-12 h-7 bg-gray-200 rounded-full peer peer-checked:after:translate-x-[20px] after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-[20px] after:w-[20px] after:transition-all peer-checked:bg-indigo-500 shadow-inner"></div>
+            </label>
           </div>
         </div>
       </section>

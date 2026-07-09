@@ -232,17 +232,18 @@ export default function PostsPage() {
         isOpen={isFilterModalOpen}
         onClose={() => setIsFilterModalOpen(false)}
         onApply={(f) => {
-          const { activeGroups: newGroups, status: newStatus, ...rest } = f as any;
+          const { activeGroups: newGroups, status: newStatus, filterMode, ...rest } = f as any;
           updateFilter({
             activeGroups: newGroups || ['all'],
             activeTab: newStatus || 'all',
-            advancedFilters: Object.keys(rest).some(k => rest[k] && rest[k] !== 'all' && rest[k] !== '' && rest[k] !== false) ? rest : null
+            advancedFilters: { ...(rest || {}), filterMode: filterMode || 'registrant' },
           });
         }}
         initialFilters={{
           ...(advancedFilters || {}),
           activeGroups: activeGroups,
           status: activeTab,
+          filterMode: (advancedFilters as any)?.filterMode || 'registrant',
         } as any}
       />
       <FloatingActionButton />
