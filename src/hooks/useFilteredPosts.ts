@@ -23,8 +23,8 @@ export function useFilteredPosts() {
 
   // 2. Fetch joined groups
   const { data: groupsData, isLoading: groupsLoading } = useSWR<any[]>('/api/groups', () => getJoinedGroups(), {
-    revalidateOnFocus: false,
-    dedupingInterval: 60000,
+    revalidateOnFocus: true,
+    dedupingInterval: 30000,
   });
 
   const joinedGroups = groupsData || [];
@@ -89,8 +89,8 @@ export function useFilteredPosts() {
     );
     return results;
   }, {
-    revalidateOnFocus: false,
-    dedupingInterval: 10000,
+    revalidateOnFocus: true,
+    dedupingInterval: 5000,
   });
 
   const loading = ownLoading || groupsLoading || groupPostsLoading;

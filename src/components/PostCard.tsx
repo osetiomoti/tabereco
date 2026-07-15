@@ -368,19 +368,68 @@ export function FilterChips({
   onRemove: (key: string | string[]) => void, 
   className?: string, 
   users?: Array<{ id: string, name: string }> 
+export function FilterChips({ 
+  filters, 
+  onRemove, 
+  users, 
+  groups,
+  className 
+}: { 
+  filters?: any, 
+  onRemove: (key: string | string[] | Record<string, any>) => void,
+  users?: Array<{ id: string, name: string }>,
+  groups?: Array<{ id: string, name: string }>,
+  className?: string 
 }) {
   if (!filters) return null;
 
-  const activeChips: Array<{ key: string, label: string, color: string, isTag?: boolean, tagValue?: string, isRegistrant?: boolean, userId?: string }> = [];
+  const primaryChips: Array<{ key: string, label: string, color: string, isRegistrant?: boolean, userId?: string, isGroup?: boolean, groupId?: string }> = [];
+  const secondaryChips: Array<{ key: string, label: string, color: string, isTag?: boolean, tagValue?: string }> = [];
   
-  // Tags
+  const mode = filters.filterMode || 'group';
+
+  // 1段目: グループ or 投稿者
+  if (mode === 'group') {
+    if (filters.activeGroups && filters.activeGroups.length > 0) {
+      if (filters.activeGroups.includes('all')) {
+        primaryChips.push({ key: 'group-all', label: '👥 すべてのグループ', color: 'bg-indigo-50 text-indigo-500 border-indigo-100' });
+      } else {
+        filters.activeGroups.forEach((groupId: string) => {
+          const group = groups?.find(g => g.id === groupId);
+          const name = group ? group.name : 'グループ';
+          primaryChips.push({ 
+            key: `group-${groupId}`, 
+            label: `👥 ${name}`, 
+            color: 'bg-indigo-50 text-indigo-500 border-indigo-100',
+            isGroup: true,
+            groupId,
+          });
+        });
+      }
+    }
+  } else {
+    if (filters.registrantUserIds && filters.registrantUserIds.length > 0) {
+      filters.registrantUserIds.forEach((userId: string) => {
+        const user = users?.find((u: { id: string, name: string }) => u.id === userId);
+        const name = user ? user.name : '投稿者';
+        primaryChips.push({ 
+          key: `registrant-${userId}`, 
+          label: `👤 ${name}`, 
+          color: 'bg-indigo-50 text-indigo-500 border-indigo-100',
+          isRegistrant: true,
+          userId,
+        });
+      });
+    }
+  }
+
+  // 2段目: そのほか
   if (filters.tags && filters.tags.length > 0) {
     filters.tags.forEach((t: string) => {
-      activeChips.push({ key: `tag-${t}`, label: `#${t}`, color: 'bg-pink-50 text-pink-500 border-pink-100', isTag: true, tagValue: t });
+      secondaryChips.push({ key: `tag-${t}`, label: `#${t}`, color: 'bg-pink-50 text-pink-500 border-pink-100', isTag: true, tagValue: t });
     });
   }
   
-  // Period
   if (filters.period && filters.period !== 'all') {
     const periodMap: Record<string, string> = {
       this_month: '今月',
@@ -388,68 +437,69 @@ export function FilterChips({
       this_year: '今年',
       last_year: '昨年',
     };
-    activeChips.push({ key: 'period', label: `🗓️ ${periodMap[filters.period] || filters.period}`, color: 'bg-orange-50 text-orange-500 border-orange-100' });
+    secondaryChips.push({ key: 'period', label: `🗓️ ${periodMap[filters.period] || filters.period}`, color: 'bg-orange-50 text-orange-500 border-orange-100' });
   }
-  // Favorite
   if (filters.is_favorite) {
-    activeChips.push({ key: 'is_favorite', label: '❤️ お気に入り', color: 'bg-red-50 text-red-500 border-red-100' });
+    secondaryChips.push({ key: 'is_favorite', label: '❤️ お気に入り', color: 'bg-red-50 text-red-500 border-red-100' });
   }
-
-  // Registrant - 1人ずつ個別チップに分割
-  if (filters.registrantUserIds && filters.registrantUserIds.length > 0) {
-    filters.registrantUserIds.forEach((userId: string) => {
-      const user = users.find((u: { id: string, name: string }) => u.id === userId);
-      const name = user ? user.name : '投稿者';
-      activeChips.push({ 
-        key: `registrant-${userId}`, 
-        label: `👤 ${name}`, 
-        color: 'bg-indigo-50 text-indigo-500 border-indigo-100',
-        isRegistrant: true,
-        userId,
-      });
-    });
-  }
-
-  // Mine only
   if (filters.is_mine_only) {
-    activeChips.push({ key: 'is_mine_only', label: '🔒 自分のみ', color: 'bg-gray-100 text-gray-600 border-gray-200' });
+    secondaryChips.push({ key: 'is_mine_only', label: '🔒 自分のみ', color: 'bg-gray-100 text-gray-600 border-gray-200' });
   }
 
-  if (activeChips.length === 0) return null;
+  if (primaryChips.length === 0 && secondaryChips.length === 0) return null;
+
+  const renderChip = (chip: any, onRemoveFn: () => void) => (
+    <span 
+      key={chip.key}
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black border shadow-sm shrink-0 ${chip.color} animate-in zoom-in`}
+    >
+      {chip.label}
+      {chip.key !== 'group-all' && (
+        <button 
+          onClick={onRemoveFn} 
+          className="hover:opacity-60 transition-opacity ml-1 flex items-center justify-center w-3 h-3"
+        >
+          <X size={10} strokeWidth={4} />
+        </button>
+      )}
+    </span>
+  );
 
   return (
-    <div className={`flex flex-wrap gap-2 mb-6 animate-in slide-in-from-left duration-500 ${className || ''}`}>
-      {activeChips.map((chip) => (
-        <span 
-          key={chip.key}
-          className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black border shadow-sm ${chip.color} animate-in zoom-in`}
-        >
-          {chip.label}
+    <div className={`flex flex-col gap-2 mb-6 animate-in slide-in-from-left duration-500 ${className || ''}`}>
+      {primaryChips.length > 0 && (
+        <div className="flex overflow-x-auto gap-2 pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ minWidth: 0 }}>
+          {primaryChips.map(chip => renderChip(chip, () => {
+            if (chip.isRegistrant && chip.userId) {
+              const newIds = (filters.registrantUserIds || []).filter((id: string) => id !== chip.userId);
+              onRemove({ registrantUserIds: newIds } as any);
+            } else if (chip.isGroup && chip.groupId) {
+              const newIds = (filters.activeGroups || []).filter((id: string) => id !== chip.groupId);
+              onRemove({ activeGroups: newIds } as any);
+            } else {
+              onRemove(chip.key);
+            }
+          }))}
+        </div>
+      )}
+      {secondaryChips.length > 0 && (
+        <div className="flex overflow-x-auto gap-2 pb-1 items-center [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ minWidth: 0 }}>
+          {secondaryChips.map(chip => renderChip(chip, () => {
+            if (chip.isTag) {
+              const newTags = filters.tags.filter((t: string) => t !== chip.tagValue);
+              onRemove(newTags);
+            } else {
+              onRemove(chip.key);
+            }
+          }))}
           <button 
-            onClick={() => {
-              if (chip.isTag) {
-                const newTags = filters.tags.filter((t: string) => t !== chip.tagValue);
-                onRemove(newTags);
-              } else if (chip.isRegistrant && chip.userId) {
-                // 個別投稿者チップを削除：小数の場合はregistrantUserIdsから該当userIdを除外
-                const newIds = (filters.registrantUserIds || []).filter((id: string) => id !== chip.userId);
-                onRemove({ registrantUserIds: newIds } as any);
-              } else {
-                onRemove(chip.key);
-              }
-            }} 
-            className="hover:opacity-60 transition-opacity ml-1 flex items-center justify-center w-3 h-3"
+            onClick={() => onRemove([])}
+            className="text-[11px] font-black text-gray-400 hover:text-gray-600 px-2 transition-colors shrink-0"
           >
-            <X size={10} strokeWidth={4} />
+            クリア
           </button>
-        </span>
-      ))}
-      <button 
-        onClick={() => onRemove([])}
-        className="text-[11px] font-black text-gray-400 hover:text-gray-600 px-2 transition-colors"
-      >
-        クリア
-      </button>
+        </div>
+      )}
     </div>
   );
 }

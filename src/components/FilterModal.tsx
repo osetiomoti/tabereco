@@ -462,12 +462,11 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
             )}
           </div>
 
-          {/* ── Row 2: Other filters (horizontal scroll) ── */}
-          <div className="overflow-x-auto">
-            <div className="flex gap-4 px-5 pt-5 pb-4" style={{ minWidth: 'max-content' }}>
+          {/* ── Other filters ── */}
+          <div className="px-5 pt-4 pb-4 space-y-6">
 
               {/* ── Tag card ── */}
-              <div className="space-y-2 w-56 flex-shrink-0">
+              <div className="space-y-2">
                 <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">タグ</label>
                 <div className="w-full border border-gray-200 rounded-xl px-3 py-2.5 bg-white flex items-center justify-between min-h-[48px] relative">
                   <div className="flex flex-wrap gap-1 items-center flex-1 pr-10 py-0.5">
@@ -492,7 +491,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
               </div>
 
               {/* ── Period card ── */}
-              <div className="space-y-2 w-44 flex-shrink-0">
+              <div className="space-y-2">
                 <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">期間</label>
                 <div className="relative">
                   <select
@@ -513,7 +512,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
               </div>
 
               {/* ── Status card ── */}
-              <div className="space-y-2 w-44 flex-shrink-0">
+              <div className="space-y-2">
                 <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">状態</label>
                 <div className="flex flex-col gap-1.5">
                   {[
@@ -537,7 +536,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
               </div>
 
               {/* ── Sort card ── */}
-              <div className="space-y-2 w-48 flex-shrink-0">
+              <div className="space-y-2">
                 <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">並び替え</label>
                 <div className="relative">
                   <select
@@ -556,7 +555,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
               </div>
 
               {/* ── Rating card ── */}
-              <div className="space-y-2 w-40 flex-shrink-0">
+              <div className="space-y-2">
                 <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">評価（以上）</label>
                 <div className="flex items-center gap-2">
                   <input
@@ -574,7 +573,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
               </div>
 
               {/* ── Price card ── */}
-              <div className="space-y-2 w-52 flex-shrink-0">
+              <div className="space-y-2">
                 <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">値段帯</label>
                 <div className="flex flex-col gap-2">
                   <div className="flex items-center gap-1.5">
@@ -623,7 +622,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
               </div>
 
               {/* ── Favorite card ── */}
-              <div className="space-y-2 w-36 flex-shrink-0">
+              <div className="space-y-2">
                 <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">その他</label>
                 <button
                   onClick={() => set('is_favorite', !filters.is_favorite)}
@@ -638,8 +637,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
                 </button>
               </div>
 
-            </div>{/* end horizontal flex */}
-          </div>{/* end overflow-x-auto */}
+            </div>{/* end vertical flex */}
         </div>
 
         {/* Action Button */}

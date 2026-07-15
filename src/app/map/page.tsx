@@ -22,7 +22,7 @@ const MapView = dynamic(() => import('@/components/MapView'), {
 });
 
 function MapPageInner() {
-  const { posts, loading, filterState, updateFilter, activeFilterCount, joinedGroups, removeFilter, memberUsers } = useFilteredPosts();
+  const { posts, loading, filterState, updateFilter, activeFilterCount, removeFilter, memberUsers, joinedGroups } = useFilteredPosts();
   const { activeTab, keyword, activeGroups, advancedFilters, activeMapTag } = filterState;
 
   const [center, setCenter] = useState<{ lat: number, lng: number }>({ lat: 35.681236, lng: 139.767125 });
@@ -95,8 +95,9 @@ function MapPageInner() {
           <FilterChips
             filters={{ ...(advancedFilters || {}), status: activeTab }}
             onRemove={removeFilter}
-            className="pointer-events-auto"
             users={memberUsers}
+            groups={joinedGroups}
+            className="pointer-events-auto"
           />
 
 

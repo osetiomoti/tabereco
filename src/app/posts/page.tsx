@@ -129,7 +129,7 @@ function CalendarView({ posts }: { posts: any[] }) {
 }
 
 export default function PostsPage() {
-  const { posts, loading, filterState, updateFilter, activeFilterCount, removeFilter, memberUsers } = useFilteredPosts();
+  const { posts, loading, filterState, updateFilter, activeFilterCount, removeFilter, memberUsers, joinedGroups } = useFilteredPosts();
   const { activeTab, keyword, activeGroups, advancedFilters } = filterState;
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
@@ -204,6 +204,7 @@ export default function PostsPage() {
                 filters={{ ...(advancedFilters || {}), status: activeTab }}
                 onRemove={removeFilter}
                 users={memberUsers}
+                groups={joinedGroups}
               />
             </>
           )}
