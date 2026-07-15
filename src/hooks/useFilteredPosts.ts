@@ -63,17 +63,9 @@ export function useFilteredPosts() {
         const membersList = Array.from(map.values());
         setMemberUsers(membersList);
 
-        // デフォルトの registrantUserIds が未設定または空の場合、全員（自分を含む）を全選択状態として初期設定する
-        if ((advancedFilters?.registrantUserIds === undefined || advancedFilters.registrantUserIds.length === 0) && myId) {
-          const allIds = membersList.map(m => m.id);
-          updateFilter({
-            advancedFilters: {
-              ...(advancedFilters || {}),
-              registrantUserIds: allIds,
-              include_mine: true,
-            }
-          });
-        }
+        // 以前はここで updateFilter を呼んで全メンバーのIDを保存していましたが、
+        // それだと後からグループに追加されたメンバーが除外されてしまうバグがありました。
+        // 空配列 [] を「全員」として扱うように変更したため、ここは削除します。
       };
       loadAllMembers();
     }
@@ -243,7 +235,17 @@ export function useFilteredPosts() {
   }, [activeGroups, activeTab, keyword, advancedFilters, ownPostsCache, groupPostsCache]);
 
 
-  const removeFilter = (key: string | string[]) => {
+  const removeFilter = (key: string | string[] | Record<string, any>) => {
+    // オブジェクト形式：个別投稿者チップの削除
+    if (typeof key === 'object' && !Array.isArray(key) && 'registrantUserIds' in key) {
+      updateFilter({
+        advancedFilters: {
+          ...(advancedFilters || {}),
+          registrantUserIds: key.registrantUserIds,
+        }
+      });
+      return;
+    }
     let next = { ...advancedFilters };
     if (Array.isArray(key)) {
       if (key.length === 0) {

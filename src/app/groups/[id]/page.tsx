@@ -326,8 +326,8 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
                   </Link>
                   {myUserId && member.id !== myUserId && (() => {
                     const isFriend = friends.some(f => f.id === member.id);
-                    const sentReq = pendingRequests.find(r => r.user.id === member.id && r.type === 'sent');
-                    const recvReq = pendingRequests.find(r => r.user.id === member.id && r.type === 'received');
+                    const sentReq = pendingRequests.find(r => r.user?.id === member.id && r.type === 'sent');
+                    const recvReq = pendingRequests.find(r => r.user?.id === member.id && r.type === 'received');
 
                     if (isFriend) {
                       return <span className="text-[10px] text-gray-400 font-bold bg-gray-50 px-2 py-1 rounded-lg shrink-0">ともだち</span>;

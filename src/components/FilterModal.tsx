@@ -289,24 +289,14 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
           </div>
         </div>
 
-        {/* Body */}
-        <div className="flex-1 overflow-y-auto px-5 py-5 space-y-7 pb-28">
-          
+        {/* Body: 2-row horizontal scroll layout */}
+        <div className="flex-1 overflow-y-auto pb-28">
 
-
-          {/* ── Filter Mode Toggle ── */}
-          <section className="space-y-3">
-            <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">絞り込み方法</label>
-            <div className="flex p-1 bg-gray-100 rounded-xl gap-1">
-              <button
-                onClick={() => set('filterMode', 'registrant')}
-                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-[13px] font-black transition-all ${
-                  filters.filterMode === 'registrant' ? 'bg-white text-orange-500 shadow-sm' : 'text-gray-400'
-                }`}
-              >
-                <User size={14} />
-                投稿者でフィルター
-              </button>
+          {/* ── Row 1: Filter Mode + Group/User selectors (horizontal scroll) ── */}
+          <div className="px-5 pt-5 pb-4 border-b border-gray-100">
+            <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 block">絞り込み方法</label>
+            {/* Toggle: Group left, User right */}
+            <div className="flex p-1 bg-gray-100 rounded-xl gap-1 mb-4">
               <button
                 onClick={() => set('filterMode', 'group')}
                 className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-[13px] font-black transition-all ${
@@ -314,16 +304,89 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
                 }`}
               >
                 <Users size={14} />
-                グループでフィルター
+                グループ
+              </button>
+              <button
+                onClick={() => set('filterMode', 'registrant')}
+                className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-[13px] font-black transition-all ${
+                  filters.filterMode === 'registrant' ? 'bg-white text-orange-500 shadow-sm' : 'text-gray-400'
+                }`}
+              >
+                <User size={14} />
+                投稿者
               </button>
             </div>
-          </section>
 
-          {/* ── Member Combobox (投稿者モード) ── */}
-          {filters.filterMode === 'registrant' && (
-            <section className="space-y-2">
-              <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">投稿者</label>
-              {!memberOptionsEnabled ? (
+            {/* Group combobox */}
+            {filters.filterMode === 'group' && (
+              <div className="relative" ref={groupRef}>
+                <button
+                  type="button"
+                  onClick={() => setGroupOpen(v => !v)}
+                  className={`w-full flex items-center justify-between border rounded-xl px-4 py-3 text-left transition-all bg-white ${
+                    groupOpen ? 'border-orange-400 ring-2 ring-orange-100' : 'border-gray-200 hover:border-gray-300'
+                  }`}
+                >
+                  <span className="text-[14px] font-medium text-gray-800 truncate">{groupLabel()}</span>
+                  <ChevronDown size={16} className={`text-gray-400 shrink-0 ml-2 transition-transform ${groupOpen ? 'rotate-180' : ''}`} />
+                </button>
+                {groupOpen && (
+                  <div className="absolute top-full mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
+                    <div className="px-3 py-2 border-b border-gray-100">
+                      <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5">
+                        <Search size={14} className="text-gray-400 shrink-0" />
+                        <input
+                          value={groupSearch}
+                          onChange={e => setGroupSearch(e.target.value)}
+                          placeholder="グループを検索..."
+                          className="flex-1 bg-transparent text-[13px] text-gray-700 focus:outline-none"
+                          autoFocus
+                        />
+                      </div>
+                    </div>
+                    <div className="max-h-44 overflow-y-auto py-1">
+                      {groupOptions.length > 0 && (
+                        <label className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={filters.activeGroups.length === groupOptions.length && groupOptions.length > 0}
+                            onChange={() => {
+                              if (filters.activeGroups.length === groupOptions.length) {
+                                setFilters(p => ({ ...p, activeGroups: [], registrantUserIds: [] }));
+                              } else {
+                                const allGroupIds = groupOptions.map(g => g.id);
+                                const allIds = members.map(m => m.id);
+                                setFilters(p => ({ ...p, activeGroups: allGroupIds, registrantUserIds: allIds }));
+                              }
+                            }}
+                            className="w-4 h-4 rounded border-gray-300 accent-orange-500"
+                          />
+                          <span className="text-[14px] text-gray-700">全選択</span>
+                        </label>
+                      )}
+                      {filteredGroups.map(opt => {
+                        const checked = filters.activeGroups.includes(opt.id);
+                        return (
+                          <label key={opt.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition-colors">
+                            <input
+                              type="checkbox"
+                              checked={checked}
+                              onChange={() => toggleGroup(opt.id)}
+                              className="w-4 h-4 rounded border-gray-300 accent-orange-500"
+                            />
+                            <span className="text-[14px] text-gray-700">{opt.label}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Member combobox */}
+            {filters.filterMode === 'registrant' && (
+              !memberOptionsEnabled ? (
                 <p className="text-[13px] text-gray-400 italic">メンバーがいません</p>
               ) : (
                 <div className="relative" ref={memberRef}>
@@ -337,7 +400,6 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
                     <span className="text-[14px] font-medium text-gray-800 truncate">{memberLabel()}</span>
                     <ChevronDown size={16} className={`text-gray-400 shrink-0 ml-2 transition-transform ${memberOpen ? 'rotate-180' : ''}`} />
                   </button>
-
                   {memberOpen && (
                     <div className="absolute top-full mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
                       <div className="px-3 py-2 border-b border-gray-100">
@@ -353,7 +415,6 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
                         </div>
                       </div>
                       <div className="max-h-44 overflow-y-auto py-1">
-                        {/* 全員 option */}
                         <label className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition-colors">
                           <input
                             type="checkbox"
@@ -397,322 +458,204 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
                     </div>
                   )}
                 </div>
-              )}
-            </section>
-          )}
-
-          {/* ── Group Combobox (グループモード) ── */}
-          {filters.filterMode === 'group' && (
-            <section className="space-y-2">
-              <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">グループ</label>
-              <div className="relative" ref={groupRef}>
-                <button
-                  type="button"
-                  onClick={() => setGroupOpen(v => !v)}
-                  className={`w-full flex items-center justify-between border rounded-xl px-4 py-3 text-left transition-all bg-white ${
-                    groupOpen ? 'border-orange-400 ring-2 ring-orange-100' : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <span className="text-[14px] font-medium text-gray-800 truncate">{groupLabel()}</span>
-                  <ChevronDown size={16} className={`text-gray-400 shrink-0 ml-2 transition-transform ${groupOpen ? 'rotate-180' : ''}`} />
-                </button>
-
-                {groupOpen && (
-                  <div className="absolute top-full mt-1 w-full bg-white border border-gray-200 rounded-xl shadow-xl z-50 overflow-hidden">
-                    {/* search */}
-                    <div className="px-3 py-2 border-b border-gray-100">
-                      <div className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-1.5">
-                        <Search size={14} className="text-gray-400 shrink-0" />
-                        <input
-                          value={groupSearch}
-                          onChange={e => setGroupSearch(e.target.value)}
-                          placeholder="グループを検索..."
-                          className="flex-1 bg-transparent text-[13px] text-gray-700 focus:outline-none"
-                          autoFocus
-                        />
-                      </div>
-                    </div>
-                    {/* items */}
-                    <div className="max-h-44 overflow-y-auto py-1">
-                      {groupOptions.length > 0 && (
-                        <label className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition-colors">
-                          <input
-                            type="checkbox"
-                            checked={filters.activeGroups.length === groupOptions.length && groupOptions.length > 0}
-                            onChange={() => {
-                              if (filters.activeGroups.length === groupOptions.length) {
-                                setFilters(p => ({ ...p, activeGroups: [], registrantUserIds: [] }));
-                              } else {
-                                const allGroupIds = groupOptions.map(g => g.id);
-                                const allIds = members.map(m => m.id);
-                                setFilters(p => ({ ...p, activeGroups: allGroupIds, registrantUserIds: allIds }));
-                              }
-                            }}
-                            className="w-4 h-4 rounded border-gray-300 accent-orange-500"
-                          />
-                          <span className="text-[14px] text-gray-700">全選択</span>
-                        </label>
-                      )}
-                      {filteredGroups.map(opt => {
-                        const checked = filters.activeGroups.includes(opt.id);
-                        return (
-                          <label key={opt.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-orange-50 cursor-pointer transition-colors">
-                            <input
-                              type="checkbox"
-                              checked={checked}
-                              onChange={() => toggleGroup(opt.id)}
-                              className="w-4 h-4 rounded border-gray-300 accent-orange-500"
-                            />
-                            <span className="text-[14px] text-gray-700">{opt.label}</span>
-                          </label>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-              </div>
-            </section>
-          )}
-
-          {/* ── Tag ── */}
-          <section className="space-y-2">
-            <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">タグ</label>
-            <div 
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 bg-white flex items-center justify-between min-h-[48px] relative"
-            >
-              <div className="flex flex-wrap gap-1.5 items-center flex-1 pr-16 py-0.5">
-                {filters.tags.length === 0 ? (
-                  <span className="text-gray-300 text-[14px]">タグが選択されていません</span>
-                ) : (
-                  filters.tags.map((tag: string) => (
-                    <div key={tag} className="inline-flex items-center gap-1 bg-[#FAF1EE] text-[#A86E64] border border-[#F3E2DD] px-2.5 py-0.5 rounded-full text-[12px] font-medium animate-in zoom-in">
-                      <span>#{tag}</span>
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          set('tags', filters.tags.filter((t: string) => t !== tag));
-                        }}
-                        className="hover:opacity-75 transition-opacity ml-1 flex items-center justify-center"
-                      >
-                        <X size={10} className="text-[#A86E64] stroke-[2.5]" />
-                      </button>
-                    </div>
-                  ))
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsTagSelectorOpen(true)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-[13px] font-bold text-orange-500 hover:text-orange-600 active:scale-95 transition-all shrink-0 py-1"
-              >
-                編集
-              </button>
-            </div>
-             <TagSelector
-              isOpen={isTagSelectorOpen}
-              onClose={() => setIsTagSelectorOpen(false)}
-              selectedTags={filters.tags}
-              onSelect={(tags: string[]) => set('tags', tags)}
-            />
-          </section>
-
-          {/* ── Period ── */}
-          <section className="space-y-2">
-            <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">期間</label>
-            <div className="relative">
-              <select
-                value={filters.period}
-                onChange={e => set('period', e.target.value)}
-                className="w-full appearance-none bg-white border border-gray-200 rounded-xl py-3 px-4 text-[14px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all"
-              >
-                {PERIOD_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-              <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            </div>
-            {filters.period === 'custom' && (
-              <div className="flex items-center gap-2 mt-2 animate-in slide-in-from-top-2">
-                <input
-                  type="date"
-                  value={filters.period_start || ''}
-                  onChange={e => set('period_start', e.target.value)}
-                  className="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-[13px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all [color-scheme:light]"
-                />
-                <span className="text-gray-400 font-bold">〜</span>
-                <input
-                  type="date"
-                  value={filters.period_end || ''}
-                  onChange={e => set('period_end', e.target.value)}
-                  className="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-[13px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all [color-scheme:light]"
-                />
-              </div>
+              )
             )}
-          </section>
+          </div>
 
-          {/* ── Status ── */}
-          <section className="space-y-2">
-            <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">状態</label>
-            <div className="flex gap-2">
-              {[
-                { id: 'all', label: 'すべて' }, 
-                { id: 'visited', label: '行った' },
-                { id: 'want_to_go', label: '行きたい' }
-              ].map(s => (
+          {/* ── Row 2: Other filters (horizontal scroll) ── */}
+          <div className="overflow-x-auto">
+            <div className="flex gap-4 px-5 pt-5 pb-4" style={{ minWidth: 'max-content' }}>
+
+              {/* ── Tag card ── */}
+              <div className="space-y-2 w-56 flex-shrink-0">
+                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">タグ</label>
+                <div className="w-full border border-gray-200 rounded-xl px-3 py-2.5 bg-white flex items-center justify-between min-h-[48px] relative">
+                  <div className="flex flex-wrap gap-1 items-center flex-1 pr-10 py-0.5">
+                    {filters.tags.length === 0 ? (
+                      <span className="text-gray-300 text-[13px]">タグなし</span>
+                    ) : (
+                      filters.tags.map((tag: string) => (
+                        <div key={tag} className="inline-flex items-center gap-1 bg-[#FAF1EE] text-[#A86E64] border border-[#F3E2DD] px-2 py-0.5 rounded-full text-[11px] font-medium">
+                          <span>#{tag}</span>
+                          <button type="button" onClick={(e) => { e.stopPropagation(); set('tags', filters.tags.filter((t: string) => t !== tag)); }} className="hover:opacity-75 ml-0.5">
+                            <X size={9} className="text-[#A86E64]" />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  <button type="button" onClick={() => setIsTagSelectorOpen(true)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[12px] font-bold text-orange-500 hover:text-orange-600 shrink-0">
+                    編集
+                  </button>
+                </div>
+                <TagSelector isOpen={isTagSelectorOpen} onClose={() => setIsTagSelectorOpen(false)} selectedTags={filters.tags} onSelect={(tags: string[]) => set('tags', tags)} />
+              </div>
+
+              {/* ── Period card ── */}
+              <div className="space-y-2 w-44 flex-shrink-0">
+                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">期間</label>
+                <div className="relative">
+                  <select
+                    value={filters.period}
+                    onChange={e => set('period', e.target.value)}
+                    className="w-full appearance-none bg-white border border-gray-200 rounded-xl py-3 px-3 text-[13px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all"
+                  >
+                    {PERIOD_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                  <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                </div>
+                {filters.period === 'custom' && (
+                  <div className="flex flex-col gap-1 mt-1">
+                    <input type="date" value={filters.period_start || ''} onChange={e => set('period_start', e.target.value)} className="w-full bg-white border border-gray-200 rounded-xl px-2 py-2 text-[12px] text-gray-800 focus:outline-none focus:border-orange-400 [color-scheme:light]" />
+                    <input type="date" value={filters.period_end || ''} onChange={e => set('period_end', e.target.value)} className="w-full bg-white border border-gray-200 rounded-xl px-2 py-2 text-[12px] text-gray-800 focus:outline-none focus:border-orange-400 [color-scheme:light]" />
+                  </div>
+                )}
+              </div>
+
+              {/* ── Status card ── */}
+              <div className="space-y-2 w-44 flex-shrink-0">
+                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">状態</label>
+                <div className="flex flex-col gap-1.5">
+                  {[
+                    { id: 'all', label: 'すべて' },
+                    { id: 'visited', label: '行った' },
+                    { id: 'want_to_go', label: '行きたい' }
+                  ].map(s => (
+                    <button
+                      key={s.id}
+                      onClick={() => set('status', s.id as any)}
+                      className={`w-full py-2 rounded-xl text-[12px] font-bold transition-all border ${
+                        filters.status === s.id
+                          ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
+                          : 'bg-white text-gray-500 border-gray-200 hover:border-orange-300'
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* ── Sort card ── */}
+              <div className="space-y-2 w-48 flex-shrink-0">
+                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">並び替え</label>
+                <div className="relative">
+                  <select
+                    value={filters.sort_order}
+                    onChange={e => set('sort_order', e.target.value)}
+                    className="w-full appearance-none bg-white border border-gray-200 rounded-xl py-3 px-3 text-[13px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all font-medium"
+                  >
+                    <option value="created_desc">新しい順</option>
+                    <option value="rating_desc">評価が高い順</option>
+                    <option value="rating_asc">評価が低い順</option>
+                    <option value="price_desc">値段帯が高い順</option>
+                    <option value="price_asc">値段帯が安い順</option>
+                  </select>
+                  <ChevronDown size={14} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* ── Rating card ── */}
+              <div className="space-y-2 w-40 flex-shrink-0">
+                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">評価（以上）</label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    max="5"
+                    step="0.1"
+                    value={filters.rating_min ?? ''}
+                    onChange={e => set('rating_min', e.target.value ? parseFloat(e.target.value) : undefined)}
+                    placeholder="例: 4.0"
+                    className="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-3 text-[13px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all font-medium"
+                  />
+                  <span className="text-[12px] font-bold text-gray-500 shrink-0">以上</span>
+                </div>
+              </div>
+
+              {/* ── Price card ── */}
+              <div className="space-y-2 w-52 flex-shrink-0">
+                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">値段帯</label>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-gray-400 w-6 shrink-0">下限</span>
+                    <div className="relative flex-1">
+                      <select
+                        value={priceMinMode === 'custom' ? 'custom' : (filters.price_min ?? '')}
+                        onChange={(e) => {
+                          if (e.target.value === 'custom') { setPriceMinMode('custom'); }
+                          else { setPriceMinMode('select'); set('price_min', e.target.value ? parseInt(e.target.value, 10) : undefined); }
+                        }}
+                        className="w-full appearance-none bg-white border border-gray-200 rounded-xl py-2 px-2 text-[12px] text-gray-800 focus:outline-none focus:border-orange-400 transition-all"
+                      >
+                        <option value="">なし</option>
+                        {PRICE_OPTIONS.map(val => <option key={val} value={val}>{val.toLocaleString()}円</option>)}
+                        <option value="custom">自由入力</option>
+                      </select>
+                      <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
+                    {priceMinMode === 'custom' && (
+                      <input type="number" value={filters.price_min ?? ''} onChange={e => set('price_min', e.target.value ? parseInt(e.target.value, 10) : undefined)} placeholder="下限" className="w-20 bg-white border border-gray-200 rounded-xl px-2 py-2 text-[12px] text-gray-800 focus:outline-none focus:border-orange-400" />
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-gray-400 w-6 shrink-0">上限</span>
+                    <div className="relative flex-1">
+                      <select
+                        value={priceMaxMode === 'custom' ? 'custom' : (filters.price_max ?? '')}
+                        onChange={(e) => {
+                          if (e.target.value === 'custom') { setPriceMaxMode('custom'); }
+                          else { setPriceMaxMode('select'); set('price_max', e.target.value ? parseInt(e.target.value, 10) : undefined); }
+                        }}
+                        className="w-full appearance-none bg-white border border-gray-200 rounded-xl py-2 px-2 text-[12px] text-gray-800 focus:outline-none focus:border-orange-400 transition-all"
+                      >
+                        <option value="">なし</option>
+                        {PRICE_OPTIONS.map(val => <option key={val} value={val}>{val.toLocaleString()}円</option>)}
+                        <option value="custom">自由入力</option>
+                      </select>
+                      <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
+                    {priceMaxMode === 'custom' && (
+                      <input type="number" value={filters.price_max ?? ''} onChange={e => set('price_max', e.target.value ? parseInt(e.target.value, 10) : undefined)} placeholder="上限" className="w-20 bg-white border border-gray-200 rounded-xl px-2 py-2 text-[12px] text-gray-800 focus:outline-none focus:border-orange-400" />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* ── Favorite card ── */}
+              <div className="space-y-2 w-36 flex-shrink-0">
+                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">その他</label>
                 <button
-                  key={s.id}
-                  onClick={() => set('status', s.id as any)}
-                  className={`flex-1 py-2.5 rounded-xl text-[13px] font-medium transition-all border ${
-                    filters.status === s.id
-                      ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
-                      : 'bg-white text-gray-500 border-gray-200 hover:border-orange-300'
+                  onClick={() => set('is_favorite', !filters.is_favorite)}
+                  className={`w-full flex items-center gap-2 px-3 py-3 rounded-xl border text-[13px] font-bold transition-all ${
+                    filters.is_favorite
+                      ? 'bg-orange-50 border-orange-200 text-orange-600'
+                      : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                   }`}
                 >
-                  {s.label}
+                  <Heart size={14} className={filters.is_favorite ? 'fill-orange-500 text-orange-500' : ''} />
+                  お気に入り
                 </button>
-              ))}
-            </div>
-          </section>
-
-          {/* ── Sort Order ── */}
-          <section className="space-y-2">
-            <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">並び替え</label>
-            <div className="relative">
-              <select
-                value={filters.sort_order}
-                onChange={e => set('sort_order', e.target.value)}
-                className="w-full appearance-none bg-white border border-gray-200 rounded-xl py-3 px-4 text-[14px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all font-medium"
-              >
-                <option value="created_desc">登録日が新しい順</option>
-                <option value="rating_desc">評価が高い順</option>
-                <option value="rating_asc">評価が低い順</option>
-                <option value="price_desc">値段帯が高い順</option>
-                <option value="price_asc">値段帯が安い順</option>
-              </select>
-              <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            </div>
-          </section>
-
-          {/* ── Rating Filter ── */}
-          <section className="space-y-2">
-            <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">評価フィルター</label>
-            <div className="flex items-center gap-3">
-              <input
-                type="number"
-                min="0"
-                max="5"
-                step="0.5"
-                value={filters.rating_min ?? ''}
-                onChange={e => set('rating_min', e.target.value ? parseFloat(e.target.value) : undefined)}
-                placeholder="例: 4.0"
-                className="flex-1 bg-white border border-gray-200 rounded-xl px-4 py-3 text-[14px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all font-medium"
-              />
-              <span className="text-[14px] font-bold text-gray-500">以上</span>
-            </div>
-          </section>
-
-          {/* ── Price Filter ── */}
-          <section className="space-y-2">
-            <label className="text-[13px] font-bold text-gray-500 uppercase tracking-wider">値段帯フィルター</label>
-            
-            <div className="flex flex-col gap-3">
-              {/* 下限 */}
-              <div className="flex items-center gap-2">
-                <span className="text-[13px] font-bold text-gray-400 w-8">下限</span>
-                <div className="relative flex-1">
-                  <select
-                    value={priceMinMode === 'custom' ? 'custom' : (filters.price_min ?? '')}
-                    onChange={(e) => {
-                      if (e.target.value === 'custom') {
-                        setPriceMinMode('custom');
-                      } else {
-                        setPriceMinMode('select');
-                        set('price_min', e.target.value ? parseInt(e.target.value, 10) : undefined);
-                      }
-                    }}
-                    className="w-full appearance-none bg-white border border-gray-200 rounded-xl py-2.5 px-3 text-[14px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all font-medium"
-                  >
-                    <option value="">選択なし</option>
-                    {PRICE_OPTIONS.map(val => (
-                      <option key={val} value={val}>{val.toLocaleString()}円</option>
-                    ))}
-                    <option value="custom">カスタム（自由入力）</option>
-                  </select>
-                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                </div>
-                {priceMinMode === 'custom' && (
-                  <div className="flex items-center gap-1 flex-1 animate-in fade-in zoom-in duration-200">
-                    <input
-                      type="number"
-                      value={filters.price_min ?? ''}
-                      onChange={e => set('price_min', e.target.value ? parseInt(e.target.value, 10) : undefined)}
-                      placeholder="下限"
-                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-[14px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all font-medium"
-                    />
-                    <span className="text-[13px] font-bold text-gray-500 shrink-0">円</span>
-                  </div>
-                )}
               </div>
 
-              {/* 上限 */}
-              <div className="flex items-center gap-2">
-                <span className="text-[13px] font-bold text-gray-400 w-8">上限</span>
-                <div className="relative flex-1">
-                  <select
-                    value={priceMaxMode === 'custom' ? 'custom' : (filters.price_max ?? '')}
-                    onChange={(e) => {
-                      if (e.target.value === 'custom') {
-                        setPriceMaxMode('custom');
-                      } else {
-                        setPriceMaxMode('select');
-                        set('price_max', e.target.value ? parseInt(e.target.value, 10) : undefined);
-                      }
-                    }}
-                    className="w-full appearance-none bg-white border border-gray-200 rounded-xl py-2.5 px-3 text-[14px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all font-medium"
-                  >
-                    <option value="">選択なし</option>
-                    {PRICE_OPTIONS.map(val => (
-                      <option key={val} value={val}>{val.toLocaleString()}円</option>
-                    ))}
-                    <option value="custom">カスタム（自由入力）</option>
-                  </select>
-                  <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                </div>
-                {priceMaxMode === 'custom' && (
-                  <div className="flex items-center gap-1 flex-1 animate-in fade-in zoom-in duration-200">
-                    <input
-                      type="number"
-                      value={filters.price_max ?? ''}
-                      onChange={e => set('price_max', e.target.value ? parseInt(e.target.value, 10) : undefined)}
-                      placeholder="上限"
-                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2.5 text-[14px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all font-medium"
-                    />
-                    <span className="text-[13px] font-bold text-gray-500 shrink-0">円</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </section>
-
-          {/* ── Toggles ── */}
-          <section className="space-y-2">
-            <button
-              onClick={() => set('is_favorite', !filters.is_favorite)}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl border text-[14px] font-medium transition-all ${
-                filters.is_favorite
-                  ? 'bg-orange-50 border-orange-200 text-orange-600'
-                  : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
-              }`}
-            >
-              <Heart size={16} className={filters.is_favorite ? 'fill-orange-500 text-orange-500' : ''} />
-              お気に入りのみ
-            </button>
-          </section>
+            </div>{/* end horizontal flex */}
+          </div>{/* end overflow-x-auto */}
         </div>
 
         {/* Action Button */}
         <div className="absolute bottom-0 left-0 right-0 px-5 py-4 bg-white/95 backdrop-blur-sm border-t border-gray-100 flex items-center justify-center">
           <button
-            onClick={() => { onApply({ ...filters }); onClose(); }}
+            onClick={() => {
+              const finalFilters = { ...filters };
+              if (allMembersSelected) {
+                finalFilters.registrantUserIds = [];
+              }
+              if (filters.activeGroups.length === groupOptions.length && groupOptions.length > 0) {
+                finalFilters.activeGroups = ['all'];
+              }
+              onApply(finalFilters); 
+              onClose(); 
+            }}
             className="w-full py-3.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold text-[15px] active:scale-98 transition-all shadow-sm"
           >
             絞り込みを適用する

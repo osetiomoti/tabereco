@@ -371,7 +371,7 @@ export function FilterChips({
 }) {
   if (!filters) return null;
 
-  const activeChips: Array<{ key: string, label: string, color: string, isTag?: boolean, tagValue?: string }> = [];
+  const activeChips: Array<{ key: string, label: string, color: string, isTag?: boolean, tagValue?: string, isRegistrant?: boolean, userId?: string }> = [];
   
   // Tags
   if (filters.tags && filters.tags.length > 0) {
@@ -395,20 +395,19 @@ export function FilterChips({
     activeChips.push({ key: 'is_favorite', label: '❤️ お気に入り', color: 'bg-red-50 text-red-500 border-red-100' });
   }
 
-  // Registrant
+  // Registrant - 1人ずつ個別チップに分割
   if (filters.registrantUserIds && filters.registrantUserIds.length > 0) {
-    let label = '👤 投稿者';
-    if (filters.registrantUserIds.length === 1) {
-      const userId = filters.registrantUserIds[0];
+    filters.registrantUserIds.forEach((userId: string) => {
       const user = users.find((u: { id: string, name: string }) => u.id === userId);
-      label = `👤 ${user ? user.name : '投稿者'}`;
-    } else {
-      const names = filters.registrantUserIds
-        .map((id: string) => users.find((u: { id: string, name: string }) => u.id === id)?.name)
-        .filter(Boolean);
-      label = names.length > 0 ? `👤 ${names.join(', ')}` : `👤 ${filters.registrantUserIds.length}名の投稿者`;
-    }
-    activeChips.push({ key: 'registrantUserIds', label, color: 'bg-indigo-50 text-indigo-500 border-indigo-100' });
+      const name = user ? user.name : '投稿者';
+      activeChips.push({ 
+        key: `registrant-${userId}`, 
+        label: `👤 ${name}`, 
+        color: 'bg-indigo-50 text-indigo-500 border-indigo-100',
+        isRegistrant: true,
+        userId,
+      });
+    });
   }
 
   // Mine only
@@ -431,6 +430,10 @@ export function FilterChips({
               if (chip.isTag) {
                 const newTags = filters.tags.filter((t: string) => t !== chip.tagValue);
                 onRemove(newTags);
+              } else if (chip.isRegistrant && chip.userId) {
+                // 個別投稿者チップを削除：小数の場合はregistrantUserIdsから該当userIdを除外
+                const newIds = (filters.registrantUserIds || []).filter((id: string) => id !== chip.userId);
+                onRemove({ registrantUserIds: newIds } as any);
               } else {
                 onRemove(chip.key);
               }
