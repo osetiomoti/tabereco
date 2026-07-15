@@ -358,16 +358,7 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
   );
 }
 
-export function FilterChips({ 
-  filters, 
-  onRemove, 
-  className, 
-  users = [] 
-}: { 
-  filters: any, 
-  onRemove: (key: string | string[]) => void, 
-  className?: string, 
-  users?: Array<{ id: string, name: string }> 
+
 export function FilterChips({ 
   filters, 
   onRemove, 
