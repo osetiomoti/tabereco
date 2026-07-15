@@ -260,7 +260,7 @@ export function useFilteredPosts() {
       updateFilter({ activeTab: 'all' });
       return;
     } else {
-      delete next[key];
+      delete next[key as string];
     }
     updateFilter({ advancedFilters: Object.keys(next).length > 0 ? next : null });
   };
