@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Cognito configuration missing' }, { status: 500 });
   }
 
-  const loginUrl = `https://${domain}/login?client_id=${clientId}&response_type=code&scope=email+openid+profile+offline_access&redirect_uri=${encodeURIComponent(
+  const loginUrl = `https://${domain}/login?client_id=${clientId}&response_type=code&scope=email+openid+profile&redirect_uri=${encodeURIComponent(
     redirectUri
   )}`;
 
