@@ -27,38 +27,39 @@ export async function GET(
       return NextResponse.json({ success: false, error: 'Access denied' }, { status: 403 });
     }
 
-    // 2. Fetch shared posts (excluding private posts)
-    const sharedPosts = await prisma.postGroup.findMany({
+    // 2. Fetch all members of the group
+    const members = await prisma.groupMember.findMany({
+      where: { group_id: id },
+      select: { user_id: true }
+    });
+    const memberIds = members.map((m: { user_id: string }) => m.user_id);
+
+    // 3. Fetch shared posts from these members (excluding private posts)
+    const postsResult = await prisma.post.findMany({
       where: { 
-        group_id: id,
-        post: {
-          is_mine_only: false
-        }
+        user_id: { in: memberIds },
+        is_mine_only: false
       },
       include: {
-        post: {
+        user: {
+          select: { id: true, name: true, avatar_url: true }
+        },
+        tags: {
           include: {
-            user: {
-              select: { id: true, name: true, avatar_url: true }
-            },
-            tags: {
-              include: {
-                tag: true,
-              },
-            },
+            tag: true,
           },
         },
       },
       orderBy: {
-        shared_at: 'desc',
+        visited_at: 'desc',
       },
     });
 
     // Flatten results
-    const posts = sharedPosts.map((sp: any) => ({
-      ...sp.post,
-      tags: sp.post.tags.map((pt: any) => pt.tag),
-      shared_at: sp.shared_at,
+    const posts = postsResult.map((post: any) => ({
+      ...post,
+      tags: post.tags.map((pt: any) => pt.tag),
+      shared_at: post.created_at, // Use created_at as shared_at for compatibility
     }));
 
     return NextResponse.json({ success: true, data: posts });

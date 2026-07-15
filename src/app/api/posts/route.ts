@@ -82,6 +82,24 @@ export async function POST(request: NextRequest) {
         },
       });
 
+      // If the post is public, automatically share it to all groups the user belongs to
+      if (!is_mine_only) {
+        const userGroups = await prisma.groupMember.findMany({
+          where: { user_id: auth.userId },
+          select: { group_id: true }
+        });
+        
+        if (userGroups.length > 0) {
+          await prisma.postGroup.createMany({
+            data: userGroups.map(g => ({
+              post_id: post.id,
+              group_id: g.group_id
+            })),
+            skipDuplicates: true
+          });
+        }
+      }
+
       if (tagNames && tagNames.length > 0) {
         // Get initial sort_order offset
         const lastTag = await prisma.tag.findFirst({
