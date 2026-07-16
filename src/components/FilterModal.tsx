@@ -224,8 +224,13 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
   };
 
   const groupLabel = () => {
-    if (filters.activeGroups.length === groupOptions.length && groupOptions.length > 0) return '全選択';
     if (filters.activeGroups.length === 0) return '選択なし';
+    if (filters.activeGroups.length === groupOptions.length && groupOptions.length > 0) {
+      return `全${groupOptions.length}グループ選択中`;
+    }
+    if (filters.activeGroups.length === 1) {
+      return groupOptions.find(g => g.id === filters.activeGroups[0])?.label ?? '1グループ';
+    }
     return `${filters.activeGroups.length}グループ選択中`;
   };
 
@@ -256,8 +261,8 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
     (m.name || '').toLowerCase().includes(memberSearch.toLowerCase())
   );
   const memberLabel = () => {
-    if (allMembersSelected) return '全選択';
     if (filters.registrantUserIds.length === 0) return '選択なし';
+    if (allMembersSelected) return `全${allMemberIds.length}名選択中`;
     if (filters.registrantUserIds.length === 1) {
       return availableMembers.find((m: Member) => m.id === filters.registrantUserIds[0])?.name ?? '1名選択中';
     }
@@ -645,14 +650,16 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
           <button
             onClick={() => {
               const finalFilters = { ...filters };
-              if (allMembersSelected) {
-                finalFilters.registrantUserIds = [];
-              }
+              // 全グループ選択の場合は 'all' を設定（バックエンドで全グループ対象にするため）
               if (filters.activeGroups.length === groupOptions.length && groupOptions.length > 0) {
                 finalFilters.activeGroups = ['all'];
               }
-              onApply(finalFilters); 
-              onClose(); 
+              // 全員選択の場合は空配列を設定（バックエンドで全員対象にするため）
+              if (allMembersSelected) {
+                finalFilters.registrantUserIds = [];
+              }
+              onApply(finalFilters);
+              onClose();
             }}
             className="w-full py-3.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold text-[15px] active:scale-98 transition-all shadow-sm"
           >

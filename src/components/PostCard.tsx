@@ -381,25 +381,29 @@ export function FilterChips({
 
   // 1段目: グループ or 投稿者
   if (mode === 'group') {
-    if (filters.activeGroups && filters.activeGroups.length > 0) {
-      if (filters.activeGroups.includes('all')) {
-        primaryChips.push({ key: 'group-all', label: '👥 すべてのグループ', color: 'bg-indigo-50 text-indigo-500 border-indigo-100' });
-      } else {
-        filters.activeGroups.forEach((groupId: string) => {
-          const group = groups?.find(g => g.id === groupId);
-          const name = group ? group.name : 'グループ';
-          primaryChips.push({ 
-            key: `group-${groupId}`, 
-            label: `👥 ${name}`, 
-            color: 'bg-indigo-50 text-indigo-500 border-indigo-100',
-            isGroup: true,
-            groupId,
-          });
+    const allGroups = !filters.activeGroups || filters.activeGroups.length === 0 || filters.activeGroups.includes('all');
+    if (allGroups) {
+      // 全グループ選択
+      primaryChips.push({ key: 'group-all', label: '👥 すべてのグループ', color: 'bg-indigo-50 text-indigo-500 border-indigo-100' });
+    } else {
+      filters.activeGroups.forEach((groupId: string) => {
+        const group = groups?.find(g => g.id === groupId);
+        const name = group ? group.name : 'グループ';
+        primaryChips.push({ 
+          key: `group-${groupId}`, 
+          label: `👥 ${name}`, 
+          color: 'bg-indigo-50 text-indigo-500 border-indigo-100',
+          isGroup: true,
+          groupId,
         });
-      }
+      });
     }
   } else {
-    if (filters.registrantUserIds && filters.registrantUserIds.length > 0) {
+    const allSelected = !filters.registrantUserIds || filters.registrantUserIds.length === 0;
+    if (allSelected) {
+      // 全員選択
+      primaryChips.push({ key: 'member-all', label: '👤 全員', color: 'bg-indigo-50 text-indigo-500 border-indigo-100' });
+    } else {
       filters.registrantUserIds.forEach((userId: string) => {
         const user = users?.find((u: { id: string, name: string }) => u.id === userId);
         const name = user ? user.name : '投稿者';
@@ -445,7 +449,7 @@ export function FilterChips({
       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black border shadow-sm shrink-0 ${chip.color} animate-in zoom-in`}
     >
       {chip.label}
-      {chip.key !== 'group-all' && (
+      {(chip.key !== 'group-all' && chip.key !== 'member-all') && (
         <button 
           onClick={onRemoveFn} 
           className="hover:opacity-60 transition-opacity ml-1 flex items-center justify-center w-3 h-3"
