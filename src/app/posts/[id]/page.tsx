@@ -11,6 +11,7 @@ import { PostMenu } from '@/components/PostMenu';
 import { FavoriteToggle } from '@/components/FavoriteToggle';
 import { StarDisplay } from '@/components/StarRating';
 import { ImageCarousel } from '@/components/ImageCarousel';
+import { WantToGoButton, CommentsSection } from '@/components/PostSocial';
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -223,12 +224,23 @@ export default async function PostDetailPage({ params }: Props) {
         </div>
         
         {post.address && (
-          <div className="px-5 pt-6 pb-20 flex items-start gap-4">
+          <div className="px-5 pt-6 pb-6 flex items-start gap-4">
             <MapPin className="text-[#5d4037] mt-0.5 min-w-[20px] fill-[#5d4037] text-white" size={24} />
             <span className="text-gray-500 font-medium tracking-wide text-sm leading-relaxed pt-1">{post.address}</span>
           </div>
         )}
       </div>
+
+      {/* 6. 行きたい */}
+      <WantToGoButton postId={post.id} isOwner={isOwner} />
+
+      {/* 7. コメント・評価 */}
+      <CommentsSection
+        postId={post.id}
+        postOwnerId={post.user_id}
+        currentUserId={currentUserId}
+        ownerRating={post.rating}
+      />
 
     </main>
   );

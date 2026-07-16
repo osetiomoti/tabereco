@@ -201,7 +201,12 @@ export default function PostsPage() {
                 />
               </div>
               <FilterChips
-                filters={{ ...(advancedFilters || {}), status: activeTab, filterMode: filterState.filterMode }}
+                filters={{ 
+                  ...(advancedFilters || {}), 
+                  status: activeTab, 
+                  filterMode: filterState.filterMode || 'group',
+                  activeGroups: activeGroups,
+                }}
                 onRemove={removeFilter}
                 users={memberUsers}
                 groups={joinedGroups}
@@ -253,14 +258,15 @@ export default function PostsPage() {
           updateFilter({
             activeGroups: newGroups || ['all'],
             activeTab: newStatus || 'all',
-            advancedFilters: { ...(rest || {}), filterMode: filterMode || 'registrant' },
+            filterMode: filterMode || 'group',
+            advancedFilters: rest,
           });
         }}
         initialFilters={{
           ...(advancedFilters || {}),
           activeGroups: activeGroups,
           status: activeTab,
-          filterMode: (advancedFilters as any)?.filterMode || 'registrant',
+          filterMode: filterState.filterMode || 'group',
         } as any}
       />
       <FloatingActionButton />

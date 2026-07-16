@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
-import { Settings, Hash, ArrowDownUp, Plus, MapPin, Calendar, User, Search } from 'lucide-react';
+import { Settings, Hash, ArrowDownUp, Plus, MapPin, Calendar, User, Search, Bookmark } from 'lucide-react';
 import { Header } from '@/components/Header';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -49,6 +49,12 @@ export default function MyPage() {
 
   const { groups: myGroups } = useGroups();
 
+  // 他人の投稿に付けた「行きたい」
+  const { data: markedWantToGoData, isLoading: markedWtgLoading } = useSWR<{ success: boolean, data: Post[] }>(
+    !targetUserId ? '/api/posts?marked_want_to_go=true' : null,
+    (url: string) => fetch(url).then(r => r.json())
+  );
+
   const user = targetUserId ? targetUserData?.data?.user : myUserData?.data;
   const posts: Post[] = targetUserId ? (targetUserData?.data?.posts || []) : (ownPostsData || []);
   const loading = targetUserId ? !targetUserData : ownPostsLoading;
@@ -63,7 +69,11 @@ export default function MyPage() {
   const [keyword, setKeyword] = useState('');
 
   const visitedCount = posts.filter(p => p.status === 'visited').length;
-  const wantCount = posts.filter(p => p.is_favorite || p.status === 'want_to_go').length;
+  const ownWantCount = posts.filter(p => p.is_favorite || p.status === 'want_to_go').length;
+  const markedWtgCount = markedWantToGoData?.data?.length || 0;
+  const wantCount = ownWantCount + markedWtgCount;
+
+  const markedWantToGoPosts: Post[] = markedWantToGoData?.data || [];
 
   let filteredPosts = posts.filter(p => {
     if (activeTab === 'visited') return p.status === 'visited';
@@ -280,7 +290,81 @@ export default function MyPage() {
       </div>
 
       {/* Tab Content (Grid) */}
-      {loading ? (
+      {activeTab === 'want_to_go' && !targetUserId ? (
+        // Special layout for want_to_go tab: two sections
+        <div className="animate-in fade-in duration-500">
+          {/* Own want-to-go posts */}
+          <div className="mb-2">
+            <div className="px-4 py-2 flex items-center gap-2">
+              <span className="text-[11px] font-black text-gray-400 tracking-wider uppercase">自分の「行きたい」</span>
+              <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">{ownWantCount}</span>
+            </div>
+            {loading ? (
+              <div className="px-0.5 grid grid-cols-3 gap-0.5">
+                {[1,2,3].map(i => <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />)}
+              </div>
+            ) : filteredPosts.length === 0 ? (
+              <div className="py-8 text-center text-gray-300 text-[12px] font-bold">まだ登録がありません</div>
+            ) : (
+              <div className="px-0.5 grid grid-cols-3 gap-0.5">
+                {filteredPosts.map(post => (
+                  <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
+                    {post.image_url ? (
+                      <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-orange-50"><span className="text-2xl opacity-50">🍽️</span></div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
+                    <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
+                      <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Divider */}
+          <div className="mx-4 my-3 border-t border-gray-100" />
+
+          {/* Other users' posts marked as want-to-go */}
+          <div>
+            <div className="px-4 py-2 flex items-center gap-2">
+              <Bookmark size={12} className="text-orange-400" />
+              <span className="text-[11px] font-black text-gray-400 tracking-wider uppercase">みんなの投稿の「行きたい」</span>
+              <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">{markedWtgCount}</span>
+            </div>
+            {markedWtgLoading ? (
+              <div className="px-0.5 grid grid-cols-3 gap-0.5">
+                {[1,2,3].map(i => <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />)}
+              </div>
+            ) : markedWantToGoPosts.length === 0 ? (
+              <div className="py-8 text-center text-gray-300 text-[12px] font-bold">他の人の投稿で「行きたい」を押してみよう</div>
+            ) : (
+              <div className="px-0.5 grid grid-cols-3 gap-0.5 pb-4">
+                {markedWantToGoPosts.map(post => (
+                  <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
+                    {post.image_url ? (
+                      <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-indigo-50"><span className="text-2xl opacity-50">🍽️</span></div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
+                    <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
+                      <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
+                      {post.user?.name && <span className="text-orange-300 font-black text-[8px] drop-shadow-md truncate mt-0.5">by {post.user.name}</span>}
+                    </div>
+                    {/* Bookmark badge */}
+                    <div className="absolute top-1.5 right-1.5 bg-orange-500/90 text-white w-5 h-5 rounded-full flex items-center justify-center shadow-sm">
+                      <Bookmark size={10} className="fill-white" />
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      ) : loading ? (
         <div className="px-0.5 grid grid-cols-3 gap-0.5">
           {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => (
             <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />
@@ -326,6 +410,7 @@ export default function MyPage() {
           ))}
         </div>
       )}
+
 
       {/* Tag Selector Modal */}
       <TagSelector

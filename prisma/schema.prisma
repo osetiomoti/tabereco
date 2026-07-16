@@ -23,6 +23,8 @@ model User {
   friendships_as_user   Friendship[] @relation("FriendshipsAsUser")
   friendships_as_friend Friendship[] @relation("FriendshipsAsFriend")
   tag_rankings    TagRanking[]
+  want_to_gos     PostWantToGo[]
+  comments        PostComment[]
 
   @@map("users")
 }
@@ -78,6 +80,8 @@ model Post {
   tags        PostTag[]
   groups      PostGroup[]
   tag_rankings TagRanking[]
+  want_to_gos  PostWantToGo[]
+  comments     PostComment[]
 
   @@map("posts")
 }
@@ -140,4 +144,30 @@ model TagRanking {
 
   @@unique([user_id, tag_name, post_id])
   @@map("tag_rankings")
+}
+
+model PostWantToGo {
+  id         String   @id @default(uuid()) @db.Uuid
+  post_id    String   @db.Uuid
+  user_id    String   @db.Uuid
+  created_at DateTime @default(now())
+  post       Post     @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([post_id, user_id])
+  @@map("post_want_to_gos")
+}
+
+model PostComment {
+  id         String   @id @default(uuid()) @db.Uuid
+  post_id    String   @db.Uuid
+  user_id    String   @db.Uuid
+  content    String
+  rating     Float?   
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  post       Post     @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("post_comments")
 }

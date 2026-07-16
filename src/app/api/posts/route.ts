@@ -14,10 +14,38 @@ export async function GET(request: NextRequest) {
       const status = searchParams.get('status');
       const isFavoriteParam = searchParams.get('is_favorite');
       const tagId = searchParams.get('tag_id');
+      const markedWantToGo = searchParams.get('marked_want_to_go') === 'true';
+      const isMine = searchParams.get('is_mine') === 'true';
+
+      // Fetch posts that the current user marked as want-to-go on OTHER users' posts
+      if (markedWantToGo) {
+        const wantToGos = await prisma.postWantToGo.findMany({
+          where: { user_id: auth.userId },
+          include: {
+            post: {
+              include: {
+                user: { select: { id: true, name: true, avatar_url: true } },
+                tags: { include: { tag: true } },
+              },
+            },
+          },
+          orderBy: { created_at: 'desc' },
+        });
+
+        const result = wantToGos
+          .filter((w) => w.post.user_id !== auth.userId)
+          .map((w) => ({
+            ...w.post,
+            tags: w.post.tags.map((pt: any) => pt.tag),
+            _markedWantToGoAt: w.created_at,
+          }));
+
+        return NextResponse.json({ success: true, data: result });
+      }
 
       const posts = await prisma.post.findMany({
         where: {
-          user_id: auth.userId,
+          ...(isMine ? { user_id: auth.userId } : { user_id: auth.userId }),
           ...(status ? { status } : {}),
           ...(isFavoriteParam === 'true' ? { is_favorite: true } : {}),
           ...(keyword ? { title: { contains: keyword, mode: 'insensitive' } } : {}),
