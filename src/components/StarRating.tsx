@@ -65,37 +65,29 @@ export function StarInput({ value, onChange }: InputProps) {
       {/* Stars: click for 0.5 step */}
       <div className="flex gap-1">
         {STARS.map((s) => {
-          const isFull = s <= value;
-          const isHalf = !isFull && (s - 0.5) <= value;
+          const fillPercent = Math.max(0, Math.min(1, value - (s - 1)));
 
           return (
-            <div key={s} className="flex relative">
-              {/* Left half → 0.5 */}
-              <button
-                type="button"
-                onClick={() => onChange(s - 0.5)}
-                className="w-5 h-10 overflow-hidden transition-all active:scale-90"
-              >
-                <div className="w-10 h-10 flex items-center justify-center">
-                  <Star
-                    size={32}
-                    className={`${isFull || isHalf ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'}`}
-                  />
-                </div>
-              </button>
-              {/* Right half → 1.0 */}
-              <button
-                type="button"
-                onClick={() => onChange(s)}
-                className="w-5 h-10 overflow-hidden transition-all active:scale-90"
-              >
-                <div className="w-10 h-10 flex items-center justify-center -translate-x-5">
-                  <Star
-                    size={32}
-                    className={`${isFull ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'}`}
-                  />
-                </div>
-              </button>
+            <div key={s} className="relative w-10 h-10 group">
+              {/* Background visual exact fill */}
+              <div className="absolute inset-0 pointer-events-none flex items-center justify-center transition-transform group-active:scale-90">
+                <StarIcon fillPercent={fillPercent} size={32} />
+              </div>
+              {/* Foreground interactive clickable halves */}
+              <div className="absolute inset-0 flex">
+                {/* Left half → 0.5 */}
+                <button
+                  type="button"
+                  onClick={() => onChange(s - 0.5)}
+                  className="flex-1 h-full cursor-pointer rounded-l-md"
+                />
+                {/* Right half → 1.0 */}
+                <button
+                  type="button"
+                  onClick={() => onChange(s)}
+                  className="flex-1 h-full cursor-pointer rounded-r-md"
+                />
+              </div>
             </div>
           );
         })}
