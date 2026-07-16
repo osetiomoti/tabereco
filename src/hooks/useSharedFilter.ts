@@ -8,6 +8,7 @@ type SharedFilterState = {
   activeGroups: string[];
   advancedFilters: any;
   activeMapTag: string | null;
+  filterMode?: 'group' | 'registrant';
 };
 
 const defaultState: SharedFilterState = {
