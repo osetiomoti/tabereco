@@ -93,7 +93,7 @@ function MapPageInner() {
 
           {/* Active Filter Chips */}
           <FilterChips
-            filters={{ ...(advancedFilters || {}), status: activeTab }}
+            filters={{ ...(advancedFilters || {}), status: activeTab, filterMode: filterState.filterMode }}
             onRemove={removeFilter}
             users={memberUsers}
             groups={joinedGroups}

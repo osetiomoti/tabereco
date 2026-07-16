@@ -379,12 +379,25 @@ export function FilterChips({
   
   const mode = filters.filterMode || 'group';
 
-  // 1段目: グループ or 投稿者
+  // 1段目: グループ or 投稿者（全選択でも1つずつチップ）
   if (mode === 'group') {
     const allGroups = !filters.activeGroups || filters.activeGroups.length === 0 || filters.activeGroups.includes('all');
     if (allGroups) {
-      // 全グループ選択
-      primaryChips.push({ key: 'group-all', label: '👥 すべてのグループ', color: 'bg-indigo-50 text-indigo-500 border-indigo-100' });
+      // 全グループ → groups リストから1つずつチップ
+      if (groups && groups.length > 0) {
+        groups.forEach(group => {
+          primaryChips.push({
+            key: `group-${group.id}`,
+            label: `👥 ${group.name}`,
+            color: 'bg-indigo-50 text-indigo-500 border-indigo-100',
+            isGroup: true,
+            groupId: group.id,
+          });
+        });
+      } else {
+        // グループ情報がまだ読み込まれていない場合
+        primaryChips.push({ key: 'group-all', label: '👥 すべてのグループ', color: 'bg-indigo-50 text-indigo-500 border-indigo-100' });
+      }
     } else {
       filters.activeGroups.forEach((groupId: string) => {
         const group = groups?.find(g => g.id === groupId);
@@ -401,8 +414,20 @@ export function FilterChips({
   } else {
     const allSelected = !filters.registrantUserIds || filters.registrantUserIds.length === 0;
     if (allSelected) {
-      // 全員選択
-      primaryChips.push({ key: 'member-all', label: '👤 全員', color: 'bg-indigo-50 text-indigo-500 border-indigo-100' });
+      // 全員 → users リストから1つずつチップ
+      if (users && users.length > 0) {
+        users.forEach(user => {
+          primaryChips.push({
+            key: `registrant-${user.id}`,
+            label: `👤 ${user.name}`,
+            color: 'bg-indigo-50 text-indigo-500 border-indigo-100',
+            isRegistrant: true,
+            userId: user.id,
+          });
+        });
+      } else {
+        primaryChips.push({ key: 'member-all', label: '👤 全員', color: 'bg-indigo-50 text-indigo-500 border-indigo-100' });
+      }
     } else {
       filters.registrantUserIds.forEach((userId: string) => {
         const user = users?.find((u: { id: string, name: string }) => u.id === userId);
