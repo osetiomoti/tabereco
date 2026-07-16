@@ -93,7 +93,12 @@ function MapPageInner() {
 
           {/* Active Filter Chips */}
           <FilterChips
-            filters={{ ...(advancedFilters || {}), status: activeTab, filterMode: filterState.filterMode }}
+            filters={{ 
+              ...(advancedFilters || {}), 
+              status: activeTab, 
+              filterMode: filterState.filterMode || 'group',
+              activeGroups: activeGroups,
+            }}
             onRemove={removeFilter}
             users={memberUsers}
             groups={joinedGroups}
@@ -115,18 +120,25 @@ function MapPageInner() {
         </div>
       </main>
 
-      <FilterModal 
+      <FilterModal
         isOpen={isFilterModalOpen}
         onClose={() => setIsFilterModalOpen(false)}
         onApply={(f) => {
           const { activeGroups: newGroups, ...rest } = f as any;
-          updateFilter({ 
+          // Clean up advancedFilters so empty values are excluded
+          const cleanedRest = Object.fromEntries(
+            Object.entries(rest).filter(([k, v]) => v !== undefined && v !== null && v !== '' && (Array.isArray(v) ? v.length > 0 : true))
+          );
+          
+          updateFilter({
+            filterMode: (f as any).filterMode || 'group',
             activeGroups: newGroups || ['all'],
-            advancedFilters: Object.keys(rest).some(k => rest[k] && rest[k] !== 'all' && rest[k] !== '' && rest[k] !== false) ? rest : null
+            advancedFilters: Object.keys(cleanedRest).length > 0 ? cleanedRest : undefined
           });
         }}
         initialFilters={{
           ...(advancedFilters || {}),
+          filterMode: filterState.filterMode || 'group',
           activeGroups: activeGroups,
         } as any}
       />

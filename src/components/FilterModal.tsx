@@ -36,7 +36,8 @@ type Props = {
 };
 
 const PERIOD_OPTIONS = [
-  { label: 'すべての期間', value: 'all' },
+  { label: '指定なし', value: 'none' },
+  { label: 'すべての期間（日付あり）', value: 'all' },
   { label: '今月', value: 'this_month' },
   { label: '過去3ヶ月', value: 'last_3_months' },
   { label: '今年', value: 'this_year' },
@@ -48,7 +49,7 @@ const PRICE_OPTIONS = [0, 1000, 2000, 3000, 4000, 5000, 10000];
 
 const DEFAULT: FilterState = {
   tags: [],
-  period: 'all',
+  period: 'none',
   filterMode: 'group',
   registrantUserIds: [],
   status: 'all',
@@ -99,6 +100,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
 
     setFilters(prev => {
       const base = { ...DEFAULT, ...(initialFilters || {}) };
+      // Fallback if period is 'all' but intended to be 'none' from old data? We can leave as is, DEFAULT has 'none'
       if (!initialFilters?.activeGroups || initialFilters.activeGroups.length === 0 || initialFilters.activeGroups.includes('all')) {
         base.activeGroups = swrGroups.map(g => g.id);
       }

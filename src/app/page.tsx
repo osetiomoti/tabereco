@@ -10,6 +10,8 @@ import {
   Trophy,
   TrendingUp,
   Heart,
+  Bookmark,
+  BookmarkCheck,
   ChevronRight,
   AlertCircle,
   Calendar,
@@ -144,6 +146,16 @@ export default function HomePage() {
           const wantToGoList = Array.from(wantToGoMap.values());
           setAllGroupWantToGo(wantToGoList);
 
+          const initialLikes: Record<string, boolean> = {};
+          const initialCounts: Record<string, number> = {};
+          
+          Array.from(allPostsMap.values()).forEach((p: any) => {
+             initialCounts[p.id] = p.want_to_gos?.length || 0;
+             initialLikes[p.id] = p.want_to_gos?.some((w: any) => w.user_id === myId) || false;
+          });
+          setLikedPosts(initialLikes);
+          setLikesCount(initialCounts);
+
           // ランキングデータを取得
           try {
             const rankRes = await fetch('/api/rankings/top');
@@ -178,9 +190,11 @@ export default function HomePage() {
     }
   };
 
-  const toggleLike = (postId: string, e: React.MouseEvent) => {
+  const toggleLike = async (postId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    
+    // Optimistic UI update
     setLikedPosts(prev => {
       const isLiked = !prev[postId];
       setLikesCount(cPrev => {
@@ -189,6 +203,12 @@ export default function HomePage() {
       });
       return { ...prev, [postId]: isLiked };
     });
+
+    try {
+      await fetch(`/api/posts/${postId}/want-to-go`, { method: 'POST' });
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   const getLikes = (postId: string) => likesCount[postId] ?? 0;
@@ -525,11 +545,15 @@ export default function HomePage() {
                 <button
                   onClick={(e) => toggleLike(currentFeedPost.id, e)}
                   className={`flex items-center gap-1.5 text-[10px] font-black transition-all ${
-                    likedPosts[currentFeedPost.id] ? 'text-pink-500 scale-105' : 'text-gray-400 hover:text-pink-500'
+                    likedPosts[currentFeedPost.id] ? 'text-orange-500 scale-105' : 'text-gray-400 hover:text-orange-500'
                   }`}
                 >
-                  <Heart size={14} className={`transition-transform duration-300 ${likedPosts[currentFeedPost.id] ? 'fill-pink-500 scale-110' : ''}`} />
-                  <span>食べたそう！ ({getLikes(currentFeedPost.id)})</span>
+                  {likedPosts[currentFeedPost.id] ? (
+                    <BookmarkCheck size={14} className="transition-transform duration-300 scale-110" />
+                  ) : (
+                    <Bookmark size={14} className="transition-transform duration-300" />
+                  )}
+                  <span>行きたい！ ({getLikes(currentFeedPost.id)})</span>
                 </button>
                 <Link href={`/posts/${currentFeedPost.id}`} className="text-[9px] font-black text-orange-500 hover:underline">
                   詳細を見る →

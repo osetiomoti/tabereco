@@ -49,6 +49,7 @@ export async function GET(
             tag: true,
           },
         },
+        want_to_gos: true,
       },
       orderBy: {
         visited_at: 'desc',

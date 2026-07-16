@@ -159,37 +159,41 @@ export function useFilteredPosts() {
     }
 
     // ── 期間フィルター ──
-    const period = advancedFilters?.period;
-    if (period && period !== 'all') {
-      const now = new Date();
-      let startDate: Date | null = null;
-      let endDate: Date | null = null;
+    const period = advancedFilters?.period || 'none';
+    if (period !== 'none') {
+      // 指定がある場合、日付が設定されていることが前提
+      result = result.filter(p => !!p.visited_at);
 
-      if (period === 'this_month') {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-      } else if (period === 'last_3_months') {
-        startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
-        endDate = now;
-      } else if (period === 'this_year') {
-        startDate = new Date(now.getFullYear(), 0, 1);
-        endDate = new Date(now.getFullYear(), 11, 31);
-      } else if (period === 'last_year') {
-        startDate = new Date(now.getFullYear() - 1, 0, 1);
-        endDate = new Date(now.getFullYear() - 1, 11, 31);
-      } else if (period === 'custom') {
-        if (advancedFilters?.period_start) startDate = new Date(advancedFilters.period_start);
-        if (advancedFilters?.period_end) endDate = new Date(advancedFilters.period_end);
-      }
+      if (period !== 'all') {
+        const now = new Date();
+        let startDate: Date | null = null;
+        let endDate: Date | null = null;
 
-      if (startDate || endDate) {
-        result = result.filter(p => {
-          if (!p.visited_at) return false;
-          const d = new Date(p.visited_at);
-          if (startDate && d < startDate) return false;
-          if (endDate && d > endDate) return false;
-          return true;
-        });
+        if (period === 'this_month') {
+          startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+          endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        } else if (period === 'last_3_months') {
+          startDate = new Date(now.getFullYear(), now.getMonth() - 3, 1);
+          endDate = now;
+        } else if (period === 'this_year') {
+          startDate = new Date(now.getFullYear(), 0, 1);
+          endDate = new Date(now.getFullYear(), 11, 31);
+        } else if (period === 'last_year') {
+          startDate = new Date(now.getFullYear() - 1, 0, 1);
+          endDate = new Date(now.getFullYear() - 1, 11, 31);
+        } else if (period === 'custom') {
+          if (advancedFilters?.period_start) startDate = new Date(advancedFilters.period_start);
+          if (advancedFilters?.period_end) endDate = new Date(advancedFilters.period_end);
+        }
+
+        if (startDate || endDate) {
+          result = result.filter(p => {
+            const d = new Date(p.visited_at!);
+            if (startDate && d < startDate) return false;
+            if (endDate && d > endDate) return false;
+            return true;
+          });
+        }
       }
     }
 
