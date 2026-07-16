@@ -4,10 +4,16 @@ import { NextResponse, type NextRequest } from 'next/server';
 function isTokenExpiredOrMissing(token: string | undefined): boolean {
   if (!token) return true;
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
+    const base64Url = token.split('.')[1];
+    if (!base64Url) return true;
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const padLen = (4 - (base64.length % 4)) % 4;
+    const padded = base64 + '='.repeat(padLen);
+    const payload = JSON.parse(atob(padded));
     const exp = payload.exp as number;
     return Date.now() / 1000 > exp - 30; // 30秒のバッファ
-  } catch {
+  } catch (e) {
+    console.error('[proxy] JWT parse error:', e);
     return true;
   }
 }

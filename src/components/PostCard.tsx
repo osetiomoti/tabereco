@@ -491,10 +491,16 @@ export function FilterChips({
         <div className="flex overflow-x-auto gap-2 pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ minWidth: 0 }}>
           {primaryChips.map(chip => renderChip(chip, () => {
             if (chip.isRegistrant && chip.userId) {
-              const newIds = (filters.registrantUserIds || []).filter((id: string) => id !== chip.userId);
+              const currentIds = (filters.registrantUserIds && filters.registrantUserIds.length > 0)
+                ? filters.registrantUserIds
+                : (users || []).map(u => u.id);
+              const newIds = currentIds.filter((id: string) => id !== chip.userId);
               onRemove({ registrantUserIds: newIds } as any);
             } else if (chip.isGroup && chip.groupId) {
-              const newIds = (filters.activeGroups || []).filter((id: string) => id !== chip.groupId);
+              const currentIds = (filters.activeGroups && filters.activeGroups.length > 0 && !filters.activeGroups.includes('all'))
+                ? filters.activeGroups
+                : (groups || []).map(g => g.id);
+              const newIds = currentIds.filter((id: string) => id !== chip.groupId);
               onRemove({ activeGroups: newIds } as any);
             } else {
               onRemove(chip.key);
