@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Bookmark, BookmarkCheck, Star, Send, Trash2, User, ChevronDown } from 'lucide-react';
-import { StarDisplay } from './StarRating';
+import { Bookmark, BookmarkCheck, Star, Send, Trash2, User, ChevronDown, Pencil, X } from 'lucide-react';
+import { StarDisplay, StarInput } from './StarRating';
 
 // ── Want-to-Go Button ────────────────────────────────────
 type WantToGoButtonProps = {
@@ -127,47 +127,7 @@ type CommentsSectionProps = {
   ownerRating: number;
 };
 
-function StarSelect({ value, onChange }: { value: number | null; onChange: (v: number | null) => void }) {
-  const STARS = [1, 2, 3, 4, 5];
-  return (
-    <div className="flex items-center gap-1">
-      {value !== null && (
-        <button
-          type="button"
-          onClick={() => onChange(null)}
-          className="text-[10px] text-gray-400 font-bold mr-1 hover:text-red-400 transition-colors"
-        >
-          評価なし
-        </button>
-      )}
-      {STARS.map((s) => {
-        const isFull = value !== null && s <= value;
-        const isHalf = value !== null && !isFull && s - 0.5 <= value;
-        return (
-          <div key={s} className="relative w-7 h-7 flex">
-            <button
-              type="button"
-              onClick={() => onChange(s - 0.5)}
-              className="w-3.5 h-7 absolute left-0 z-10"
-            />
-            <button
-              type="button"
-              onClick={() => onChange(s)}
-              className="w-3.5 h-7 absolute right-0 z-10"
-            />
-            <Star
-              size={26}
-              className={`${isFull || isHalf ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'}`}
-            />
-          </div>
-        );
-      })}
-      {value !== null && (
-        <span className="text-sm font-black text-orange-500 ml-1">{value.toFixed(1)}</span>
-      )}
-    </div>
-  );
-}
+
 
 export function CommentsSection({
   postId,
@@ -180,6 +140,12 @@ export function CommentsSection({
   const [content, setContent] = useState('');
   const [rating, setRating] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Edit states
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [editRating, setEditRating] = useState<number | null>(null);
+  const [savingEdit, setSavingEdit] = useState(false);
 
   const fetchComments = () => {
     fetch(`/api/posts/${postId}/comments`)
@@ -217,16 +183,46 @@ export function CommentsSection({
     }
   };
 
+  const handleEditClick = (c: Comment) => {
+    setEditingCommentId(c.id);
+    setEditContent(c.content);
+    setEditRating(c.rating ?? null);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent, commentId: string) => {
+    e.preventDefault();
+    if (!editContent.trim() || savingEdit) return;
+    setSavingEdit(true);
+    try {
+      const res = await fetch(`/api/posts/${postId}/comments?commentId=${commentId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: editContent, rating: editRating }),
+      });
+      const json = await res.json();
+      if (json.success) {
+        setEditingCommentId(null);
+        fetchComments();
+      }
+    } finally {
+      setSavingEdit(false);
+    }
+  };
+
   const handleDelete = async (commentId: string) => {
+    if (!confirm('コメントを削除しますか？')) return;
     await fetch(`/api/posts/${postId}/comments?commentId=${commentId}`, { method: 'DELETE' });
     fetchComments();
   };
 
-  // Calculate average rating from comments
-  const ratingComments = comments.filter((c) => c.rating != null);
+  // Calculate average rating from comments AND the owner's rating
+  const allRatings = comments.filter((c) => c.rating != null).map(c => c.rating as number);
+  if (ownerRating != null && ownerRating > 0) {
+    allRatings.push(ownerRating);
+  }
   const avgRating =
-    ratingComments.length > 0
-      ? ratingComments.reduce((sum, c) => sum + (c.rating ?? 0), 0) / ratingComments.length
+    allRatings.length > 0
+      ? allRatings.reduce((sum, r) => sum + r, 0) / allRatings.length
       : null;
 
   const isOwner = currentUserId === postOwnerId;
@@ -241,19 +237,12 @@ export function CommentsSection({
       {/* Average ratings block */}
       {avgRating !== null && (
         <div className="px-5 py-4 bg-gray-50/50 border-b border-gray-100">
-          <p className="text-[11px] font-bold text-gray-400 mb-2 tracking-wider">みんなの評価平均</p>
+          <p className="text-[11px] font-bold text-gray-400 mb-2 tracking-wider">全体の評価平均</p>
           <div className="flex items-center gap-3">
             <StarDisplay rating={avgRating} size="md" />
             <span className="text-[12px] text-gray-500 font-bold">
-              ({ratingComments.length}件の評価)
+              ({allRatings.length}件の評価)
             </span>
-          </div>
-          {/* Compare with owner's rating */}
-          <div className="flex items-center gap-3 mt-2">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-bold text-gray-400">投稿者の評価:</span>
-              <StarDisplay rating={ownerRating} size="xs" />
-            </div>
           </div>
         </div>
       )}
@@ -271,46 +260,83 @@ export function CommentsSection({
         ) : (
           comments.map((c) => (
             <div key={c.id} className="px-5 py-4">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center flex-shrink-0 mt-0.5">
-                  {c.user.avatar_url ? (
-                    <Image
-                      src={c.user.avatar_url}
-                      alt={c.user.name}
-                      width={32}
-                      height={32}
-                      className="object-cover"
-                    />
-                  ) : (
-                    <User size={14} className="text-gray-400" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-[12px] font-black text-gray-800">{c.user.name}</span>
-                    <span className="text-[10px] text-gray-400">
-                      {new Date(c.created_at).toLocaleDateString('ja-JP', {
-                        month: 'short',
-                        day: 'numeric',
-                      })}
-                    </span>
-                    {currentUserId === c.user.id && (
-                      <button
-                        onClick={() => handleDelete(c.id)}
-                        className="ml-auto text-gray-300 hover:text-red-400 transition-colors"
-                      >
-                        <Trash2 size={13} />
-                      </button>
+              {editingCommentId === c.id ? (
+                // Edit mode
+                <form onSubmit={(e) => handleEditSubmit(e, c.id)} className="bg-white p-3 rounded-2xl border border-gray-200">
+                  <div className="flex justify-between items-center mb-3">
+                    <p className="text-[11px] font-bold text-gray-400 tracking-wider">コメントを編集</p>
+                    <button type="button" onClick={() => setEditingCommentId(null)} className="text-gray-400 hover:text-gray-600">
+                      <X size={16} />
+                    </button>
+                  </div>
+                  <div className="mb-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <label className="text-[12px] font-bold text-gray-500">評価 (オプション)</label>
+                      {editRating === null ? (
+                        <button type="button" onClick={() => setEditRating(3.0)} className="text-[11px] text-orange-500 font-bold border border-orange-200 px-2 py-0.5 rounded-full hover:bg-orange-50">評価をつける</button>
+                      ) : (
+                        <button type="button" onClick={() => setEditRating(null)} className="text-[11px] text-gray-400 font-bold hover:text-red-400">評価を外す</button>
+                      )}
+                    </div>
+                    {editRating !== null && (
+                      <div className="scale-90 origin-left">
+                        <StarInput value={editRating} onChange={setEditRating} />
+                      </div>
                     )}
                   </div>
-                  {c.rating != null && (
-                    <div className="mb-1.5">
-                      <StarDisplay rating={c.rating} size="xs" />
+                  <div className="flex gap-2">
+                    <textarea
+                      value={editContent}
+                      onChange={(e) => setEditContent(e.target.value)}
+                      placeholder="コメントを入力..."
+                      rows={2}
+                      className="flex-1 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-[13px] text-gray-800 placeholder:text-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-100 resize-none font-medium"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!editContent.trim() || savingEdit}
+                      className="w-10 h-10 self-end flex items-center justify-center bg-orange-500 hover:bg-orange-600 disabled:bg-gray-200 text-white rounded-xl transition-all active:scale-95 flex-shrink-0"
+                    >
+                      {savingEdit ? <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" /> : <Send size={16} />}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                // View mode
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center flex-shrink-0 mt-0.5">
+                    {c.user.avatar_url ? (
+                      <Image src={c.user.avatar_url} alt={c.user.name} width={32} height={32} className="object-cover" />
+                    ) : (
+                      <User size={14} className="text-gray-400" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-[12px] font-black text-gray-800">{c.user.name}</span>
+                      <span className="text-[10px] text-gray-400">
+                        {new Date(c.created_at).toLocaleDateString('ja-JP', { month: 'short', day: 'numeric' })}
+                      </span>
+                      {currentUserId === c.user.id && (
+                        <div className="ml-auto flex items-center gap-2">
+                          <button onClick={() => handleEditClick(c)} className="text-gray-300 hover:text-gray-600 transition-colors">
+                            <Pencil size={12} />
+                          </button>
+                          <button onClick={() => handleDelete(c.id)} className="text-gray-300 hover:text-red-400 transition-colors">
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      )}
                     </div>
-                  )}
-                  <p className="text-[13px] text-gray-600 leading-relaxed">{c.content}</p>
+                    {c.rating != null && (
+                      <div className="mb-1.5">
+                        <StarDisplay rating={c.rating} size="xs" />
+                      </div>
+                    )}
+                    <p className="text-[13px] text-gray-600 leading-relaxed whitespace-pre-wrap">{c.content}</p>
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           ))
         )}
@@ -324,7 +350,19 @@ export function CommentsSection({
         >
           <p className="text-[11px] font-bold text-gray-400 mb-3 tracking-wider">コメントを追加</p>
           <div className="mb-3">
-            <StarSelect value={rating} onChange={setRating} />
+            <div className="flex items-center gap-2 mb-2">
+              <label className="text-[12px] font-bold text-gray-500">評価 (オプション)</label>
+              {rating === null ? (
+                <button type="button" onClick={() => setRating(3.0)} className="text-[11px] text-orange-500 font-bold border border-orange-200 px-2 py-0.5 rounded-full hover:bg-orange-50">評価をつける</button>
+              ) : (
+                <button type="button" onClick={() => setRating(null)} className="text-[11px] text-gray-400 font-bold hover:text-red-400">評価を外す</button>
+              )}
+            </div>
+            {rating !== null && (
+              <div className="scale-90 origin-left">
+                <StarInput value={rating} onChange={setRating} />
+              </div>
+            )}
           </div>
           <div className="flex gap-2">
             <textarea

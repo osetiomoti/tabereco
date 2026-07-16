@@ -66,6 +66,49 @@ export async function POST(
 }
 
 /**
+ * PUT /api/posts/[id]/comments?commentId=xxx
+ * Edit own comment.
+ */
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: _postId } = await params;
+  return withAuth(request, async (auth) => {
+    try {
+      const { searchParams } = new URL(request.url);
+      const commentId = searchParams.get('commentId');
+      if (!commentId) {
+        return NextResponse.json({ success: false, error: 'commentId required' }, { status: 400 });
+      }
+
+      const { content, rating } = await request.json();
+
+      if (!content || content.trim() === '') {
+        return NextResponse.json({ success: false, error: 'Content is required' }, { status: 400 });
+      }
+
+      const comment = await prisma.postComment.updateMany({
+        where: { id: commentId, user_id: auth.userId },
+        data: {
+          content: content.trim(),
+          rating: rating ?? null,
+        },
+      });
+
+      if (comment.count === 0) {
+        return NextResponse.json({ success: false, error: 'Not found or not authorized' }, { status: 404 });
+      }
+
+      return NextResponse.json({ success: true });
+    } catch (e: any) {
+      console.error('[PUT /api/posts/[id]/comments] Error:', e);
+      return NextResponse.json({ success: false, error: e.message }, { status: 500 });
+    }
+  });
+}
+
+/**
  * DELETE /api/posts/[id]/comments?commentId=xxx
  * Delete own comment.
  */
