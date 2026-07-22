@@ -11,7 +11,7 @@ import { PostMenu } from '@/components/PostMenu';
 import { FavoriteToggle } from '@/components/FavoriteToggle';
 import { StarDisplay } from '@/components/StarRating';
 import { ImageCarousel } from '@/components/ImageCarousel';
-import { WantToGoButton, CommentsSection } from '@/components/PostSocial';
+import { CommentsSection, RatingAndActions } from '@/components/PostSocial';
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -231,15 +231,14 @@ export default async function PostDetailPage({ params }: Props) {
         )}
       </div>
 
-      {/* 6. 行きたい */}
-      <WantToGoButton postId={post.id} isOwner={isOwner} />
+      {/* 6. 行動・評価 */}
+      <RatingAndActions postId={post.id} isOwner={isOwner} ownerRating={post.rating} />
 
-      {/* 7. コメント・評価 */}
+      {/* 7. コメント */}
       <CommentsSection
         postId={post.id}
         postOwnerId={post.user_id}
         currentUserId={currentUserId}
-        ownerRating={post.rating}
       />
 
     </main>

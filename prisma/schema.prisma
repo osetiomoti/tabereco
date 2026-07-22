@@ -24,6 +24,7 @@ model User {
   friendships_as_friend Friendship[] @relation("FriendshipsAsFriend")
   tag_rankings    TagRanking[]
   want_to_gos     PostWantToGo[]
+  visiteds        PostVisited[]
   comments        PostComment[]
 
   @@map("users")
@@ -81,6 +82,7 @@ model Post {
   groups      PostGroup[]
   tag_rankings TagRanking[]
   want_to_gos  PostWantToGo[]
+  visiteds     PostVisited[]
   comments     PostComment[]
 
   @@map("posts")
@@ -170,4 +172,18 @@ model PostComment {
   user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@map("post_comments")
+}
+
+model PostVisited {
+  id         String   @id @default(uuid()) @db.Uuid
+  post_id    String   @db.Uuid
+  user_id    String   @db.Uuid
+  rating     Float?   
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  post       Post     @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([post_id, user_id])
+  @@map("post_visiteds")
 }

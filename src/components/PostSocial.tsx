@@ -5,105 +5,193 @@ import Image from 'next/image';
 import { Bookmark, BookmarkCheck, Star, Send, Trash2, User, ChevronDown, Pencil, X } from 'lucide-react';
 import { StarDisplay, StarInput } from './StarRating';
 
-// ── Want-to-Go Button ────────────────────────────────────
-type WantToGoButtonProps = {
+// ── Rating and Actions (Visited / Want-to-Go) ────────────────────────────────────
+type RatingAndActionsProps = {
   postId: string;
   isOwner: boolean;
+  ownerRating: number;
 };
 
-export function WantToGoButton({ postId, isOwner }: WantToGoButtonProps) {
-  const [isMarked, setIsMarked] = useState(false);
-  const [count, setCount] = useState(0);
+export function RatingAndActions({ postId, isOwner, ownerRating }: RatingAndActionsProps) {
+  const [wtgMarked, setWtgMarked] = useState(false);
+  const [wtgCount, setWtgCount] = useState(0);
+  const [wtgUsers, setWtgUsers] = useState<any[]>([]);
+  const [showWtgUsers, setShowWtgUsers] = useState(false);
+  const [wtgToggling, setWtgToggling] = useState(false);
+
+  const [visMarked, setVisMarked] = useState(false);
+  const [visCount, setVisCount] = useState(0);
+  const [visUsers, setVisUsers] = useState<any[]>([]);
+  const [myRating, setMyRating] = useState<number | null>(null);
+  const [showVisUsers, setShowVisUsers] = useState(false);
+  const [visToggling, setVisToggling] = useState(false);
+  const [showRatingDetails, setShowRatingDetails] = useState(false);
+  
   const [loading, setLoading] = useState(true);
-  const [users, setUsers] = useState<{ id: string; name: string; avatar_url?: string }[]>([]);
-  const [showUsers, setShowUsers] = useState(false);
-  const [toggling, setToggling] = useState(false);
 
-  useEffect(() => {
-    fetch(`/api/posts/${postId}/want-to-go`)
-      .then((r) => r.json())
-      .then((j) => {
-        if (j.success) {
-          setIsMarked(j.data.isMarked);
-          setCount(j.data.count);
-          setUsers(j.data.users);
-        }
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
-  }, [postId]);
-
-  const toggle = async () => {
-    if (toggling) return;
-    setToggling(true);
+  const fetchData = async () => {
     try {
-      const res = await fetch(`/api/posts/${postId}/want-to-go`, { method: 'POST' });
-      const json = await res.json();
-      if (json.success) {
-        setIsMarked(json.marked);
-        // re-fetch to get updated user list
-        const updated = await fetch(`/api/posts/${postId}/want-to-go`).then((r) => r.json());
-        if (updated.success) {
-          setCount(updated.data.count);
-          setUsers(updated.data.users);
-        }
+      const [wtgRes, visRes] = await Promise.all([
+        fetch(`/api/posts/${postId}/want-to-go`).then(r => r.json()),
+        fetch(`/api/posts/${postId}/visited`).then(r => r.json())
+      ]);
+      if (wtgRes.success) {
+        setWtgMarked(wtgRes.data.isMarked);
+        setWtgCount(wtgRes.data.count);
+        setWtgUsers(wtgRes.data.users);
+      }
+      if (visRes.success) {
+        setVisMarked(visRes.data.isMarked);
+        setVisCount(visRes.data.count);
+        setVisUsers(visRes.data.users);
+        setMyRating(visRes.data.myRating);
       }
     } finally {
-      setToggling(false);
+      setLoading(false);
     }
   };
 
-  if (isOwner) return null;
+  useEffect(() => {
+    fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [postId]);
+
+  const toggleWtg = async () => {
+    if (wtgToggling) return;
+    setWtgToggling(true);
+    try {
+      await fetch(`/api/posts/${postId}/want-to-go`, { method: 'POST' });
+      fetchData();
+    } finally {
+      setWtgToggling(false);
+    }
+  };
+
+  const toggleVis = async () => {
+    if (visToggling) return;
+    setVisToggling(true);
+    try {
+      await fetch(`/api/posts/${postId}/visited`, { method: 'POST' });
+      fetchData();
+    } finally {
+      setVisToggling(false);
+    }
+  };
+
+  const updateMyRating = async (val: number | null) => {
+    setMyRating(val); // optimistic UI
+    await fetch(`/api/posts/${postId}/visited`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rating: val })
+    });
+    fetchData();
+  };
+
+  const allRatings = visUsers.filter(u => u.rating != null).map(u => u.rating as number);
+  if (ownerRating != null && ownerRating > 0) allRatings.push(ownerRating);
+  const avgRating = allRatings.length > 0 ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length : null;
+
   if (loading) return null;
 
   return (
-    <div className="px-4 py-3 border-b border-gray-100">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <button
-            onClick={toggle}
-            disabled={toggling}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl font-black text-[13px] transition-all active:scale-95 ${
-              isMarked
-                ? 'bg-orange-500 text-white shadow-md shadow-orange-200'
-                : 'bg-gray-100 text-gray-600 hover:bg-orange-50 hover:text-orange-500'
-            }`}
-          >
-            {isMarked ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
-            {isMarked ? '行きたいに登録済み' : '行きたいに追加'}
-          </button>
-        </div>
-        {count > 0 && (
-          <button
-            onClick={() => setShowUsers((v) => !v)}
-            className="flex items-center gap-1.5 text-[12px] font-bold text-gray-500 hover:text-orange-500 transition-colors"
-          >
-            <span className="bg-orange-100 text-orange-500 font-black px-2 py-0.5 rounded-full text-[11px]">
-              {count}人
-            </span>
-            が行きたい
-            <ChevronDown
-              size={13}
-              className={`transition-transform ${showUsers ? 'rotate-180' : ''}`}
-            />
-          </button>
-        )}
-      </div>
-
-      {showUsers && users.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2">
-          {users.map((u) => (
-            <div key={u.id} className="flex items-center gap-1.5 bg-gray-50 rounded-full px-3 py-1.5">
-              <div className="w-6 h-6 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center flex-shrink-0">
-                {u.avatar_url ? (
-                  <Image src={u.avatar_url} alt={u.name} width={24} height={24} className="object-cover" />
-                ) : (
-                  <User size={12} className="text-gray-400" />
-                )}
-              </div>
-              <span className="text-[11px] font-bold text-gray-700">{u.name}</span>
+    <div>
+      {!isOwner && (
+        <div className="px-4 py-4 border-b border-gray-100 bg-white">
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center gap-3">
+              <button
+                onClick={toggleVis}
+                disabled={visToggling}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-black text-[13px] transition-all active:scale-95 ${
+                  visMarked
+                    ? 'bg-orange-500 text-white shadow-md shadow-orange-200'
+                    : 'bg-gray-100 text-gray-600 hover:bg-orange-50 hover:text-orange-500'
+                }`}
+              >
+                <BookmarkCheck size={16} />
+                {visMarked ? '行ったに追加済み' : '行ったに追加'}
+              </button>
+              
+              <button
+                onClick={toggleWtg}
+                disabled={wtgToggling}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-black text-[13px] transition-all active:scale-95 ${
+                  wtgMarked
+                    ? 'bg-orange-100 text-orange-600 shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-orange-50 hover:text-orange-500'
+                }`}
+              >
+                {wtgMarked ? <BookmarkCheck size={16} /> : <Bookmark size={16} />}
+                {wtgMarked ? '行きたいに追加済み' : '行きたいに追加'}
+              </button>
             </div>
-          ))}
+
+            {visMarked && (
+              <div className="bg-orange-50/50 border border-orange-100 rounded-2xl p-4 animate-in slide-in-from-top-2 duration-300">
+                <div className="flex items-center justify-between mb-2">
+                  <label className="text-[12px] font-bold text-orange-800">あなたの評価 (任意)</label>
+                  {myRating !== null && (
+                    <button onClick={() => updateMyRating(null)} className="text-[10px] text-gray-400 font-bold hover:text-red-400">
+                      評価をクリア
+                    </button>
+                  )}
+                </div>
+                <StarInput value={myRating ?? 3.0} onChange={(val) => updateMyRating(val)} />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {avgRating !== null && (
+        <div className="px-5 py-4 bg-gray-50/50 border-b border-gray-100 cursor-pointer hover:bg-gray-100/80 transition-colors" onClick={() => setShowRatingDetails(!showRatingDetails)}>
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-[11px] font-bold text-gray-400 mb-2 tracking-wider">全体の評価平均</p>
+              <div className="flex items-center gap-3">
+                <StarDisplay rating={avgRating} size="md" />
+                <span className="text-[12px] text-gray-500 font-bold">
+                  ({allRatings.length}件の評価)
+                </span>
+              </div>
+            </div>
+            <ChevronDown size={18} className={`text-gray-400 transition-transform ${showRatingDetails ? 'rotate-180' : ''}`} />
+          </div>
+
+          {showRatingDetails && (
+            <div className="mt-4 pt-4 border-t border-gray-200/60 animate-in fade-in duration-300">
+              <p className="text-[11px] font-bold text-gray-500 mb-3">評価の詳細</p>
+              <div className="space-y-3">
+                {/* Owner Rating */}
+                {ownerRating != null && ownerRating > 0 && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-[12px] font-bold text-gray-700">
+                      <span className="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center text-[10px] text-orange-600">主</span>
+                      投稿者
+                    </div>
+                    <StarDisplay rating={ownerRating} size="xs" />
+                  </div>
+                )}
+                {/* Visited Users Ratings */}
+                {visUsers.filter(u => u.rating != null).map(u => (
+                  <div key={u.id} className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-[12px] font-bold text-gray-700">
+                      <div className="w-5 h-5 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
+                        {u.avatar_url ? (
+                          <Image src={u.avatar_url} alt={u.name} width={20} height={20} className="object-cover" />
+                        ) : (
+                          <User size={10} className="text-gray-400" />
+                        )}
+                      </div>
+                      {u.name}
+                    </div>
+                    <StarDisplay rating={u.rating} size="xs" />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -124,7 +212,6 @@ type CommentsSectionProps = {
   postId: string;
   postOwnerId: string;
   currentUserId: string | null;
-  ownerRating: number;
 };
 
 
@@ -133,18 +220,15 @@ export function CommentsSection({
   postId,
   postOwnerId,
   currentUserId,
-  ownerRating,
 }: CommentsSectionProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [content, setContent] = useState('');
-  const [rating, setRating] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   // Edit states
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
-  const [editRating, setEditRating] = useState<number | null>(null);
   const [savingEdit, setSavingEdit] = useState(false);
 
   const fetchComments = () => {
@@ -170,12 +254,11 @@ export function CommentsSection({
       const res = await fetch(`/api/posts/${postId}/comments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content, rating }),
+        body: JSON.stringify({ content }),
       });
       const json = await res.json();
       if (json.success) {
         setContent('');
-        setRating(null);
         fetchComments();
       }
     } finally {
@@ -186,7 +269,6 @@ export function CommentsSection({
   const handleEditClick = (c: Comment) => {
     setEditingCommentId(c.id);
     setEditContent(c.content);
-    setEditRating(c.rating ?? null);
   };
 
   const handleEditSubmit = async (e: React.FormEvent, commentId: string) => {
@@ -197,7 +279,7 @@ export function CommentsSection({
       const res = await fetch(`/api/posts/${postId}/comments?commentId=${commentId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: editContent, rating: editRating }),
+        body: JSON.stringify({ content: editContent }),
       });
       const json = await res.json();
       if (json.success) {
@@ -215,16 +297,6 @@ export function CommentsSection({
     fetchComments();
   };
 
-  // Calculate average rating from comments AND the owner's rating
-  const allRatings = comments.filter((c) => c.rating != null).map(c => c.rating as number);
-  if (ownerRating != null && ownerRating > 0) {
-    allRatings.push(ownerRating);
-  }
-  const avgRating =
-    allRatings.length > 0
-      ? allRatings.reduce((sum, r) => sum + r, 0) / allRatings.length
-      : null;
-
   const isOwner = currentUserId === postOwnerId;
 
   return (
@@ -233,19 +305,6 @@ export function CommentsSection({
       <div className="bg-[#a68c7e] text-white px-5 py-3 font-bold text-sm tracking-widest">
         みんなのコメント
       </div>
-
-      {/* Average ratings block */}
-      {avgRating !== null && (
-        <div className="px-5 py-4 bg-gray-50/50 border-b border-gray-100">
-          <p className="text-[11px] font-bold text-gray-400 mb-2 tracking-wider">全体の評価平均</p>
-          <div className="flex items-center gap-3">
-            <StarDisplay rating={avgRating} size="md" />
-            <span className="text-[12px] text-gray-500 font-bold">
-              ({allRatings.length}件の評価)
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* Comment list */}
       <div className="divide-y divide-gray-50">
@@ -270,19 +329,7 @@ export function CommentsSection({
                     </button>
                   </div>
                   <div className="mb-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <label className="text-[12px] font-bold text-gray-500">評価 (オプション)</label>
-                      {editRating === null ? (
-                        <button type="button" onClick={() => setEditRating(3.0)} className="text-[11px] text-orange-500 font-bold border border-orange-200 px-2 py-0.5 rounded-full hover:bg-orange-50">評価をつける</button>
-                      ) : (
-                        <button type="button" onClick={() => setEditRating(null)} className="text-[11px] text-gray-400 font-bold hover:text-red-400">評価を外す</button>
-                      )}
-                    </div>
-                    {editRating !== null && (
-                      <div className="scale-90 origin-left">
-                        <StarInput value={editRating} onChange={setEditRating} />
-                      </div>
-                    )}
+                    {/* Rating logic removed from comments */}
                   </div>
                   <div className="flex gap-2">
                     <textarea
@@ -328,11 +375,6 @@ export function CommentsSection({
                         </div>
                       )}
                     </div>
-                    {c.rating != null && (
-                      <div className="mb-1.5">
-                        <StarDisplay rating={c.rating} size="xs" />
-                      </div>
-                    )}
                     <p className="text-[13px] text-gray-600 leading-relaxed whitespace-pre-wrap">{c.content}</p>
                   </div>
                 </div>
@@ -350,19 +392,7 @@ export function CommentsSection({
         >
           <p className="text-[11px] font-bold text-gray-400 mb-3 tracking-wider">コメントを追加</p>
           <div className="mb-3">
-            <div className="flex items-center gap-2 mb-2">
-              <label className="text-[12px] font-bold text-gray-500">評価 (オプション)</label>
-              {rating === null ? (
-                <button type="button" onClick={() => setRating(3.0)} className="text-[11px] text-orange-500 font-bold border border-orange-200 px-2 py-0.5 rounded-full hover:bg-orange-50">評価をつける</button>
-              ) : (
-                <button type="button" onClick={() => setRating(null)} className="text-[11px] text-gray-400 font-bold hover:text-red-400">評価を外す</button>
-              )}
-            </div>
-            {rating !== null && (
-              <div className="scale-90 origin-left">
-                <StarInput value={rating} onChange={setRating} />
-              </div>
-            )}
+            {/* Rating logic removed from comments */}
           </div>
           <div className="flex gap-2">
             <textarea

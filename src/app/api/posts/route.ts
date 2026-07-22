@@ -15,9 +15,9 @@ export async function GET(request: NextRequest) {
       const isFavoriteParam = searchParams.get('is_favorite');
       const tagId = searchParams.get('tag_id');
       const markedWantToGo = searchParams.get('marked_want_to_go') === 'true';
+      const markedVisited = searchParams.get('marked_visited') === 'true';
       const isMine = searchParams.get('is_mine') === 'true';
 
-      // Fetch posts that the current user marked as want-to-go on OTHER users' posts
       if (markedWantToGo) {
         const wantToGos = await prisma.postWantToGo.findMany({
           where: { user_id: auth.userId },
@@ -39,7 +39,31 @@ export async function GET(request: NextRequest) {
             tags: w.post.tags.map((pt: any) => pt.tag),
             _markedWantToGoAt: w.created_at,
           }));
+        return NextResponse.json({ success: true, data: result });
+      }
 
+      if (markedVisited) {
+        const visiteds = await prisma.postVisited.findMany({
+          where: { user_id: auth.userId },
+          include: {
+            post: {
+              include: {
+                user: { select: { id: true, name: true, avatar_url: true } },
+                tags: { include: { tag: true } },
+              },
+            },
+          },
+          orderBy: { created_at: 'desc' },
+        });
+
+        const result = visiteds
+          .filter((v) => v.post.user_id !== auth.userId)
+          .map((v) => ({
+            ...v.post,
+            tags: v.post.tags.map((pt: any) => pt.tag),
+            _markedVisitedAt: v.created_at,
+            _myRating: v.rating,
+          }));
         return NextResponse.json({ success: true, data: result });
       }
 
@@ -60,6 +84,8 @@ export async function GET(request: NextRequest) {
               tag: true,
             },
           },
+          want_to_gos: true,
+          visiteds: true,
         },
         orderBy: {
           visited_at: 'desc',

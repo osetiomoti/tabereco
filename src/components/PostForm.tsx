@@ -43,7 +43,13 @@ export function PostForm({ post }: Props) {
     store_name: post?.store_name ?? queryName,
     comment: post?.comment ?? '',
     rating: post?.rating ?? 3,
-    visited_at: post?.visited_at ? post.visited_at.split('T')[0] : '',
+    visited_at: post?.visited_at
+      ? typeof post.visited_at === 'string'
+        ? post.visited_at.split('T')[0]
+        : (post.visited_at as any) instanceof Date
+        ? (post.visited_at as any).toISOString().split('T')[0]
+        : ''
+      : '',
     images: [] as File[],
     image_urls: post?.image_urls ?? (post?.image_url ? [post.image_url] : []),
     status: post?.status ?? 'visited',

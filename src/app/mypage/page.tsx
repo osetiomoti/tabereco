@@ -55,6 +55,12 @@ export default function MyPage() {
     (url: string) => fetch(url).then(r => r.json())
   );
 
+  // 他人の投稿に付けた「行った」
+  const { data: markedVisitedData, isLoading: markedVisLoading } = useSWR<{ success: boolean, data: Post[] }>(
+    !targetUserId ? '/api/posts?marked_visited=true' : null,
+    (url: string) => fetch(url).then(r => r.json())
+  );
+
   const user = targetUserId ? targetUserData?.data?.user : myUserData?.data;
   const posts: Post[] = targetUserId ? (targetUserData?.data?.posts || []) : (ownPostsData || []);
   const loading = targetUserId ? !targetUserData : ownPostsLoading;
@@ -68,18 +74,36 @@ export default function MyPage() {
   const [isTagSelectorOpen, setIsTagSelectorOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
 
-  const visitedCount = posts.filter(p => p.status === 'visited').length;
+  const markedWantToGoPosts: Post[] = markedWantToGoData?.data || [];
+  const markedVisitedPosts: Post[] = markedVisitedData?.data || [];
+
+  const ownVisitedCount = posts.filter(p => p.status === 'visited').length;
   const ownWantCount = posts.filter(p => p.is_favorite || p.status === 'want_to_go').length;
-  const markedWtgCount = markedWantToGoData?.data?.length || 0;
+  const markedWtgCount = markedWantToGoPosts.length;
+  const markedVisCount = markedVisitedPosts.length;
+
+  const visitedCount = ownVisitedCount + markedVisCount;
   const wantCount = ownWantCount + markedWtgCount;
 
-  const markedWantToGoPosts: Post[] = markedWantToGoData?.data || [];
-
-  let filteredPosts = posts.filter(p => {
+  // 自分の投稿
+  let filteredOwnPosts = posts.filter(p => {
     if (activeTab === 'visited') return p.status === 'visited';
     if (activeTab === 'want_to_go') return p.status === 'want_to_go' || p.is_favorite;
     return true;
   });
+
+  // まとめ用
+  let filteredPosts: any[] = [];
+  if (activeTab === 'visited') {
+    filteredPosts = [...filteredOwnPosts, ...markedVisitedPosts];
+  } else if (activeTab === 'want_to_go') {
+    filteredPosts = [...filteredOwnPosts, ...markedWantToGoPosts];
+  } else {
+    // すべてタブの場合は重複を排除しつつマージ
+    const allMap = new Map<string, any>();
+    [...posts, ...markedVisitedPosts, ...markedWantToGoPosts].forEach(p => allMap.set(p.id, p));
+    filteredPosts = Array.from(allMap.values());
+  }
 
   if (keyword) {
     const lower = keyword.toLowerCase();
@@ -92,7 +116,7 @@ export default function MyPage() {
 
   if (selectedTags.length > 0) {
     filteredPosts = filteredPosts.filter(p =>
-      selectedTags.every(tag => p.tags?.some(t => t.name === tag))
+      selectedTags.every(tag => p.tags?.some((t: any) => t.name === tag))
     );
   }
 
@@ -404,6 +428,11 @@ export default function MyPage() {
               {post.is_favorite && (
                 <div className="absolute top-1.5 right-1.5 bg-pink-500/90 text-white w-4 h-4 rounded-full flex items-center justify-center shadow-sm scale-75 origin-top-right">
                    <span className="text-[10px] font-black">♥</span>
+                </div>
+              )}
+              {post.user_id !== myUserData?.data?.id && (
+                <div className="absolute bottom-1.5 right-1.5 bg-gray-800/80 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full z-10 shadow-sm opacity-90 scale-90 origin-bottom-right">
+                  みんなの投稿
                 </div>
               )}
             </Link>

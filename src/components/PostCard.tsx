@@ -195,11 +195,10 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
   // 確実に日付をパースして表示する
   let formattedDate = '';
   if (post.visited_at) {
-    const d = new Date(post.visited_at);
-    if (!isNaN(d.getTime())) {
-      formattedDate = `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}`;
-    } else {
-      formattedDate = post.visited_at.split('T')[0]; // fallback
+    if (typeof post.visited_at === 'string') {
+      formattedDate = post.visited_at.split('T')[0];
+    } else if ((post.visited_at as any) instanceof Date) {
+      formattedDate = (post.visited_at as any).toISOString().split('T')[0];
     }
   }
 
