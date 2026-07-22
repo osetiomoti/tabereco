@@ -315,9 +315,7 @@ export default function MyPage() {
 
       {/* Tab Content (Grid) */}
       {activeTab === 'want_to_go' && !targetUserId ? (
-        // Special layout for want_to_go tab: two sections
         <div className="animate-in fade-in duration-500">
-          {/* Own want-to-go posts */}
           <div className="mb-2">
             <div className="px-4 py-2 flex items-center gap-2">
               <span className="text-[11px] font-black text-gray-400 tracking-wider uppercase">自分の「行きたい」</span>
@@ -327,11 +325,11 @@ export default function MyPage() {
               <div className="px-0.5 grid grid-cols-3 gap-0.5">
                 {[1,2,3].map(i => <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />)}
               </div>
-            ) : filteredPosts.length === 0 ? (
+            ) : filteredOwnPosts.length === 0 ? (
               <div className="py-8 text-center text-gray-300 text-[12px] font-bold">まだ登録がありません</div>
             ) : (
               <div className="px-0.5 grid grid-cols-3 gap-0.5">
-                {filteredPosts.map(post => (
+                {filteredOwnPosts.map(post => (
                   <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
                     {post.image_url ? (
                       <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
@@ -347,26 +345,63 @@ export default function MyPage() {
               </div>
             )}
           </div>
-
-          {/* Divider */}
-          <div className="mx-4 my-3 border-t border-gray-100" />
-
-          {/* Other users' posts marked as want-to-go */}
-          <div>
+        </div>
+      ) : activeTab === 'visited' && !targetUserId ? (
+        <div className="animate-in fade-in duration-500">
+          <div className="mb-2">
             <div className="px-4 py-2 flex items-center gap-2">
-              <Bookmark size={12} className="text-orange-400" />
-              <span className="text-[11px] font-black text-gray-400 tracking-wider uppercase">みんなの投稿の「行きたい」</span>
-              <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">{markedWtgCount}</span>
+              <span className="text-[11px] font-black text-gray-400 tracking-wider uppercase">自分の「行った」</span>
+              <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">{ownVisitedCount}</span>
             </div>
-            {markedWtgLoading ? (
+            {loading ? (
               <div className="px-0.5 grid grid-cols-3 gap-0.5">
                 {[1,2,3].map(i => <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />)}
               </div>
-            ) : markedWantToGoPosts.length === 0 ? (
-              <div className="py-8 text-center text-gray-300 text-[12px] font-bold">他の人の投稿で「行きたい」を押してみよう</div>
+            ) : filteredOwnPosts.length === 0 ? (
+              <div className="py-8 text-center text-gray-300 text-[12px] font-bold">まだ記録がありません</div>
+            ) : (
+              <div className="px-0.5 grid grid-cols-3 gap-0.5">
+                {filteredOwnPosts.map(post => (
+                  <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
+                    {post.image_url ? (
+                      <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-orange-50 transition-transform duration-500 group-hover:scale-110"><span className="text-2xl opacity-50">🍽️</span></div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
+                    <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
+                      <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
+                      <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate mt-0.5 opacity-80">
+                        {post.store_name} • {post.visited_at ? formatDate(post.visited_at).split('-').slice(1).join('/') : ''}
+                      </span>
+                    </div>
+                    {post.rating && (
+                      <div className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur-sm text-orange-500 px-1 py-0.5 rounded flex items-center gap-0.5 shadow-sm scale-75 origin-top-left">
+                        <span className="text-[10px] font-black">★</span>
+                        <span className="text-[10px] font-black">{post.rating.toFixed(1)}</span>
+                      </div>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="mx-4 my-3 border-t border-gray-100" />
+          <div>
+            <div className="px-4 py-2 flex items-center gap-2">
+              <Bookmark size={12} className="text-orange-400" />
+              <span className="text-[11px] font-black text-gray-400 tracking-wider uppercase">みんなの投稿の「行った」</span>
+              <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">{markedVisCount}</span>
+            </div>
+            {markedVisLoading ? (
+              <div className="px-0.5 grid grid-cols-3 gap-0.5">
+                {[1,2,3].map(i => <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />)}
+              </div>
+            ) : markedVisitedPosts.length === 0 ? (
+              <div className="py-8 text-center text-gray-300 text-[12px] font-bold">他の人の投稿で「行った」を押してみよう</div>
             ) : (
               <div className="px-0.5 grid grid-cols-3 gap-0.5 pb-4">
-                {markedWantToGoPosts.map(post => (
+                {markedVisitedPosts.map(post => (
                   <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
                     {post.image_url ? (
                       <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
@@ -378,7 +413,12 @@ export default function MyPage() {
                       <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
                       {post.user?.name && <span className="text-orange-300 font-black text-[8px] drop-shadow-md truncate mt-0.5">by {post.user.name}</span>}
                     </div>
-                    {/* Bookmark badge */}
+                    {post.rating && (
+                      <div className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur-sm text-orange-500 px-1 py-0.5 rounded flex items-center gap-0.5 shadow-sm scale-75 origin-top-left">
+                        <span className="text-[10px] font-black">★</span>
+                        <span className="text-[10px] font-black">{post.rating.toFixed(1)}</span>
+                      </div>
+                    )}
                     <div className="absolute top-1.5 right-1.5 bg-orange-500/90 text-white w-5 h-5 rounded-full flex items-center justify-center shadow-sm">
                       <Bookmark size={10} className="fill-white" />
                     </div>
@@ -387,6 +427,120 @@ export default function MyPage() {
               </div>
             )}
           </div>
+        </div>
+      ) : activeTab === 'all' && !targetUserId ? (
+        <div className="animate-in fade-in duration-500 pb-4">
+          <div className="mb-2">
+            <div className="px-4 py-2 flex items-center gap-2">
+              <span className="text-[11px] font-black text-gray-400 tracking-wider uppercase">自分の投稿</span>
+              <span className="bg-gray-100 text-gray-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">{posts.length}</span>
+            </div>
+            {loading ? (
+              <div className="px-0.5 grid grid-cols-3 gap-0.5">
+                {[1,2,3,4,5,6].map(i => <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />)}
+              </div>
+            ) : posts.length === 0 ? (
+              <div className="py-8 text-center text-gray-300 text-[12px] font-bold">まだ記録がありません</div>
+            ) : (
+              <div className="px-0.5 grid grid-cols-3 gap-0.5">
+                {posts.map(post => (
+                  <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
+                    {post.image_url ? (
+                      <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-orange-50 transition-transform duration-500 group-hover:scale-110"><span className="text-2xl opacity-50">🍽️</span></div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
+                    <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
+                      <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
+                      <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate mt-0.5 opacity-80">
+                        {post.store_name} • {post.visited_at ? formatDate(post.visited_at).split('-').slice(1).join('/') : ''}
+                      </span>
+                    </div>
+                    {post.rating && (
+                      <div className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur-sm text-orange-500 px-1 py-0.5 rounded flex items-center gap-0.5 shadow-sm scale-75 origin-top-left">
+                        <span className="text-[10px] font-black">★</span>
+                        <span className="text-[10px] font-black">{post.rating.toFixed(1)}</span>
+                      </div>
+                    )}
+                    {post.is_favorite && (
+                      <div className="absolute top-1.5 right-1.5 bg-pink-500/90 text-white w-4 h-4 rounded-full flex items-center justify-center shadow-sm scale-75 origin-top-right">
+                        <span className="text-[10px] font-black">♥</span>
+                      </div>
+                    )}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+          {markedVisitedPosts.length > 0 && (
+            <>
+              <div className="mx-4 my-3 border-t border-gray-100" />
+              <div className="mb-2">
+                <div className="px-4 py-2 flex items-center gap-2">
+                  <Bookmark size={12} className="text-orange-400" />
+                  <span className="text-[11px] font-black text-gray-400 tracking-wider uppercase">みんなの投稿の「行った」</span>
+                  <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">{markedVisCount}</span>
+                </div>
+                <div className="px-0.5 grid grid-cols-3 gap-0.5">
+                  {markedVisitedPosts.map(post => (
+                    <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
+                      {post.image_url ? (
+                        <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-indigo-50"><span className="text-2xl opacity-50">🍽️</span></div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
+                      <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
+                        <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
+                        {post.user?.name && <span className="text-orange-300 font-black text-[8px] drop-shadow-md truncate mt-0.5">by {post.user.name}</span>}
+                      </div>
+                      {post.rating && (
+                        <div className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur-sm text-orange-500 px-1 py-0.5 rounded flex items-center gap-0.5 shadow-sm scale-75 origin-top-left">
+                          <span className="text-[10px] font-black">★</span>
+                          <span className="text-[10px] font-black">{post.rating.toFixed(1)}</span>
+                        </div>
+                      )}
+                      <div className="absolute top-1.5 right-1.5 bg-orange-500/90 text-white w-5 h-5 rounded-full flex items-center justify-center shadow-sm">
+                        <Bookmark size={10} className="fill-white" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
+          {markedWantToGoPosts.length > 0 && (
+            <>
+              <div className="mx-4 my-3 border-t border-gray-100" />
+              <div>
+                <div className="px-4 py-2 flex items-center gap-2">
+                  <Bookmark size={12} className="text-orange-400" />
+                  <span className="text-[11px] font-black text-gray-400 tracking-wider uppercase">みんなの投稿の「行きたい」</span>
+                  <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">{markedWtgCount}</span>
+                </div>
+                <div className="px-0.5 grid grid-cols-3 gap-0.5">
+                  {markedWantToGoPosts.map(post => (
+                    <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
+                      {post.image_url ? (
+                        <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-indigo-50"><span className="text-2xl opacity-50">🍽️</span></div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
+                      <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
+                        <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
+                        {post.user?.name && <span className="text-orange-300 font-black text-[8px] drop-shadow-md truncate mt-0.5">by {post.user.name}</span>}
+                      </div>
+                      <div className="absolute top-1.5 right-1.5 bg-orange-500/90 text-white w-5 h-5 rounded-full flex items-center justify-center shadow-sm">
+                        <Bookmark size={10} className="fill-white" />
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       ) : loading ? (
         <div className="px-0.5 grid grid-cols-3 gap-0.5">
@@ -408,7 +562,6 @@ export default function MyPage() {
                 </div>
               )}
               
-              {/* Text Overlays for 3-column grid */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
               
               <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
