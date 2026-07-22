@@ -61,6 +61,7 @@ export async function GET(
       ...post,
       tags: post.tags.map((pt: any) => pt.tag),
       shared_at: post.created_at, // Use created_at as shared_at for compatibility
+      _isMarkedWantToGo: post.want_to_gos?.some((w: any) => w.user_id === auth.userId),
     }));
 
     return NextResponse.json({ success: true, data: posts });

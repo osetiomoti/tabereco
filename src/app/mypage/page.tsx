@@ -326,7 +326,7 @@ export default function MyPage() {
                 {[1,2,3].map(i => <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />)}
               </div>
             ) : filteredOwnPosts.length === 0 ? (
-              <div className="py-8 text-center text-gray-300 text-[12px] font-bold">まだ登録がありません</div>
+              <div className="py-3 text-center text-gray-300 text-[12px] font-bold">まだ登録がありません</div>
             ) : (
               <div className="px-0.5 grid grid-cols-3 gap-0.5">
                 {filteredOwnPosts.map(post => (
@@ -339,6 +339,41 @@ export default function MyPage() {
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
                     <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
                       <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="mx-4 my-3 border-t border-gray-100" />
+          <div>
+            <div className="px-4 py-2 flex items-center gap-2">
+              <Bookmark size={12} className="text-orange-400" />
+              <span className="text-[11px] font-black text-gray-400 tracking-wider uppercase">みんなの投稿の「行きたい」</span>
+              <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">{markedWtgCount}</span>
+            </div>
+            {markedWtgLoading ? (
+              <div className="px-0.5 grid grid-cols-3 gap-0.5">
+                {[1,2,3].map(i => <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />)}
+              </div>
+            ) : markedWantToGoPosts.length === 0 ? (
+              <div className="py-8 text-center text-gray-300 text-[12px] font-bold">他の人の投稿で「行きたい」を押してみよう</div>
+            ) : (
+              <div className="px-0.5 grid grid-cols-3 gap-0.5 pb-4">
+                {markedWantToGoPosts.map(post => (
+                  <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
+                    {post.image_url ? (
+                      <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-indigo-50"><span className="text-2xl opacity-50">🍽️</span></div>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
+                    <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
+                      <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
+                      {post.user?.name && <span className="text-orange-300 font-black text-[8px] drop-shadow-md truncate mt-0.5">by {post.user.name}</span>}
+                    </div>
+                    <div className="absolute top-1.5 right-1.5 bg-orange-500/90 text-white w-5 h-5 rounded-full flex items-center justify-center shadow-sm">
+                      <Bookmark size={10} className="fill-white" />
                     </div>
                   </Link>
                 ))}

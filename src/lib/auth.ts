@@ -121,6 +121,7 @@ export async function withAuth(
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: newTokens.expires_in,
+      expires: new Date(Date.now() + newTokens.expires_in * 1000),
       path: '/',
     });
     if (newTokens.id_token) {
@@ -129,6 +130,7 @@ export async function withAuth(
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: newTokens.expires_in,
+        expires: new Date(Date.now() + newTokens.expires_in * 1000),
         path: '/',
       });
     }
@@ -139,6 +141,7 @@ export async function withAuth(
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
         maxAge: 30 * 24 * 60 * 60, // 30日
+        expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         path: '/',
       });
     }

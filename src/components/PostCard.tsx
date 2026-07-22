@@ -4,7 +4,7 @@ import type { Post } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, CheckCircle2, Calendar, Hash, User, MoreHorizontal, Star, MapPin, X } from 'lucide-react';
+import { Heart, CheckCircle2, Calendar, Hash, User, MoreHorizontal, Star, MapPin, X, Bookmark } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 
@@ -83,8 +83,15 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
 
           {/* 右側アクション */}
           <div className="flex flex-col justify-between items-end ml-2">
-            <div className={`p-2 rounded-full transition-all ${post.is_favorite ? 'bg-pink-50 text-pink-500' : 'text-gray-100'}`}>
-              <Heart size={20} className={post.is_favorite ? 'fill-pink-500' : ''} />
+            <div className="flex flex-col gap-1">
+              <div className={`p-2 rounded-full transition-all ${post.is_favorite ? 'bg-pink-50 text-pink-500' : 'text-gray-100'}`}>
+                <Heart size={20} className={post.is_favorite ? 'fill-pink-500' : ''} />
+              </div>
+              {(post as any)._isMarkedWantToGo && (
+                <div className="p-2 rounded-full bg-orange-50 text-orange-500 transition-all">
+                  <Bookmark size={20} className="fill-orange-500" />
+                </div>
+              )}
             </div>
             
             {post.status === 'visited' && (
@@ -120,6 +127,11 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
               {post.is_favorite && (
                 <div className="bg-pink-500 text-white p-1.5 rounded-full shadow-lg">
                   <Heart size={14} className="fill-white" />
+                </div>
+              )}
+              {(post as any)._isMarkedWantToGo && (
+                <div className="bg-orange-500 text-white p-1.5 rounded-full shadow-lg">
+                  <Bookmark size={14} className="fill-white text-white" />
                 </div>
               )}
             </div>
@@ -222,6 +234,21 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
     }
   };
 
+  const toggleWantToGo = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const res = await fetch(`/api/posts/${post.id}/want-to-go`, {
+        method: 'POST',
+      });
+      if (res.ok) {
+        window.location.reload();
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   return (
     <div className="bg-white mb-2 pb-4 border-b border-gray-100">
       <Link href={`/posts/${post.id}`} className="block group">
@@ -279,16 +306,29 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
           
           {/* Quick Stats Overlay */}
           <div className="absolute top-3 right-3 flex flex-col gap-2 z-10">
-            <button 
-              onClick={toggleFavorite}
-              className={`w-9 h-9 rounded-full backdrop-blur-md flex items-center justify-center shadow-lg transition-all ${
-                post.is_favorite 
-                ? 'bg-pink-500 text-white' 
-                : 'bg-white/80 text-gray-400 hover:text-pink-500'
-              }`}
-            >
-              <Heart size={18} className={post.is_favorite ? 'fill-white' : ''} />
-            </button>
+            {isMine ? (
+              <button 
+                onClick={toggleFavorite}
+                className={`w-9 h-9 rounded-full backdrop-blur-md flex items-center justify-center shadow-lg transition-all ${
+                  post.is_favorite 
+                  ? 'bg-pink-500 text-white' 
+                  : 'bg-white/80 text-gray-400 hover:text-pink-500'
+                }`}
+              >
+                <Heart size={18} className={post.is_favorite ? 'fill-white' : ''} />
+              </button>
+            ) : (
+              <button 
+                onClick={toggleWantToGo}
+                className={`w-9 h-9 rounded-full backdrop-blur-md flex items-center justify-center shadow-lg transition-all ${
+                  (post as any)._isMarkedWantToGo
+                  ? 'bg-orange-500 text-white' 
+                  : 'bg-white/80 text-gray-400 hover:text-orange-500'
+                }`}
+              >
+                <Bookmark size={18} className={(post as any)._isMarkedWantToGo ? 'fill-white text-white' : ''} />
+              </button>
+            )}
             {isMine && (
               <button 
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(!isMenuOpen); }}

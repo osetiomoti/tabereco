@@ -96,6 +96,7 @@ export async function GET(request: NextRequest) {
       const result = posts.map((post: any) => ({
         ...post,
         tags: post.tags.map((pt: any) => pt.tag),
+        _isMarkedWantToGo: post.want_to_gos?.some((w: any) => w.user_id === auth.userId),
       }));
 
       return NextResponse.json({ success: true, data: result });

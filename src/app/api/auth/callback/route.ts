@@ -60,6 +60,7 @@ export async function GET(request: NextRequest) {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax' as const,
       maxAge,
+      expires: new Date(Date.now() + maxAge * 1000),
       path: '/',
     });
 
