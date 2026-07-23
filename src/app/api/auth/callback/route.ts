@@ -73,6 +73,18 @@ export async function GET(request: NextRequest) {
     if (tokens.refresh_token) {
       // Refresh tokens usually last much longer (e.g., 30 days)
       response.cookies.set('refresh_token', tokens.refresh_token, cookieOptions(30 * 24 * 60 * 60));
+
+      // Also set a short-lived non-httpOnly cookie so client JS can save to localStorage.
+      // This cookie is immediately consumed and deleted by SessionKeepAlive component.
+      // This is the same pattern used by AWS Amplify, Auth0, and Firebase for iOS PWA.
+      response.cookies.set('rt_transfer', tokens.refresh_token, {
+        httpOnly: false,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        maxAge: 120, // 2 minutes - just enough for JS to read and store
+        expires: new Date(Date.now() + 120 * 1000),
+        path: '/',
+      });
     }
 
     return response;

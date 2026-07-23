@@ -2,11 +2,25 @@ import { NextRequest, NextResponse } from 'next/server';
 
 /**
  * POST /api/auth/refresh
- * Proactively refreshes the access token using the refresh token cookie.
- * Called periodically by the client to keep the session alive.
+ * Refreshes the access token.
+ * Accepts refresh token from either:
+ * - httpOnly cookie (normal case)
+ * - Request body { refresh_token: string } (iOS PWA fallback when cookies were cleared)
  */
 export async function POST(request: NextRequest) {
-  const refreshToken = request.cookies.get('refresh_token')?.value;
+  // Try to get refresh token from cookie first, then fall back to request body
+  let refreshToken = request.cookies.get('refresh_token')?.value;
+  let fromBody = false;
+
+  if (!refreshToken) {
+    try {
+      const body = await request.json().catch(() => null);
+      if (body?.refresh_token) {
+        refreshToken = body.refresh_token;
+        fromBody = true;
+      }
+    } catch {}
+  }
 
   if (!refreshToken) {
     return NextResponse.json({ success: false, error: 'No refresh token' }, { status: 401 });
@@ -49,8 +63,6 @@ export async function POST(request: NextRequest) {
 
     const tokens = await res.json();
 
-    const response = NextResponse.json({ success: true });
-
     const cookieOptions = (maxAge: number) => ({
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -60,13 +72,24 @@ export async function POST(request: NextRequest) {
       path: '/',
     });
 
+    // When called from body (iOS PWA cookie recovery), return the refresh token
+    // in the response body so the client can update localStorage
+    const responseBody: Record<string, any> = { success: true };
+    if (fromBody) {
+      // Cognito returns a new refresh token only when rotation is enabled.
+      // If not returned, the original token is still valid - reuse it.
+      responseBody.refresh_token = tokens.refresh_token || refreshToken;
+    }
+
+    const response = NextResponse.json(responseBody);
+
     if (tokens.access_token) {
       response.cookies.set('access_token', tokens.access_token, cookieOptions(tokens.expires_in || 3600));
     }
     if (tokens.id_token) {
       response.cookies.set('id_token', tokens.id_token, cookieOptions(tokens.expires_in || 3600));
     }
-    // Refresh token rotationが無効な場合、元のrefresh_tokenを使い続けるので期限を延長
+    // Always re-set the refresh token cookie with a rolling 30-day expiry
     response.cookies.set('refresh_token', refreshToken, cookieOptions(30 * 24 * 60 * 60));
 
     return response;
