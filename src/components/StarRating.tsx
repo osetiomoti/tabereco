@@ -61,17 +61,18 @@ export function StarInput({ value, onChange }: InputProps) {
   const clamp = (v: number) => Math.round(Math.max(0.5, Math.min(5, v)) * 10) / 10;
 
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-1.5 sm:gap-3">
       {/* Stars: click for 0.5 step */}
-      <div className="flex gap-1">
+      <div className="flex gap-0.5 sm:gap-1">
         {STARS.map((s) => {
           const fillPercent = Math.max(0, Math.min(1, value - (s - 1)));
 
           return (
-            <div key={s} className="relative w-10 h-10 group">
+            <div key={s} className="relative w-8 h-8 sm:w-10 sm:h-10 group shrink-0">
               {/* Background visual exact fill */}
               <div className="absolute inset-0 pointer-events-none flex items-center justify-center transition-transform group-active:scale-90">
-                <StarIcon fillPercent={fillPercent} size={32} />
+                <div className="hidden sm:flex"><StarIcon fillPercent={fillPercent} size={32} /></div>
+                <div className="flex sm:hidden"><StarIcon fillPercent={fillPercent} size={26} /></div>
               </div>
               {/* Foreground interactive clickable halves */}
               <div className="absolute inset-0 flex">
@@ -97,13 +98,13 @@ export function StarInput({ value, onChange }: InputProps) {
       <button
         type="button"
         onClick={() => onChange(clamp(value - 0.1))}
-        className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 active:scale-90 transition-all shrink-0"
+        className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 active:scale-90 transition-all shrink-0"
       >
         <Minus size={14} strokeWidth={3} className="text-gray-500" />
       </button>
 
       {/* Score */}
-      <span className="text-3xl font-black text-[#ff6b95] min-w-[3.5rem] text-center drop-shadow-sm">
+      <span className="text-2xl sm:text-3xl font-black text-[#ff6b95] min-w-[2.5rem] sm:min-w-[3.5rem] text-center drop-shadow-sm shrink-0">
         {value.toFixed(1)}
       </span>
 
@@ -111,7 +112,7 @@ export function StarInput({ value, onChange }: InputProps) {
       <button
         type="button"
         onClick={() => onChange(clamp(value + 0.1))}
-        className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 active:scale-90 transition-all shrink-0"
+        className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 active:scale-90 transition-all shrink-0"
       >
         <Plus size={14} strokeWidth={3} className="text-gray-500" />
       </button>
