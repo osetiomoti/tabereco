@@ -3,6 +3,7 @@ import { Outfit, Noto_Sans_JP } from 'next/font/google';
 import './globals.css';
 import { BottomNav } from '@/components/BottomNav';
 import { SWRProvider } from '@/components/SWRProvider';
+import { SessionKeepAlive } from '@/components/SessionKeepAlive';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -55,6 +56,7 @@ export default function RootLayout({
       </head>
       <body className={`${outfit.variable} ${notoSansJP.variable} font-sans bg-[#fcfcfc] text-gray-900 antialiased overflow-x-hidden min-h-[100dvh] flex flex-col`}>
         <SWRProvider>
+          <SessionKeepAlive />
           {children}
           <BottomNav />
         </SWRProvider>

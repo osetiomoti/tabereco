@@ -12,6 +12,7 @@ type Props = {
     placeId: string;
   }) => void;
   defaultValue?: string;
+  onInputChange?: (value: string) => void;
 };
 
 // Places API (New) returns suggestion objects
@@ -27,7 +28,7 @@ type AutocompletePrediction = {
   };
 };
 
-export function PlaceAutocomplete({ onPlaceSelected, defaultValue = '' }: Props) {
+export function PlaceAutocomplete({ onPlaceSelected, defaultValue = '', onInputChange }: Props) {
   const [inputValue, setInputValue] = useState(defaultValue);
   const [predictions, setPredictions] = useState<AutocompletePrediction[]>([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -67,6 +68,7 @@ export function PlaceAutocomplete({ onPlaceSelected, defaultValue = '' }: Props)
   const handleInput = (value: string) => {
     setInputValue(value);
     setActiveIndex(-1);
+    if (onInputChange) onInputChange(value);
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => fetchPredictions(value), 300);
   };

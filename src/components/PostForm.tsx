@@ -170,7 +170,7 @@ export function PostForm({ post }: Props) {
     setError(null);
 
     if (!values.store_name.trim()) return setError('店名を入力してください');
-    if (!values.rating) return setError('評価を選択してください');
+    if (values.status !== 'want_to_go' && !values.rating) return setError('評価を選択してください');
 
     setLoading(true);
     try {
@@ -274,6 +274,7 @@ export function PostForm({ post }: Props) {
             <PlaceAutocomplete
               onPlaceSelected={handlePlaceSelected}
               defaultValue={values.store_name}
+              onInputChange={(val) => set('store_name', val)}
             />
           </div>
         </div>
