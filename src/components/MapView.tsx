@@ -237,34 +237,6 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
       >
         {/* マーカーは useEffect で命令的に管理しているため、ここには描画しない */}
 
-        {selectedPost && selectedPost.latitude && selectedPost.longitude && (
-          <InfoWindow
-            position={{ lat: selectedPost.latitude, lng: selectedPost.longitude }}
-            onCloseClick={() => setSelectedPost(null)}
-          >
-            <div className="p-1 min-w-[200px]">
-              {selectedPost.image_url && (
-                <div className="relative aspect-video rounded-lg overflow-hidden mb-2 bg-gray-100">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={selectedPost.image_url} alt={selectedPost.title} className="object-cover w-full h-full" />
-                </div>
-              )}
-              <h3 className="font-bold text-gray-900 text-sm leading-tight">{selectedPost.title}</h3>
-              <p className="text-xs text-gray-500 mt-1 mb-2">{selectedPost.store_name || '店舗名なし'}</p>
-              <div className="flex items-center gap-1 mb-3">
-                {[1, 2, 3, 4, 5].map((s) => (
-                  <Star key={s} size={11} fill={s <= (selectedPost.rating || 0) ? '#f59e0b' : 'none'} className={s <= (selectedPost.rating || 0) ? 'text-amber-500' : 'text-gray-200'} />
-                ))}
-              </div>
-              <Link
-                href={`/posts/${selectedPost.id}`}
-                className="block w-full text-center py-2 bg-orange-500 hover:bg-orange-600 text-white text-xs font-bold rounded-lg transition-colors"
-              >
-                詳細を表示
-              </Link>
-            </div>
-          </InfoWindow>
-        )}
       </GoogleMap>
 
       {/* Custom Map Controls */}
@@ -282,6 +254,55 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
           <Minus size={20} />
         </button>
       </div>
+
+      {/* Bottom Sheet for Selected Post */}
+      {selectedPost && (
+        <div className="absolute bottom-6 left-4 right-4 sm:fixed sm:bottom-8 sm:left-1/2 sm:-translate-x-1/2 sm:w-[500px] z-[250] animate-in slide-in-from-bottom-8 duration-500">
+          <div className="bg-white/95 backdrop-blur-xl rounded-[2rem] p-4 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.15)] border border-gray-100/50 flex flex-col">
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-4" />
+            
+            <div className="flex gap-4 mb-4">
+              {/* Image */}
+              <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0">
+                {selectedPost.image_url || selectedPost.image_urls?.[0] ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={selectedPost.image_url || selectedPost.image_urls![0]} alt={selectedPost.title} className="object-cover w-full h-full" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-orange-50 text-2xl">🍽️</div>
+                )}
+              </div>
+              
+              {/* Info */}
+              <div className="flex-1 min-w-0 py-1 flex flex-col">
+                <h3 className="font-black text-gray-900 text-base leading-tight mb-1 truncate">{selectedPost.title}</h3>
+                <p className="text-xs text-gray-500 font-bold mb-auto truncate flex items-center gap-1">
+                  <MapPin size={12} className="text-orange-400 shrink-0" />
+                  {selectedPost.store_name || '店舗名なし'}
+                </p>
+                <div className="flex items-center gap-1 mt-2 bg-orange-50 w-fit px-2 py-1 rounded-lg">
+                  <Star size={12} className="fill-orange-500 text-orange-500" />
+                  <span className="text-orange-600 font-black text-[13px]">{selectedPost.rating?.toFixed(1) || '0.0'}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Link
+                href={`/posts/${selectedPost.id}`}
+                className="flex-1 py-3.5 bg-gradient-to-r from-orange-500 to-pink-500 text-white text-[14px] font-black rounded-2xl transition-all shadow-md active:scale-[0.98] text-center"
+              >
+                詳細を見る
+              </Link>
+              <button
+                onClick={() => setSelectedPost(null)}
+                className="px-6 py-3.5 bg-gray-100 text-gray-500 text-[14px] font-bold rounded-2xl hover:bg-gray-200 transition-colors active:scale-[0.98]"
+              >
+                閉じる
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Bottom Sheet for Temporary Marker */}
       {tempMarker && tempMarker.lat && tempMarker.lng && (
