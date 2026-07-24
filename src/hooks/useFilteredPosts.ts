@@ -146,11 +146,10 @@ export function useFilteredPosts() {
           p.address?.toLowerCase().includes(lowerReq)
         );
       } else {
-        // store_name mode (default): search title, store_name, comment
+        // store_name mode (default): search title and store_name only
         result = result.filter(p =>
           p.title?.toLowerCase().includes(lowerReq) ||
-          p.store_name?.toLowerCase().includes(lowerReq) ||
-          p.comment?.toLowerCase().includes(lowerReq)
+          p.store_name?.toLowerCase().includes(lowerReq)
         );
       }
     }

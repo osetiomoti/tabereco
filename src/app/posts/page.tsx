@@ -218,7 +218,7 @@ export default function PostsPage() {
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
                 <input
                   type="text"
-                  placeholder={searchMode === 'address' ? '住所・エリアで検索（例：渋谷区、銀座...）' : '店名・メモを検索...'}
+                  placeholder={searchMode === 'address' ? '住所・エリアで検索（例：渋谷区、銀座...）' : '店名で検索...'}
                   className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-orange-100 transition-all font-medium text-gray-800 placeholder:text-gray-300"
                   value={keyword}
                   onChange={(e) => updateFilter({ keyword: e.target.value })}
