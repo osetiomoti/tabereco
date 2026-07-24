@@ -12,7 +12,7 @@ const fetcher = (url: string) => fetch(url).then(res => res.json());
 
 export function useFilteredPosts() {
   const { filterState, updateFilter } = useSharedFilter();
-  const { activeTab, keyword, activeGroups, advancedFilters, activeMapTag } = filterState;
+  const { activeTab, keyword, searchMode, activeGroups, advancedFilters, activeMapTag } = filterState;
   const [memberUsers, setMemberUsers] = useState<{ id: string; name: string }[]>([]);
 
   // 1. Fetch own posts
@@ -141,11 +141,18 @@ export function useFilteredPosts() {
 
     if (keyword) {
       const lowerReq = keyword.toLowerCase();
-      result = result.filter(p =>
-        p.title?.toLowerCase().includes(lowerReq) ||
-        p.store_name?.toLowerCase().includes(lowerReq) ||
-        p.comment?.toLowerCase().includes(lowerReq)
-      );
+      if (searchMode === 'address') {
+        result = result.filter(p =>
+          p.address?.toLowerCase().includes(lowerReq)
+        );
+      } else {
+        // store_name mode (default): search title, store_name, comment
+        result = result.filter(p =>
+          p.title?.toLowerCase().includes(lowerReq) ||
+          p.store_name?.toLowerCase().includes(lowerReq) ||
+          p.comment?.toLowerCase().includes(lowerReq)
+        );
+      }
     }
 
     if (advancedFilters?.tags && advancedFilters.tags.length > 0) {
@@ -236,7 +243,7 @@ export function useFilteredPosts() {
     });
 
     return result;
-  }, [activeGroups, activeTab, keyword, advancedFilters, ownPostsCache, groupPostsCache]);
+  }, [activeGroups, activeTab, keyword, searchMode, advancedFilters, ownPostsCache, groupPostsCache]);
 
 
   const removeFilter = (key: string | string[] | Record<string, any>) => {

@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 type SharedFilterState = {
   activeTab: 'all' | 'want_to_go' | 'visited';
   keyword: string;
+  searchMode: 'store_name' | 'address';
   activeGroups: string[];
   advancedFilters: any;
   activeMapTag: string | null;
@@ -14,9 +15,10 @@ type SharedFilterState = {
 const defaultState: SharedFilterState = {
   activeTab: 'all',
   keyword: '',
+  searchMode: 'store_name',
   activeGroups: ['all'],
   advancedFilters: { include_mine: true },
-  activeMapTag: null, // map側のタグ用
+  activeMapTag: null,
 };
 
 const STORAGE_KEY = 'tabereco_shared_filter';

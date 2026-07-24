@@ -130,7 +130,7 @@ function CalendarView({ posts }: { posts: any[] }) {
 
 export default function PostsPage() {
   const { posts, loading, filterState, updateFilter, activeFilterCount, removeFilter, memberUsers, joinedGroups } = useFilteredPosts();
-  const { activeTab, keyword, activeGroups, advancedFilters } = filterState;
+  const { activeTab, keyword, searchMode, activeGroups, advancedFilters } = filterState;
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -190,11 +190,35 @@ export default function PostsPage() {
           {/* Search bar (list view only) */}
           {viewMode === 'list' && (
             <>
+              {/* Search mode toggle */}
+              <div className="flex gap-2 mb-2.5">
+                <button
+                  onClick={() => updateFilter({ searchMode: 'store_name', keyword: '' })}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-black transition-all ${
+                    searchMode !== 'address'
+                      ? 'bg-orange-500 text-white shadow-sm shadow-orange-200'
+                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                  }`}
+                >
+                  🏪 店名
+                </button>
+                <button
+                  onClick={() => updateFilter({ searchMode: 'address', keyword: '' })}
+                  className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-black transition-all ${
+                    searchMode === 'address'
+                      ? 'bg-orange-500 text-white shadow-sm shadow-orange-200'
+                      : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                  }`}
+                >
+                  📍 住所
+                </button>
+              </div>
+              {/* Search input */}
               <div className="relative mb-2">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
                 <input
                   type="text"
-                  placeholder="お店、料理、場所を検索..."
+                  placeholder={searchMode === 'address' ? '住所・エリアで検索（例：渋谷区、銀座...）' : '店名・メモを検索...'}
                   className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-orange-100 transition-all font-medium text-gray-800 placeholder:text-gray-300"
                   value={keyword}
                   onChange={(e) => updateFilter({ keyword: e.target.value })}
