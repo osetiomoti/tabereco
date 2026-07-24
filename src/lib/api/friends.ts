@@ -1,6 +1,5 @@
 async function handleResponse(res: Response) {
   if (res.status === 401) {
-    if (typeof window !== 'undefined') window.location.href = '/api/auth/logout';
     throw new Error('Unauthorized');
   }
   const text = await res.text();

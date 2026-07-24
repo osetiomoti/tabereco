@@ -4,7 +4,6 @@ import { Post } from '@/lib/types';
 async function handleResponse(res: Response) {
   // 401 は body を読む前に処理（リダイレクト）
   if (res.status === 401) {
-    if (typeof window !== 'undefined') window.location.href = '/api/auth/logout';
     throw new Error('Unauthorized');
   }
 

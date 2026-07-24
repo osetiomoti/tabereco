@@ -108,20 +108,21 @@ export function SessionKeepAlive() {
 
     // ── Step 2: 起動時にCookieの有無を確認し、なければlocalStorageから復元 ──
     const initSession = async () => {
-      // サーバーに軽く確認（Cookieがあれば成功、なければ401）
       try {
         const res = await fetch('/api/auth/refresh', { method: 'POST' });
         if (res.status === 401) {
           // Cookieが消えているのでlocalStorageから復元
           const restored = await restoreSessionFromLocalStorage();
           if (!restored) {
-            // localStorageにもない場合は何もしない（ログインページへの誘導はAPIが行う）
-            console.log('[SessionKeepAlive] No saved session found.');
+            console.log('[SessionKeepAlive] No saved session found. Redirecting to login.');
+            if (window.location.pathname !== '/login' && !window.location.pathname.startsWith('/api/auth')) {
+              window.location.href = '/api/auth/logout';
+            }
+            return;
           }
         }
         // 成功でも失敗でも localStorage がある場合は念のため更新
         if (!transferToken) {
-          // 既にStep1で保存した場合は重複を避ける
           const data = await res.json().catch(() => null);
           if (data?.refresh_token) {
             localStorage.setItem(LS_KEY, data.refresh_token);
@@ -130,8 +131,8 @@ export function SessionKeepAlive() {
       } catch {}
     };
 
-    // 少し遅らせて実行（ページロード負荷を下げる）
-    const initTimer = setTimeout(initSession, 2000);
+    // すぐに実行（SWRのフェッチより前にCookieを復元するため）
+    initSession();
 
     // ── Step 3: 50分ごとに定期リフレッシュ ──
     timerRef.current = setInterval(refreshSession, 50 * 60 * 1000);
@@ -154,7 +155,6 @@ export function SessionKeepAlive() {
     window.addEventListener('pageshow', handlePageShow);
 
     return () => {
-      clearTimeout(initTimer);
       if (timerRef.current) clearInterval(timerRef.current);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('pageshow', handlePageShow);

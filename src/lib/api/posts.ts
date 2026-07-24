@@ -12,14 +12,12 @@ async function handleResponse(res: Response) {
     json = text ? JSON.parse(text) : {};
   } catch {
     if (res.status === 401) {
-      if (typeof window !== 'undefined') window.location.href = '/api/auth/logout';
       throw new Error('Unauthorized');
     }
     if (!res.ok) throw new Error(`API Request failed (${res.status})`);
     return null;
   }
   if (res.status === 401) {
-    if (typeof window !== 'undefined') window.location.href = '/api/auth/logout';
     throw new Error('Unauthorized');
   }
   if (!res.ok) throw new Error(json.error || `API Request failed (${res.status})`);
