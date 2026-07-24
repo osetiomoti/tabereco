@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Header } from '@/components/Header';
 import { getPosts } from '@/lib/api/posts';
 import type { Post } from '@/lib/types';
@@ -38,7 +38,7 @@ export default function HomePage() {
 
   // フィードカルーセルのためのステートは削除されました
 
-  const combinedWantToGo = React.useMemo(() => {
+  const combinedWantToGo = useMemo(() => {
     const list = [...wantToGoPosts, ...allGroupWantToGo];
     const map = new Map();
     list.forEach(p => map.set(p.id, p));
