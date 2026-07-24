@@ -4,9 +4,10 @@ import type { Post } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, CheckCircle2, Calendar, Hash, User, MoreHorizontal, Star, MapPin, X, Bookmark } from 'lucide-react';
+import { Heart, CheckCircle2, Calendar, Hash, User, MoreHorizontal, Star, MapPin, X, Bookmark, Utensils } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { VisitedModal } from '@/components/VisitedModal';
 
 type Props = { 
   post: Post;
@@ -172,6 +173,7 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
   const images = post.image_urls && post.image_urls.length > 0 ? post.image_urls : (post.image_url ? [post.image_url] : []);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isVisitedModalOpen, setIsVisitedModalOpen] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const handleScroll = () => {
@@ -393,6 +395,28 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
           )}
         </div>
       </Link>
+
+      {/* 行ってきた！ボタン（自分の行きたい投稿のみ） */}
+      {isMine && post.status === 'want_to_go' && (
+        <div className="px-4 pb-4">
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsVisitedModalOpen(true); }}
+            className="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-black text-[13px] rounded-2xl flex items-center justify-center gap-2 shadow-sm shadow-orange-200 active:scale-[0.98] transition-all"
+          >
+            <Utensils size={16} />
+            行ってきた！記録する
+          </button>
+        </div>
+      )}
+
+      {isVisitedModalOpen && (
+        <VisitedModal
+          postId={post.id}
+          storeName={post.store_name || post.title}
+          onClose={() => setIsVisitedModalOpen(false)}
+          onSuccess={() => window.location.reload()}
+        />
+      )}
     </div>
   );
 }

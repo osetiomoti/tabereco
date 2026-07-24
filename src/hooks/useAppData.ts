@@ -4,11 +4,13 @@
  */
 import { useMemo } from 'react';
 import useSWR from 'swr';
-import { getUserTags } from '@/lib/api/posts';
+import { getUserTags, getPosts } from '@/lib/api/posts';
 import { getFriends } from '@/lib/api/friends';
-import type { Tag } from '@/lib/types';
+import { getJoinedGroups, getGroupPosts } from '@/lib/api/groups';
+import type { Tag, Post } from '@/lib/types';
 
 const fetcher = (url: string) => fetch(url).then(r => r.json()).then(j => j.data);
+const jsonFetcher = (url: string) => fetch(url).then(r => r.json());
 
 /** 自分のプロフィール（キャッシュ共有） */
 export function useMyProfile() {
@@ -84,4 +86,93 @@ export function useGroups() {
   }, [data]);
 
   return { groups, isLoading, mutate };
+}
+
+/** 自分の投稿（訪問済み+行きたい）をSWRでキャッシュ */
+export function useMyPosts() {
+  const { data: visited, isLoading: v1 } = useSWR<Post[]>(
+    ['/api/posts', 'visited'],
+    () => getPosts({ status: 'visited' }),
+    { dedupingInterval: 180_000, revalidateOnFocus: false }
+  );
+  const { data: wantToGo, isLoading: v2, mutate: mutateWantToGo } = useSWR<Post[]>(
+    ['/api/posts', 'want_to_go'],
+    () => getPosts({ status: 'want_to_go' }),
+    { dedupingInterval: 180_000, revalidateOnFocus: false }
+  );
+  return {
+    visitedPosts: visited ?? [],
+    wantToGoPosts: wantToGo ?? [],
+    isLoading: v1 || v2,
+    mutateWantToGo,
+  };
+}
+
+/** グループのアクティビティ（メンバーの投稿）をSWRでキャッシュ */
+export function useGroupActivities(myUserId: string | null) {
+  const { data: groupsData } = useSWR<any[]>('/api/groups', fetcher, {
+    dedupingInterval: 120_000,
+    revalidateOnFocus: false,
+  });
+  const joinedGroups = groupsData ?? [];
+
+  const groupPostsKey = joinedGroups.length > 0 && myUserId
+    ? ['/api/home/group-activities', joinedGroups.map((g: any) => g.id).join(',')]
+    : null;
+
+  const { data, isLoading } = useSWR(groupPostsKey, async () => {
+    const activitiesMap = new Map<string, any>();
+    const wantToGoMap = new Map<string, any>();
+    const allPostsMap = new Map<string, any>();
+    const initialLikes: Record<string, boolean> = {};
+    const initialCounts: Record<string, number> = {};
+
+    await Promise.all(
+      joinedGroups.map(async (g: any) => {
+        try {
+          const posts = await getGroupPosts(g.id);
+          posts.forEach((p: any) => {
+            allPostsMap.set(p.id, { ...p, __group_name: g.name });
+            initialCounts[p.id] = p.want_to_gos?.length || 0;
+            initialLikes[p.id] = p.want_to_gos?.some((w: any) => w.user_id === myUserId) || false;
+            if (p.status === 'want_to_go') {
+              wantToGoMap.set(p.id, { ...p, __group_name: g.name });
+            }
+            if (p.user_id !== myUserId) {
+              activitiesMap.set(p.id, { ...p, __group_name: g.name });
+            }
+          });
+        } catch (e) {
+          console.error(`Failed to load posts for group ${g.id}:`, e);
+        }
+      })
+    );
+
+    return {
+      activities: Array.from(activitiesMap.values()).sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      ),
+      allGroupWantToGo: Array.from(wantToGoMap.values()),
+      initialLikes,
+      initialCounts,
+    };
+  }, { dedupingInterval: 120_000, revalidateOnFocus: false });
+
+  return {
+    groupActivities: data?.activities ?? [],
+    allGroupWantToGo: data?.allGroupWantToGo ?? [],
+    initialLikes: data?.initialLikes ?? {},
+    initialCounts: data?.initialCounts ?? {},
+    isLoading,
+  };
+}
+
+/** ランキング上位をSWRでキャッシュ */
+export function useTopRankings() {
+  const { data, isLoading } = useSWR(
+    '/api/rankings/top',
+    jsonFetcher,
+    { dedupingInterval: 300_000, revalidateOnFocus: false }
+  );
+  return { rankingItems: data?.data ?? [], isLoading };
 }

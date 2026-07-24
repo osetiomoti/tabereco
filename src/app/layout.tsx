@@ -4,6 +4,7 @@ import './globals.css';
 import { BottomNav } from '@/components/BottomNav';
 import { SWRProvider } from '@/components/SWRProvider';
 import { SessionKeepAlive } from '@/components/SessionKeepAlive';
+import { ToastProvider } from '@/components/Toast';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -56,9 +57,11 @@ export default function RootLayout({
       </head>
       <body className={`${outfit.variable} ${notoSansJP.variable} font-sans bg-[#fcfcfc] text-gray-900 antialiased overflow-x-hidden min-h-[100dvh] flex flex-col`}>
         <SWRProvider>
-          <SessionKeepAlive />
-          {children}
-          <BottomNav />
+          <ToastProvider>
+            <SessionKeepAlive />
+            {children}
+            <BottomNav />
+          </ToastProvider>
         </SWRProvider>
       </body>
     </html>

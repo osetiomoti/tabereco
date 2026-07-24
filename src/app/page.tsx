@@ -1,15 +1,13 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Header } from '@/components/Header';
-import { getPosts } from '@/lib/api/posts';
 import type { Post } from '@/lib/types';
 import Link from 'next/link';
 import {
   Map as MapIcon,
   Trophy,
   TrendingUp,
-  Heart,
   Bookmark,
   BookmarkCheck,
   ChevronRight,
@@ -20,38 +18,36 @@ import {
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
+import { useMyProfile, useMyPosts, useGroupActivities, useTopRankings } from '@/hooks/useAppData';
 
 export default function HomePage() {
   const router = useRouter();
-  const [visitedPosts, setVisitedPosts] = useState<Post[]>([]);
-  const [wantToGoPosts, setWantToGoPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  // Auth & Group state
-  const [myUserId, setMyUserId] = useState<string | null>(null);
-  const [userName, setUserName] = useState<string>('ゲスト');
-  const [groupActivities, setGroupActivities] = useState<any[]>([]);
-  const [allGroupPosts, setAllGroupPosts] = useState<any[]>([]);
-  const [allGroupWantToGo, setAllGroupWantToGo] = useState<any[]>([]);
-  const [loadingActivities, setLoadingActivities] = useState(true);
+  // ── SWRキャッシュを利用したデータ取得 ──
+  const { profile, isLoading: profileLoading } = useMyProfile();
+  const myUserId = profile?.id ?? null;
+  const userName = profile?.name ?? 'ゲスト';
 
-  // フィードカルーセルのためのステートは削除されました
+  const { visitedPosts, wantToGoPosts, isLoading: postsLoading } = useMyPosts();
+  const { groupActivities, allGroupWantToGo, initialLikes, initialCounts, isLoading: activitiesLoading } = useGroupActivities(myUserId);
+  const { rankingItems } = useTopRankings();
 
-  const combinedWantToGo = useMemo(() => {
-    const list = [...wantToGoPosts, ...allGroupWantToGo];
-    const map = new Map();
-    list.forEach(p => map.set(p.id, p));
-    return Array.from(map.values()).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
-  }, [wantToGoPosts, allGroupWantToGo]);
+  const loading = profileLoading || postsLoading;
+  const loadingActivities = activitiesLoading;
 
   // ランキングカルーセル用
-  const [rankingItems, setRankingItems] = useState<{ tagName: string; post: any }[]>([]);
   const [rankingIndex, setRankingIndex] = useState(0);
 
-  // いいね管理用ステート
+  // いいね管理用ステート（SWRの初期値から初期化）
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
   const [likesCount, setLikesCount] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    if (Object.keys(initialLikes).length > 0) {
+      setLikedPosts(initialLikes);
+      setLikesCount(initialCounts);
+    }
+  }, [initialLikes, initialCounts]);
 
   // ランキングカルーセル自動更新
   useEffect(() => {
@@ -62,103 +58,14 @@ export default function HomePage() {
     return () => clearInterval(timer);
   }, [rankingItems]);
 
+  const error = null; // SWR handles errors internally
 
-  useEffect(() => {
-    async function loadData() {
-      try {
-        setError(null);
-        setLoading(true);
-        setLoadingActivities(true);
-
-        // 1. Fetch own posts
-        const [visited, wantToGo] = await Promise.all([
-          getPosts({ status: 'visited' }),
-          getPosts({ status: 'want_to_go' })
-        ]);
-        setVisitedPosts(Array.isArray(visited) ? visited : []);
-        setWantToGoPosts(Array.isArray(wantToGo) ? wantToGo : []);
-
-        // 2. Fetch current user profile
-        const profileRes = await fetch('/api/profiles/me');
-        const profileJson = await profileRes.json();
-        const myId = profileJson.data?.id || null;
-        setMyUserId(myId);
-        setUserName(profileJson.data?.name || 'ゲスト');
-
-        // 3. Fetch groups and group posts
-        const groupsRes = await fetch('/api/groups');
-        const groupsJson = await groupsRes.json();
-        const joinedGroups = groupsJson.data || [];
-
-        if (joinedGroups.length > 0 && myId) {
-          const activitiesMap = new Map<string, any>();
-          const allPostsMap = new Map<string, any>();
-          const wantToGoMap = new Map<string, any>();
-
-          await Promise.all(
-            joinedGroups.map(async (g: any) => {
-              try {
-                const r = await fetch(`/api/groups/${g.id}/posts`);
-                const j = await r.json();
-                const posts = j.data || [];
-                posts.forEach((p: any) => {
-                  allPostsMap.set(p.id, { ...p, __group_name: g.name });
-                  if (p.status === 'want_to_go') {
-                    wantToGoMap.set(p.id, { ...p, __group_name: g.name });
-                  }
-                  // Only show other members' posts as "activities"
-                  if (p.user_id !== myId) {
-                    activitiesMap.set(p.id, { ...p, __group_name: g.name });
-                  }
-                });
-              } catch (e) {
-                console.error(`Failed to load posts for group ${g.id}:`, e);
-              }
-            })
-          );
-
-          const sortedActivities = Array.from(activitiesMap.values()).sort(
-            (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          );
-          setGroupActivities(sortedActivities);
-
-          const sortedAllPosts = Array.from(allPostsMap.values()).sort(
-            (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-          );
-          setAllGroupPosts(sortedAllPosts);
-
-          const wantToGoList = Array.from(wantToGoMap.values());
-          setAllGroupWantToGo(wantToGoList);
-
-          const initialLikes: Record<string, boolean> = {};
-          const initialCounts: Record<string, number> = {};
-          
-          Array.from(allPostsMap.values()).forEach((p: any) => {
-             initialCounts[p.id] = p.want_to_gos?.length || 0;
-             initialLikes[p.id] = p.want_to_gos?.some((w: any) => w.user_id === myId) || false;
-          });
-          setLikedPosts(initialLikes);
-          setLikesCount(initialCounts);
-
-          // ランキングデータを取得
-          try {
-            const rankRes = await fetch('/api/rankings/top');
-            if (rankRes.ok) {
-              const rankJson = await rankRes.json();
-              setRankingItems(rankJson.data || []);
-            }
-          } catch {}
-        }
-      } catch (err: any) {
-        console.error('Failed to load data:', err);
-        setError('データの読み込みに失敗しました。');
-      } finally {
-        setLoading(false);
-        setLoadingActivities(false);
-      }
-    }
-    loadData();
-  }, []);
+  const combinedWantToGo = useMemo(() => {
+    const list = [...wantToGoPosts, ...allGroupWantToGo];
+    const map = new Map();
+    list.forEach(p => map.set(p.id, p));
+    return Array.from(map.values()).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [wantToGoPosts, allGroupWantToGo]);
 
   const stats = {
     total: visitedPosts.length + wantToGoPosts.length,
@@ -177,8 +84,6 @@ export default function HomePage() {
   const toggleLike = async (postId: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    
-    // Optimistic UI update
     setLikedPosts(prev => {
       const isLiked = !prev[postId];
       setLikesCount(cPrev => {
@@ -187,7 +92,6 @@ export default function HomePage() {
       });
       return { ...prev, [postId]: isLiked };
     });
-
     try {
       await fetch(`/api/posts/${postId}/want-to-go`, { method: 'POST' });
     } catch (e) {
@@ -386,7 +290,7 @@ export default function HomePage() {
 
               {rankingItems.length > 1 && (
                 <div className="absolute bottom-5 right-5 flex gap-1.5">
-                  {rankingItems.map((_, i) => (
+                  {rankingItems.map((_: any, i: number) => (
                     <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${i === rankingIndex ? 'bg-white scale-110' : 'bg-white/30'}`} />
                   ))}
                 </div>
