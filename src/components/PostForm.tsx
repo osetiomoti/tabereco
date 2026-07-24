@@ -323,16 +323,17 @@ export function PostForm({ post }: Props) {
       {/* 3. 記録の詳細 (日付・評価・メモ) */}
       <section className="space-y-6 bg-white sm:border border-gray-100 sm:rounded-[2.5rem] sm:p-8">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-          <div className="space-y-1.5">
+          <div className={`space-y-1.5 ${values.status === 'want_to_go' ? 'opacity-40 pointer-events-none' : ''}`}>
             <label className="text-[12px] font-black text-gray-500 tracking-widest ml-1 block">訪問日</label>
             <div className="relative">
               <input
                 type="date"
                 value={values.visited_at || ''}
                 onChange={(e) => set('visited_at', e.target.value)}
-                className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 focus:outline-none focus:ring-4 focus:ring-[#ff6b95]/5 focus:bg-white transition-all text-base font-bold [color-scheme:light]"
+                disabled={values.status === 'want_to_go'}
+                className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 focus:outline-none focus:ring-4 focus:ring-[#ff6b95]/5 focus:bg-white transition-all text-base font-bold [color-scheme:light] disabled:bg-gray-100 disabled:text-gray-400"
               />
-              {values.visited_at && (
+              {values.visited_at && values.status !== 'want_to_go' && (
                 <button
                   type="button"
                   onClick={() => set('visited_at', '')}
@@ -343,8 +344,11 @@ export function PostForm({ post }: Props) {
               )}
             </div>
           </div>
-          <div className="space-y-1.5">
-            <label className="text-[12px] font-black text-gray-500 tracking-widest ml-1 block">評価</label>
+          <div className={`space-y-1.5 ${values.status === 'want_to_go' ? 'opacity-40 pointer-events-none' : ''}`}>
+            <label className="text-[12px] font-black text-gray-500 tracking-widest ml-1 flex items-center gap-2">
+              評価
+              {values.status === 'want_to_go' && <span className="text-[10px] text-gray-400 font-normal">※「行った」の場合のみ入力可</span>}
+            </label>
             <div className="py-2">
               <StarInput value={values.rating} onChange={(r) => set('rating', r)} />
             </div>
