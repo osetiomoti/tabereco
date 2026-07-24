@@ -43,40 +43,42 @@ export default function CalendarPage() {
   const selectedPosts = posts.filter(p => p.visited_at && isSameDay(new Date(p.visited_at), selectedDate));
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-32">
-      <Header title="マイカレンダー" />
+    <div className="min-h-screen bg-white pb-32 font-sans">
       
-      <main className="max-w-2xl mx-auto animate-in fade-in duration-700">
-        {/* 1. Monthly Switcher */}
-        <div className="flex items-center justify-center py-6 gap-8">
-          <button onClick={prevMonth} className="p-2 hover:bg-white rounded-full transition-colors shadow-sm bg-white/50 border border-gray-100">
-            <ChevronLeft size={20} />
+      {/* 1. Header with Gradient */}
+      <div className="bg-gradient-to-r from-pink-400 via-pink-400 to-orange-300 rounded-b-[2rem] pt-12 pb-6 px-4 shadow-sm relative z-10">
+        <div className="flex items-center justify-between max-w-2xl mx-auto">
+          <button onClick={prevMonth} className="p-2 text-white hover:bg-white/20 rounded-full transition-colors">
+            <ChevronLeft size={24} />
           </button>
           
           <button 
             onClick={() => setIsMonthPickerOpen(true)}
-            className="text-xl font-black text-gray-900 tracking-tight flex items-center gap-1 hover:opacity-80 active:scale-95 transition-all"
+            className="text-xl font-bold text-white tracking-wide flex items-center gap-1 active:scale-95 transition-all"
           >
-            {format(currentDate, 'yyyy年 M月', { locale: ja })}
-            <span className="text-[10px] text-gray-400">▼</span>
+            {format(currentDate, 'yyyy年M月', { locale: ja })}
+            <ChevronDown size={16} className="opacity-80 ml-1" />
           </button>
 
-          <button onClick={nextMonth} className="p-2 hover:bg-white rounded-full transition-colors shadow-sm bg-white/50 border border-gray-100">
-            <ChevronRight size={20} />
+          <button onClick={nextMonth} className="p-2 text-white hover:bg-white/20 rounded-full transition-colors">
+            <ChevronRight size={24} />
           </button>
         </div>
+      </div>
+      
+      <main className="max-w-2xl mx-auto animate-in fade-in duration-700">
         
         {/* 2. Calendar Grid */}
-        <div className="bg-white mx-4 rounded-[2.5rem] p-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-gray-100">
-          <div className="grid grid-cols-7 mb-4">
+        <div className="bg-white">
+          <div className="grid grid-cols-7 border-b border-gray-100 pb-2 pt-4">
             {['日', '月', '火', '水', '木', '金', '土'].map((d, i) => (
-              <div key={d} className={`text-center text-[10px] font-black uppercase tracking-widest py-2 ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-gray-300'}`}>
+              <div key={d} className={`text-center text-[12px] font-bold ${i === 0 ? 'text-red-400' : i === 6 ? 'text-blue-400' : 'text-gray-600'}`}>
                 {d}
               </div>
             ))}
           </div>
 
-          <div className="grid grid-cols-7 gap-y-1">
+          <div className="grid grid-cols-7 border-l border-gray-100">
             {daysInMonth.map((date) => {
               const dayPosts = posts.filter(p => p.visited_at && isSameDay(new Date(p.visited_at), date));
               const isSelected = isSameDay(date, selectedDate);
@@ -84,6 +86,12 @@ export default function CalendarPage() {
               const firstImg = dayPosts[0]?.image_urls?.[0] || dayPosts[0]?.image_url;
               const hasImage = isCurrentMonth && dayPosts.length > 0 && !!firstImg;
               const dIndex = getDay(date);
+
+              // 曜日ごとの色
+              let textColorClass = 'text-gray-800';
+              if (dIndex === 0) textColorClass = 'text-red-500';
+              if (dIndex === 6) textColorClass = 'text-blue-500';
+              if (!isCurrentMonth) textColorClass = 'text-transparent'; // 前後の月は日付を隠す（画像の通り）
 
               return (
                 <button
@@ -94,40 +102,31 @@ export default function CalendarPage() {
                       setCurrentDate(startOfMonth(date));
                     }
                   }}
-                  className={`relative aspect-square flex flex-col items-center justify-center rounded-2xl transition-all overflow-hidden ${
-                    isSelected 
-                      ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20 z-10' 
-                      : 'hover:bg-gray-50'
-                  }`}
+                  className={`relative aspect-[3/4] flex flex-col items-center justify-between py-2 border-r border-b border-gray-100 transition-all ${!isCurrentMonth ? 'pointer-events-none' : 'hover:bg-gray-50 active:bg-gray-100'}`}
                 >
-                  <span className={`text-[15px] font-black z-10 ${
-                    isSelected
-                      ? 'text-white'
-                      : !isCurrentMonth
-                        ? 'text-gray-200'
-                        : dIndex === 0
-                          ? 'text-red-400'
-                          : dIndex === 6
-                            ? 'text-blue-500'
-                            : 'text-gray-800'
-                  }`} style={hasImage && !isSelected ? { textShadow: '0 1px 4px rgba(255,255,255,0.9), 0 0 10px white' } : {}}>
-                    {format(date, 'd')}
-                  </span>
-                  
-                  {/* Indicators */}
-                  <div className="mt-0.5 flex gap-0.5 h-1 z-10">
-                    {dayPosts.length > 0 && (
-                      <div className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-[#e35688]'} shadow-[0_0_4px_white]`} />
-                    )}
-                  </div>
-
-                  {/* Thumbnail Image - always visible when exists */}
-                  {hasImage && firstImg && (
-                    <div className="absolute inset-0 -z-10">
-                       <Image src={firstImg} alt="" fill className="object-cover" />
-                       <div className={`absolute inset-0 ${isSelected ? 'bg-orange-500/50' : 'bg-white/55'}`} />
+                  {/* Thumbnail Image */}
+                  {hasImage && isCurrentMonth && (
+                    <div className="absolute inset-1 rounded-2xl overflow-hidden z-0 shadow-sm border border-black/5">
+                       <Image src={firstImg} alt="" fill className="object-cover opacity-90" />
+                       <div className="absolute inset-0 bg-white/30" />
                     </div>
                   )}
+
+                  {/* Date Number */}
+                  {isCurrentMonth && (
+                    <div className={`relative z-10 w-7 h-7 flex items-center justify-center rounded-full mt-1 ${isSelected ? 'bg-pink-400 text-white' : ''}`}>
+                      <span className={`text-[14px] font-bold ${isSelected ? 'text-white' : textColorClass}`} style={hasImage && !isSelected ? { textShadow: '0 0 10px white, 0 0 10px white' } : {}}>
+                        {format(date, 'd')}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* Indicator Dot */}
+                  <div className="relative z-10 h-3 flex items-center justify-center mb-1">
+                    {dayPosts.length > 0 && isCurrentMonth && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-pink-400 shadow-[0_0_2px_white]" />
+                    )}
+                  </div>
                 </button>
               );
             })}
