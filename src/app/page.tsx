@@ -36,11 +36,14 @@ export default function HomePage() {
   const [allGroupWantToGo, setAllGroupWantToGo] = useState<any[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
 
-  // フィードカルーセルのためのステート
-  const [feedIndex, setFeedIndex] = useState(0);
+  // フィードカルーセルのためのステートは削除されました
 
-  // 「次にどこ行く？」用店舗
-  const [nextDestination, setNextDestination] = useState<any | null>(null);
+  const combinedWantToGo = React.useMemo(() => {
+    const list = [...wantToGoPosts, ...allGroupWantToGo];
+    const map = new Map();
+    list.forEach(p => map.set(p.id, p));
+    return Array.from(map.values()).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [wantToGoPosts, allGroupWantToGo]);
 
   // ランキングカルーセル用
   const [rankingItems, setRankingItems] = useState<{ tagName: string; post: any }[]>([]);
@@ -49,17 +52,6 @@ export default function HomePage() {
   // いいね管理用ステート
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
   const [likesCount, setLikesCount] = useState<Record<string, number>>({});
-
-  // 「次にどこ行く？」グループ全員の行きたいリストからランダム
-  useEffect(() => {
-    const allWantToGo = [...wantToGoPosts, ...allGroupWantToGo];
-    if (allWantToGo.length > 0) {
-      const randomPost = allWantToGo[Math.floor(Math.random() * allWantToGo.length)];
-      setNextDestination(randomPost);
-    } else {
-      setNextDestination(null);
-    }
-  }, [wantToGoPosts, allGroupWantToGo]);
 
   // ランキングカルーセル自動更新
   useEffect(() => {
@@ -70,14 +62,6 @@ export default function HomePage() {
     return () => clearInterval(timer);
   }, [rankingItems]);
 
-  // フィードカルーセル自動更新
-  useEffect(() => {
-    if (groupActivities.length <= 1) return;
-    const timer = setInterval(() => {
-      setFeedIndex(prev => (prev + 1) % groupActivities.length);
-    }, 4000);
-    return () => clearInterval(timer);
-  }, [groupActivities]);
 
   useEffect(() => {
     async function loadData() {
@@ -213,7 +197,15 @@ export default function HomePage() {
 
   const getLikes = (postId: string) => likesCount[postId] ?? 0;
 
-  const currentFeedPost = groupActivities[feedIndex];
+  const [greeting, setGreeting] = useState('こんにちは☀️');
+
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour < 5) setGreeting('こんばんは🌙');
+    else if (hour < 11) setGreeting('おはようございます☀️');
+    else if (hour < 17) setGreeting('こんにちは☀️');
+    else setGreeting('こんばんは🌙');
+  }, []);
 
   return (
     <div className="bg-gray-50 min-h-screen pb-32 relative overflow-hidden">
@@ -243,20 +235,25 @@ export default function HomePage() {
         {/* 1. 挨拶 */}
         <div className="pl-1 animate-in fade-in duration-500">
           <h2 className="text-2xl font-black text-gray-900 tracking-tight">
-            こんにちは、{userName}さん！☀️
+            {greeting}
+            <br />
+            <span className="text-orange-500">{userName}</span>さん！
           </h2>
         </div>
 
         {/* 2. マイダッシュボード */}
-        <div className="bg-white rounded-3xl p-6 border border-gray-100 text-left">
-          <div className="flex justify-between items-center mb-6">
+        <div className="bg-white/60 backdrop-blur-xl rounded-[2rem] p-6 border border-white shadow-sm text-left relative overflow-hidden">
+          {/* subtle glow behind dashboard */}
+          <div className="absolute -top-10 -right-10 w-32 h-32 bg-orange-400/20 rounded-full blur-3xl pointer-events-none" />
+
+          <div className="flex justify-between items-center mb-6 relative z-10">
             <div>
               <h2 className="text-lg font-black text-gray-800 tracking-tight flex items-center gap-2">
                 マイダッシュボード <TrendingUp size={18} className="text-orange-500" />
               </h2>
               <p className="text-[11px] text-gray-400 font-bold mt-0.5">あなたの毎日の食体験の記録</p>
             </div>
-            <div className="flex items-baseline gap-1 bg-orange-50/50 px-3 py-1.5 rounded-2xl border border-orange-100/30">
+            <div className="flex items-baseline gap-1 bg-white px-3 py-1.5 rounded-2xl border border-orange-100/50 shadow-sm">
               <span className="text-xl font-black text-orange-500">{stats.total}</span>
               <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest">件</span>
             </div>
@@ -300,100 +297,97 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* 3. クイックメニュー (記録を追加するを削除) */}
+        {/* 3. クイックメニュー */}
         <div className="grid grid-cols-3 gap-3">
           {/* マップから探す */}
           <Link
             href="/map"
-            className="flex flex-col items-start p-4 bg-white border border-gray-100 rounded-2xl font-black shadow-none active:scale-[0.97] transition-all hover:bg-gray-50 text-gray-800"
+            className="flex flex-col items-center p-4 bg-white/70 backdrop-blur-md border border-white rounded-[1.5rem] font-black shadow-sm active:scale-[0.97] transition-all hover:bg-white text-gray-800"
           >
-            <div className="w-8 h-8 bg-orange-50 text-orange-500 rounded-lg flex items-center justify-center mb-2">
-              <MapIcon size={16} />
+            <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-500 text-white rounded-[12px] flex items-center justify-center mb-2.5 shadow-sm">
+              <MapIcon size={18} />
             </div>
-            <span className="text-xs">マップ</span>
+            <span className="text-[11px] tracking-wide">マップ</span>
           </Link>
 
           {/* カレンダーで見る */}
           <Link
             href="/calendar"
-            className="flex flex-col items-start p-4 bg-white border border-gray-100 rounded-2xl font-black shadow-none active:scale-[0.97] transition-all hover:bg-gray-50 text-gray-800"
+            className="flex flex-col items-center p-4 bg-white/70 backdrop-blur-md border border-white rounded-[1.5rem] font-black shadow-sm active:scale-[0.97] transition-all hover:bg-white text-gray-800"
           >
-            <div className="w-8 h-8 bg-blue-50 text-blue-500 rounded-lg flex items-center justify-center mb-2">
-              <Calendar size={16} />
+            <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-500 text-white rounded-[12px] flex items-center justify-center mb-2.5 shadow-sm">
+              <Calendar size={18} />
             </div>
-            <span className="text-xs">カレンダー</span>
+            <span className="text-[11px] tracking-wide">カレンダー</span>
           </Link>
 
           {/* タイムライン */}
           <Link
             href="/posts"
-            className="flex flex-col items-start p-4 bg-white border border-gray-100 rounded-2xl font-black shadow-none active:scale-[0.97] transition-all hover:bg-gray-50 text-gray-800"
+            className="flex flex-col items-center p-4 bg-white/70 backdrop-blur-md border border-white rounded-[1.5rem] font-black shadow-sm active:scale-[0.97] transition-all hover:bg-white text-gray-800"
           >
-            <div className="w-8 h-8 bg-purple-50 text-purple-500 rounded-lg flex items-center justify-center mb-2">
-              <TrendingUp size={16} />
+            <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-500 text-white rounded-[12px] flex items-center justify-center mb-2.5 shadow-sm">
+              <TrendingUp size={18} />
             </div>
-            <span className="text-xs">タイムライン</span>
+            <span className="text-[11px] tracking-wide">タイムライン</span>
           </Link>
         </div>
 
         {/* 4. ランキング (大きく表示 + カルーセル) */}
         <Link href="/rankings" className="block">
-          <div className="bg-gradient-to-br from-orange-500 via-pink-500 to-red-500 rounded-3xl p-5 text-white relative overflow-hidden active:scale-[0.99] transition-all">
-            {/* Background decoration */}
-            <div className="absolute top-[-30px] right-[-30px] w-32 h-32 bg-white/10 rounded-full" />
-            <div className="absolute bottom-[-20px] right-[40px] w-20 h-20 bg-white/5 rounded-full" />
+          <div className="relative rounded-[2rem] overflow-hidden bg-gray-900 active:scale-[0.98] transition-transform shadow-md h-[220px]">
+            {rankingItems.length > 0 && (rankingItems[rankingIndex]?.post?.image_url || rankingItems[rankingIndex]?.post?.image_urls?.[0]) ? (
+              <img
+                src={rankingItems[rankingIndex].post.image_url || rankingItems[rankingIndex].post.image_urls[0]}
+                alt=""
+                className="absolute inset-0 w-full h-full object-cover opacity-60 animate-in fade-in duration-700"
+                key={`bg-${rankingIndex}`}
+              />
+            ) : (
+              <div className="absolute inset-0 bg-gradient-to-br from-orange-500 via-pink-500 to-red-500" />
+            )}
 
-            <div className="relative z-10">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="w-9 h-9 bg-white/20 rounded-xl flex items-center justify-center">
-                  <Trophy size={20} className="text-white" />
+            {/* Gradient Overlay for Text Readability */}
+            <div className="absolute inset-0 bg-gradient-to-t from-gray-900/90 via-gray-900/20 to-transparent" />
+
+            <div className="absolute inset-0 p-5 flex flex-col z-10">
+              <div className="flex items-center gap-2 mb-auto">
+                <div className="w-8 h-8 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center">
+                  <Trophy size={16} className="text-white" />
                 </div>
                 <div>
-                  <h3 className="text-[15px] font-black text-white">ランキング</h3>
-                  <p className="text-[10px] text-white/70 font-bold">タグ別のお気に入りランキング</p>
+                  <h3 className="text-[13px] font-black text-white tracking-widest drop-shadow-md">RANKING</h3>
                 </div>
-                <ChevronRight size={18} className="text-white/60 ml-auto" />
+                <ChevronRight size={18} className="text-white/80 ml-auto drop-shadow-md" />
               </div>
 
-              {/* Carousel */}
               {rankingItems.length > 0 ? (
-                <div key={rankingIndex} className="flex items-center gap-3 bg-white/15 rounded-2xl p-3 animate-in fade-in duration-500">
-                  <div className="text-2xl">🥇</div>
-                  <div className="relative w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 bg-white/20">
-                    {rankingItems[rankingIndex]?.post?.image_url || rankingItems[rankingIndex]?.post?.image_urls?.[0] ? (
-                      <img
-                        src={rankingItems[rankingIndex]?.post?.image_url || rankingItems[rankingIndex]?.post?.image_urls?.[0]}
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-white/60 text-xl">🍽️</div>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[10px] font-black text-white/70">#{rankingItems[rankingIndex]?.tagName} 1位</p>
-                    <p className="text-[13px] font-black text-white truncate">
-                      {rankingItems[rankingIndex]?.post?.store_name || rankingItems[rankingIndex]?.post?.title}
-                    </p>
-                    <p className="text-[9px] text-white/60 font-bold">
-                      {rankingItems[rankingIndex]?.post?.user?.name || ''} さんのランキング
-                    </p>
-                  </div>
+                <div key={rankingIndex} className="animate-in slide-in-from-bottom-2 fade-in duration-500">
+                  <span className="inline-block px-2.5 py-1 bg-white/20 backdrop-blur-md text-white text-[10px] font-black rounded-lg mb-2 border border-white/20 shadow-sm">
+                    🥇 #{rankingItems[rankingIndex].tagName} 1位
+                  </span>
+                  <h4 className="text-[20px] font-black text-white leading-tight mb-1 drop-shadow-md line-clamp-2">
+                    {rankingItems[rankingIndex].post.store_name || rankingItems[rankingIndex].post.title}
+                  </h4>
+                  <p className="text-[11px] text-white/80 font-bold drop-shadow-md">
+                    {rankingItems[rankingIndex].post.user?.name || 'ゲスト'} さんのランキング
+                  </p>
                 </div>
               ) : (
-                <div className="flex items-center gap-3 bg-white/15 rounded-2xl p-3">
-                  <Sparkles size={20} className="text-white/80" />
-                  <div>
-                    <p className="text-[11px] font-black text-white/80">タグをつけてランキングを作ろう！</p>
-                    <p className="text-[10px] text-white/50 font-bold">投稿にタグを追加するとランキングが表示されます</p>
-                  </div>
+                <div>
+                  <h4 className="text-[18px] font-black text-white leading-tight mb-1 drop-shadow-md">
+                    タグをつけて<br/>ランキングを作ろう！
+                  </h4>
+                  <p className="text-[11px] text-white/80 font-bold drop-shadow-md">
+                    投稿にタグを追加するとランキングが表示されます
+                  </p>
                 </div>
               )}
 
               {rankingItems.length > 1 && (
-                <div className="flex justify-center gap-1 mt-3">
+                <div className="absolute bottom-5 right-5 flex gap-1.5">
                   {rankingItems.map((_, i) => (
-                    <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all ${i === rankingIndex ? 'bg-white' : 'bg-white/30'}`} />
+                    <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${i === rankingIndex ? 'bg-white scale-110' : 'bg-white/30'}`} />
                   ))}
                 </div>
               )}
@@ -402,165 +396,150 @@ export default function HomePage() {
         </Link>
 
         {/* 5. 「次にどこ行く？」グループ全員の行きたいリストから */}
-        <Link
-          href={
-            nextDestination && nextDestination.latitude !== null && nextDestination.longitude !== null
-              ? `/map?lat=${nextDestination.latitude}&lng=${nextDestination.longitude}&postId=${nextDestination.id}`
-              : '/map'
-          }
-          className="bg-white border border-gray-100 rounded-3xl p-5 shadow-none transition-all hover:bg-gray-50/40 block active:scale-[0.99] text-left"
-        >
-          <div className="flex items-center gap-2 mb-3.5 pl-1">
+        <div className="text-left">
+          <div className="flex items-center gap-2 mb-3 pl-2">
             <span className="text-lg">🗺️</span>
-            <h3 className="text-[14px] font-black text-gray-800">「次にどこ行く？」</h3>
-            <span className="text-[9px] bg-pink-50 text-pink-600 font-bold px-2 py-0.5 rounded-full ml-auto border border-pink-100/30">
-              マップで確認
+            <h3 className="text-[15px] font-black text-gray-800">次にどこ行く？</h3>
+            <span className="text-[10px] bg-pink-50 text-pink-600 font-bold px-2 py-0.5 rounded-full ml-auto border border-pink-100/50">
+              {combinedWantToGo.length}件の行きたい
             </span>
           </div>
 
-          <div className="flex gap-4 items-center">
-            {/* Mini map SVG */}
-            <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-emerald-50/50 border border-gray-100 shrink-0">
-              <svg className="w-full h-full" viewBox="0 0 100 100" fill="none">
-                <rect x="8" y="8" width="35" height="35" rx="6" fill="#D1FAE5" />
-                <rect x="55" y="55" width="35" height="35" rx="6" fill="#D1FAE5" />
-                <path d="M 0,75 Q 35,65 50,85 T 100,75" stroke="#E0F2FE" strokeWidth="8" fill="none" />
-                <path d="M 0,75 Q 35,65 50,85 T 100,75" stroke="#BAE6FD" strokeWidth="4" fill="none" strokeLinecap="round" />
-                <line x1="50" y1="0" x2="50" y2="100" stroke="#FFFFFF" strokeWidth="5" />
-                <line x1="0" y1="50" x2="100" y2="50" stroke="#FFFFFF" strokeWidth="5" />
-              </svg>
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center">
-                <div className="bg-pink-500 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full shadow-sm animate-bounce whitespace-nowrap">
-                  行きたい
-                </div>
-                <div className="w-2 h-2 bg-pink-500 rounded-full border border-white -mt-0.5" />
-              </div>
-            </div>
-
-            <div className="flex-1 min-w-0">
-              {nextDestination ? (
-                <>
-                  <span className="text-[9px] font-black text-pink-500 bg-pink-50 px-2 py-0.5 rounded-full border border-pink-100/50">
-                    📌 {nextDestination.user?.name || nextDestination.__group_name ? `${nextDestination.user?.name || 'みんな'}の行きたいリストから` : '行きたいリストから'}
-                  </span>
-                  <h4 className="text-[13px] font-black text-gray-800 truncate mt-1.5">
-                    『{nextDestination.store_name || nextDestination.title}』
-                  </h4>
-                  <p className="text-[11px] text-gray-400 font-bold mt-1 line-clamp-2">
-                    {nextDestination.comment || '次のグルメ旅の目的地に登録されました！'}
-                  </p>
-                </>
-              ) : (
-                <>
-                  <span className="text-[9px] font-black text-pink-500 bg-pink-50 px-2 py-0.5 rounded-full border border-pink-100/50">
-                    📌 行きたいリストに追加しよう
-                  </span>
-                  <h4 className="text-[13px] font-black text-gray-800 truncate mt-1.5">
-                    まだ行きたいお店がありません
-                  </h4>
-                  <p className="text-[11px] text-gray-400 font-bold mt-1">
-                    投稿で「行きたい」を記録すると表示されます
-                  </p>
-                </>
-              )}
-            </div>
-          </div>
-        </Link>
-
-        {/* 6. みんなのごちそうフィード (カルーセル) */}
-        <div className="bg-white border border-gray-100 rounded-3xl p-5 shadow-none text-left">
-          <div className="flex items-center gap-2 mb-4 pl-1">
-            <span className="text-lg">📷</span>
-            <h3 className="text-[14px] font-black text-gray-800">みんなのごちそうフィード</h3>
-            {groupActivities.length > 1 && (
-              <div className="flex gap-1 ml-auto">
-                {groupActivities.slice(0, Math.min(groupActivities.length, 5)).map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setFeedIndex(i)}
-                    className={`w-1.5 h-1.5 rounded-full transition-all ${i === feedIndex ? 'bg-orange-400 w-3' : 'bg-gray-200'}`}
-                  />
-                ))}
+          <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar pb-4 -mx-4 px-4 gap-4">
+            {combinedWantToGo.length > 0 ? (
+              combinedWantToGo.map((post) => (
+                <Link
+                  key={post.id}
+                  href={post.latitude && post.longitude ? `/map?lat=${post.latitude}&lng=${post.longitude}&postId=${post.id}` : '/map'}
+                  className="snap-center shrink-0 w-[85%] bg-white/70 backdrop-blur-md border border-white rounded-3xl p-4 shadow-sm active:scale-[0.98] transition-all flex flex-col"
+                >
+                  <div className="flex gap-3 items-center">
+                    <div className="relative w-20 h-20 rounded-2xl overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
+                      {(post.image_url || post.image_urls?.[0]) ? (
+                        <img
+                          src={post.image_url || post.image_urls[0]}
+                          alt=""
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex flex-col items-center justify-center bg-emerald-50">
+                          <MapIcon size={24} className="text-emerald-400 mb-1" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[9px] font-black text-pink-500 bg-pink-50 px-2 py-0.5 rounded-full border border-pink-100/50">
+                        📌 {post.user?.name || post.__group_name ? `${post.user?.name || 'みんな'}の行きたい` : '行きたい'}
+                      </span>
+                      <h4 className="text-[14px] font-black text-gray-800 truncate mt-1.5">
+                        『{post.store_name || post.title}』
+                      </h4>
+                      <p className="text-[11px] text-gray-400 font-bold mt-1 line-clamp-2 leading-relaxed">
+                        {post.comment || '次のグルメ旅の目的地に登録されました！'}
+                      </p>
+                    </div>
+                  </div>
+                </Link>
+              ))
+            ) : (
+              <div className="w-full bg-white/60 backdrop-blur-md border border-white rounded-3xl p-6 shadow-sm text-center">
+                <span className="text-[10px] font-black text-pink-500 bg-pink-50 px-2 py-0.5 rounded-full border border-pink-100/50 inline-block mb-2">
+                  📌 行きたいリストに追加しよう
+                </span>
+                <h4 className="text-[13px] font-black text-gray-800 mt-1">まだ行きたいお店がありません</h4>
+                <p className="text-[11px] text-gray-400 font-bold mt-1">投稿で「行きたい」を記録すると表示されます</p>
               </div>
             )}
           </div>
+        </div>
+
+        {/* 6. みんなのごちそうフィード */}
+        <div className="text-left">
+          <div className="flex items-center gap-2 mb-3 pl-2">
+            <span className="text-lg">📷</span>
+            <h3 className="text-[15px] font-black text-gray-800">みんなのごちそうフィード</h3>
+          </div>
 
           {loadingActivities ? (
-            <div className="w-full h-52 bg-gray-50 animate-pulse rounded-2xl border border-gray-100" />
+            <div className="w-full h-52 bg-gray-50 animate-pulse rounded-[2rem] border border-gray-100" />
           ) : groupActivities.length === 0 ? (
-            <div className="bg-white border border-gray-100 border-dashed rounded-2xl p-6 text-center">
+            <div className="bg-white/60 backdrop-blur-md border border-white border-dashed rounded-[2rem] p-6 text-center shadow-sm">
               <p className="text-gray-400 font-medium text-xs">グループメンバーの最近の投稿はありません</p>
               <p className="text-[10px] text-gray-300 font-bold mt-1">他のメンバーが投稿を記録するとここに表示されます</p>
             </div>
-          ) : currentFeedPost ? (
-            <div
-              key={feedIndex}
-              className="border border-gray-100 rounded-2xl overflow-hidden bg-gray-50/40 p-3 animate-in fade-in duration-500"
-            >
-              <div className="flex items-center gap-2.5 mb-2.5">
+          ) : (
+            <div className="flex overflow-x-auto snap-x snap-mandatory hide-scrollbar pb-4 -mx-4 px-4 gap-4">
+              {groupActivities.map((post) => (
                 <div
-                  onClick={() => router.push(`/mypage?userId=${currentFeedPost.user_id}`)}
-                  className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 text-white font-black flex items-center justify-center text-xs shrink-0 shadow-inner cursor-pointer"
+                  key={post.id}
+                  className="snap-center shrink-0 w-[85%] bg-white/70 backdrop-blur-md border border-white rounded-[2rem] p-4 shadow-sm"
                 >
-                  {currentFeedPost.user?.name ? currentFeedPost.user.name[0].toUpperCase() : 'U'}
-                </div>
-                <div>
-                  <h4
-                    onClick={() => router.push(`/mypage?userId=${currentFeedPost.user_id}`)}
-                    className="text-xs font-black text-gray-800 cursor-pointer hover:underline"
-                  >
-                    {currentFeedPost.user?.name || 'メンバー'}
-                  </h4>
-                  <span className="text-[8px] font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded-md mt-0.5 inline-block">
-                    {currentFeedPost.__group_name || '共有グループ'}
-                  </span>
-                </div>
-                <span className="text-[8px] text-gray-400 font-bold ml-auto">
-                  {currentFeedPost.created_at ? formatTime(currentFeedPost.created_at) : ''}
-                </span>
-              </div>
-
-              <div className="relative aspect-square w-full rounded-xl overflow-hidden bg-gray-100 mb-2 border border-gray-200/40">
-                {currentFeedPost.image_url || (currentFeedPost.image_urls && currentFeedPost.image_urls.length > 0) ? (
-                  <img
-                    src={currentFeedPost.image_url || currentFeedPost.image_urls[0]}
-                    alt={currentFeedPost.store_name}
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center bg-orange-50/50">
-                    <span className="text-3xl opacity-30">🍽️</span>
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <div
+                      onClick={() => router.push(`/mypage?userId=${post.user_id}`)}
+                      className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-indigo-600 text-white font-black flex items-center justify-center text-[13px] shrink-0 shadow-sm cursor-pointer"
+                    >
+                      {post.user?.name ? post.user.name[0].toUpperCase() : 'U'}
+                    </div>
+                    <div>
+                      <h4
+                        onClick={() => router.push(`/mypage?userId=${post.user_id}`)}
+                        className="text-[13px] font-black text-gray-800 cursor-pointer hover:underline"
+                      >
+                        {post.user?.name || 'メンバー'}
+                      </h4>
+                      <span className="text-[9px] font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded-md mt-0.5 inline-block">
+                        {post.__group_name || '共有グループ'}
+                      </span>
+                    </div>
+                    <span className="text-[9px] text-gray-400 font-bold ml-auto">
+                      {post.created_at ? formatTime(post.created_at) : ''}
+                    </span>
                   </div>
-                )}
-              </div>
 
-              <div className="px-1 py-1">
-                <p className="text-[11px] text-gray-600 font-bold leading-normal">
-                  <span className="font-black text-gray-800 mr-1.5">{currentFeedPost.user?.name || 'メンバー'}:</span>
-                  {currentFeedPost.comment || '美味しいお店を見つけました！'}
-                </p>
-              </div>
+                  <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-gray-100 mb-3 border border-gray-100">
+                    {post.image_url || (post.image_urls && post.image_urls.length > 0) ? (
+                      <img
+                        src={post.image_url || post.image_urls[0]}
+                        alt={post.store_name}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-orange-50/50">
+                        <span className="text-4xl opacity-30">🍽️</span>
+                      </div>
+                    )}
+                  </div>
 
-              <div className="flex items-center justify-between border-t border-gray-100/60 pt-2.5 mt-2 px-1">
-                <button
-                  onClick={(e) => toggleLike(currentFeedPost.id, e)}
-                  className={`flex items-center gap-1.5 text-[10px] font-black transition-all ${
-                    likedPosts[currentFeedPost.id] ? 'text-orange-500 scale-105' : 'text-gray-400 hover:text-orange-500'
-                  }`}
-                >
-                  {likedPosts[currentFeedPost.id] ? (
-                    <BookmarkCheck size={14} className="transition-transform duration-300 scale-110" />
-                  ) : (
-                    <Bookmark size={14} className="transition-transform duration-300" />
-                  )}
-                  <span>行きたい！ ({getLikes(currentFeedPost.id)})</span>
-                </button>
-                <Link href={`/posts/${currentFeedPost.id}`} className="text-[9px] font-black text-orange-500 hover:underline">
-                  詳細を見る →
-                </Link>
-              </div>
+                  <div className="px-1">
+                    <p className="text-[12px] text-gray-600 font-bold leading-relaxed line-clamp-2">
+                      <span className="font-black text-gray-800 mr-1.5">{post.user?.name || 'メンバー'}:</span>
+                      {post.comment || '美味しいお店を見つけました！'}
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between border-t border-gray-100/60 pt-3 mt-3 px-1">
+                    <button
+                      onClick={(e) => toggleLike(post.id, e)}
+                      className={`flex items-center gap-1.5 text-[11px] font-black transition-all ${
+                        likedPosts[post.id] ? 'text-orange-500 scale-105' : 'text-gray-400 hover:text-orange-500'
+                      }`}
+                    >
+                      {likedPosts[post.id] ? (
+                        <BookmarkCheck size={16} className="transition-transform duration-300 scale-110" />
+                      ) : (
+                        <Bookmark size={16} className="transition-transform duration-300" />
+                      )}
+                      <span>行きたい！ ({getLikes(post.id)})</span>
+                    </button>
+                    <Link href={`/posts/${post.id}`} className="text-[10px] font-black text-orange-500 hover:underline">
+                      詳細を見る →
+                    </Link>
+                  </div>
+                </div>
+              ))}
             </div>
-          ) : null}
+          )}
         </div>
 
       </main>
