@@ -4,7 +4,7 @@ import type { Post } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, CheckCircle2, Calendar, Hash, User, MoreHorizontal, Star, MapPin, X, Bookmark, Utensils, MessageCircle } from 'lucide-react';
+import { Heart, CheckCircle2, Calendar, Hash, User, MoreHorizontal, Star, MapPin, X, Bookmark, Utensils, MessageCircle, ThumbsUp } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { VisitedModal } from '@/components/VisitedModal';
@@ -332,7 +332,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
                   : 'bg-white/80 text-gray-400 hover:text-pink-500'
                 }`}
               >
-                <Heart size={18} className={likedByMe ? 'fill-white' : ''} />
+                <ThumbsUp size={18} className={likedByMe ? 'fill-white' : ''} />
               </button>
             ) : (
               <button 
@@ -419,7 +419,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
                     likedByMe ? 'text-pink-500 hover:bg-pink-50' : 'text-gray-300 hover:text-pink-400 hover:bg-pink-50/50'
                   }`}
                 >
-                  <Heart size={15} className={likedByMe ? 'fill-pink-500 text-pink-500' : ''} />
+                  <ThumbsUp size={15} className={likedByMe ? 'fill-pink-500 text-pink-500' : ''} />
                   <span>{likesCount}</span>
                 </button>
               )}
