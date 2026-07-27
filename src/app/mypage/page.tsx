@@ -342,12 +342,20 @@ export default function MyPage() {
                     {post.image_url ? (
                       <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-orange-50"><span className="text-2xl opacity-50">🍽️</span></div>
+                      <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 group-hover:scale-105 transition-transform duration-500">
+                        <span className="text-xl mb-1">🗓️</span>
+                        <span className="text-[9px] font-black text-center leading-tight text-gray-700 line-clamp-2 px-1">{post.title}</span>
+                        {post.store_name && <span className="text-[7px] font-bold text-gray-400 mt-0.5 truncate w-full text-center">{post.store_name}</span>}
+                      </div>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
-                    <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
-                      <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
-                    </div>
+                    {post.image_url && (
+                      <>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
+                        <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
+                          <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
+                        </div>
+                      </>
+                    )}
                   </Link>
                 ))}
               </div>
@@ -373,13 +381,21 @@ export default function MyPage() {
                     {post.image_url ? (
                       <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-indigo-50"><span className="text-2xl opacity-50">🍽️</span></div>
+                      <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-gradient-to-br from-indigo-50 via-purple-50 to-indigo-100 group-hover:scale-105 transition-transform duration-500">
+                        <span className="text-xl mb-1">🗓️</span>
+                        <span className="text-[9px] font-black text-center leading-tight text-gray-700 line-clamp-2 px-1">{post.title}</span>
+                        {post.store_name && <span className="text-[7px] font-bold text-gray-400 mt-0.5 truncate w-full text-center">{post.store_name}</span>}
+                      </div>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
-                    <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
-                      <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
-                      {post.user?.name && <span className="text-orange-300 font-black text-[8px] drop-shadow-md truncate mt-0.5">by {post.user.name}</span>}
-                    </div>
+                    {post.image_url && (
+                      <>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
+                        <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
+                          <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
+                          {post.user?.name && <span className="text-orange-300 font-black text-[8px] drop-shadow-md truncate mt-0.5">by {post.user.name}</span>}
+                        </div>
+                      </>
+                    )}
                     <div className="absolute top-1.5 right-1.5 bg-orange-500/90 text-white w-5 h-5 rounded-full flex items-center justify-center shadow-sm">
                       <Bookmark size={10} className="fill-white" />
                     </div>
@@ -409,15 +425,23 @@ export default function MyPage() {
                     {post.image_url ? (
                       <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-orange-50 transition-transform duration-500 group-hover:scale-110"><span className="text-2xl opacity-50">🍽️</span></div>
+                      <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100 group-hover:scale-105 transition-transform duration-500">
+                        <span className="text-xl mb-1">🍽️</span>
+                        <span className="text-[9px] font-black text-center leading-tight text-gray-700 line-clamp-2 px-1">{post.title}</span>
+                        {post.store_name && <span className="text-[7px] font-bold text-gray-400 mt-0.5 truncate w-full text-center">{post.store_name}</span>}
+                      </div>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
-                    <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
-                      <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
-                      <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate mt-0.5 opacity-80">
-                        {post.store_name} • {post.visited_at ? formatDate(post.visited_at).split('-').slice(1).join('/') : ''}
-                      </span>
-                    </div>
+                    {post.image_url && (
+                      <>
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
+                        <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
+                          <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
+                          <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate mt-0.5 opacity-80">
+                            {post.store_name} • {post.visited_at ? formatDate(post.visited_at).split('-').slice(1).join('/') : ''}
+                          </span>
+                        </div>
+                      </>
+                    )}
                     {post.rating && (
                       <div className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur-sm text-orange-500 px-1 py-0.5 rounded flex items-center gap-0.5 shadow-sm scale-75 origin-top-left">
                         <span className="text-[10px] font-black">★</span>
@@ -487,19 +511,27 @@ export default function MyPage() {
               {post.image_url ? (
                 <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center bg-orange-50 transition-transform duration-500 group-hover:scale-110">
-                  <span className="text-2xl opacity-50">🍽️</span>
+                <div className={`w-full h-full flex flex-col items-center justify-center p-2 transition-transform duration-500 group-hover:scale-105 ${
+                  post.status === 'want_to_go'
+                    ? 'bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100'
+                    : 'bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100'
+                }`}>
+                  <span className="text-2xl mb-1">{post.status === 'want_to_go' ? '🗓️' : '🍽️'}</span>
+                  <span className="text-[9px] font-black text-center leading-tight text-gray-700 line-clamp-2 px-1">{post.title}</span>
+                  {post.store_name && <span className="text-[7px] font-bold text-gray-400 mt-0.5 truncate w-full text-center">{post.store_name}</span>}
                 </div>
               )}
               
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
+              {post.image_url && <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />}
               
-              <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
-                <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
-                <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate mt-0.5 opacity-80">
-                  {post.store_name} • {post.visited_at ? formatDate(post.visited_at).split('-').slice(1).join('/') : ''}
-                </span>
-              </div>
+              {post.image_url && (
+                <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
+                  <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
+                  <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate mt-0.5 opacity-80">
+                    {post.store_name} • {post.visited_at ? formatDate(post.visited_at).split('-').slice(1).join('/') : ''}
+                  </span>
+                </div>
+              )}
 
               {post.rating && (
                 <div className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur-sm text-orange-500 px-1 py-0.5 rounded flex items-center gap-0.5 shadow-sm scale-75 origin-top-left">

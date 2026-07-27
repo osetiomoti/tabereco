@@ -5,7 +5,7 @@ import { formatDate } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Heart, CheckCircle2, Calendar, Hash, User, MoreHorizontal, Star, MapPin, X, Bookmark, Utensils, MessageCircle, ThumbsUp } from 'lucide-react';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { VisitedModal } from '@/components/VisitedModal';
 
@@ -20,6 +20,19 @@ type Props = {
 
 export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCount, commentCount }: Props) {
   const router = useRouter();
+
+  // 楽観的UIのためのローカルステート
+  const [isFavorite, setIsFavorite] = useState(post.is_favorite);
+  const [isWantToGo, setIsWantToGo] = useState((post as any)._isMarkedWantToGo);
+
+  useEffect(() => {
+    setIsFavorite(post.is_favorite);
+  }, [post.is_favorite]);
+
+  useEffect(() => {
+    setIsWantToGo((post as any)._isMarkedWantToGo);
+  }, [(post as any)._isMarkedWantToGo]);
+
   if (layout === 'horizontal') {
     return (
       <Link href={`/posts/${post.id}`} className="group block mb-4">
@@ -89,10 +102,10 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
           {/* 右側アクション */}
           <div className="flex flex-col justify-between items-end ml-2">
             <div className="flex flex-col gap-1">
-              <div className={`p-2 rounded-full transition-all ${post.is_favorite ? 'bg-pink-50 text-pink-500' : 'text-gray-100'}`}>
-                <Heart size={20} className={post.is_favorite ? 'fill-pink-500' : ''} />
+              <div className={`p-2 rounded-full transition-all ${isFavorite ? 'bg-pink-50 text-pink-500' : 'text-gray-100'}`}>
+                <Heart size={20} className={isFavorite ? 'fill-pink-500' : ''} />
               </div>
-              {(post as any)._isMarkedWantToGo && (
+              {isWantToGo && (
                 <div className="p-2 rounded-full bg-orange-50 text-orange-500 transition-all">
                   <Bookmark size={20} className="fill-orange-500" />
                 </div>
@@ -129,12 +142,12 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
               </div>
             )}
             <div className="absolute top-3 left-3 flex flex-col gap-2">
-              {post.is_favorite && (
+              {isFavorite && (
                 <div className="bg-pink-500 text-white p-1.5 rounded-full shadow-lg">
                   <Heart size={14} className="fill-white" />
                 </div>
               )}
-              {(post as any)._isMarkedWantToGo && (
+              {isWantToGo && (
                 <div className="bg-orange-500 text-white p-1.5 rounded-full shadow-lg">
                   <Bookmark size={14} className="fill-white text-white" />
                 </div>
@@ -226,32 +239,38 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
   const toggleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    const newFavoriteStatus = !isFavorite;
+    setIsFavorite(newFavoriteStatus);
     try {
       const res = await fetch(`/api/posts/${post.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ is_favorite: !post.is_favorite }),
+        body: JSON.stringify({ is_favorite: newFavoriteStatus }),
       });
-      if (res.ok) {
-        window.location.reload();
+      if (!res.ok) {
+        setIsFavorite(!newFavoriteStatus); // revert on failure
       }
     } catch (e) {
       console.error(e);
+      setIsFavorite(!newFavoriteStatus); // revert on failure
     }
   };
 
   const toggleWantToGo = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    const newWantToGoStatus = !isWantToGo;
+    setIsWantToGo(newWantToGoStatus);
     try {
       const res = await fetch(`/api/posts/${post.id}/want-to-go`, {
         method: 'POST',
       });
-      if (res.ok) {
-        window.location.reload();
+      if (!res.ok) {
+        setIsWantToGo(!newWantToGoStatus); // revert on failure
       }
     } catch (e) {
       console.error(e);
+      setIsWantToGo(!newWantToGoStatus); // revert on failure
     }
   };
 
@@ -316,23 +335,23 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
               <button 
                 onClick={toggleFavorite}
                 className={`w-9 h-9 rounded-full backdrop-blur-md flex items-center justify-center shadow-lg transition-all ${
-                  post.is_favorite 
+                  isFavorite 
                   ? 'bg-pink-500 text-white' 
                   : 'bg-white/80 text-gray-400 hover:text-pink-500'
                 }`}
               >
-                <Heart size={18} className={post.is_favorite ? 'fill-white' : ''} />
+                <Heart size={18} className={isFavorite ? 'fill-white' : ''} />
               </button>
             ) : (
               <button 
                 onClick={toggleWantToGo}
                 className={`w-9 h-9 rounded-full backdrop-blur-md flex items-center justify-center shadow-lg transition-all ${
-                  (post as any)._isMarkedWantToGo
+                  isWantToGo
                   ? 'bg-orange-500 text-white' 
                   : 'bg-white/80 text-gray-400 hover:text-orange-500'
                 }`}
               >
-                <Bookmark size={18} className={(post as any)._isMarkedWantToGo ? 'fill-white text-white' : ''} />
+                <Bookmark size={18} className={isWantToGo ? 'fill-white text-white' : ''} />
               </button>
             )}
             {isMine && (
