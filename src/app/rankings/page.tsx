@@ -4,7 +4,7 @@ import { useState, useMemo, useCallback } from 'react';
 import { Trophy, Save, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import { saveRankings } from '@/lib/api/friends';
-import { useMyTags, useFriends, useMyProfile } from '@/hooks/useAppData';
+import { useMyTags, useFriends, useMyProfile, useGroupTags } from '@/hooks/useAppData';
 import type { Tag } from '@/lib/types';
 import { Header } from '@/components/Header';
 import useSWR, { mutate } from 'swr';
@@ -111,6 +111,7 @@ function useRankings(tag: string, userId?: string) {
 // ─── Main Page ──────────────────────────────────────────────────────────
 export default function RankingsPage() {
   const { tags: myTags } = useMyTags();
+  const { tags: groupTags } = useGroupTags();
   const { friends } = useFriends();
   const { profile: myProfile } = useMyProfile();
 
@@ -120,14 +121,16 @@ export default function RankingsPage() {
   const [showTagDropdown, setShowTagDropdown] = useState(false);
   const [rankingSaved, setRankingSaved] = useState(false);
   const [localPosts, setLocalPosts] = useState<any[] | null>(null);
+  const [showGroupTagsInRanking, setShowGroupTagsInRanking] = useState(false);
 
   const isReadOnly = selectedUserId !== null;
 
-  // タグリスト（自分 or フレンド）
-  const displayTags = useMemo(
-    () => selectedUserId === null ? myTags : friendTags,
-    [selectedUserId, myTags, friendTags]
-  );
+  // タグリスト（自分 or フレンド or グループ全員）
+  const displayTags = useMemo(() => {
+    if (selectedUserId !== null) return friendTags;
+    if (showGroupTagsInRanking) return groupTags;
+    return myTags;
+  }, [selectedUserId, myTags, friendTags, groupTags, showGroupTagsInRanking]);
 
   // ランキングデータ（SWRキャッシュ）
   const { data: remoteRankingPosts, isLoading: rankingLoading } = useRankings(
@@ -227,9 +230,25 @@ export default function RankingsPage() {
       <div className="px-4 pt-6">
         {/* タグ選択 */}
         <div className="mb-6 relative">
-          <label className="text-[11px] font-black text-gray-400 tracking-widest ml-1 block mb-2">
-            {isReadOnly ? 'ランキングを見るタグを選択' : 'ランキングするタグを選択'}
-          </label>
+          <div className="flex items-center justify-between ml-1 mb-2">
+            <label className="text-[11px] font-black text-gray-400 tracking-widest">
+              {isReadOnly ? 'ランキングを見るタグを選択' : 'ランキングするタグを選択'}
+            </label>
+            {!isReadOnly && (
+              <button
+                type="button"
+                onClick={() => setShowGroupTagsInRanking(v => !v)}
+                className="flex items-center gap-1.5"
+              >
+                <span className={`text-[10px] font-bold ${showGroupTagsInRanking ? 'text-orange-500' : 'text-gray-400'}`}>
+                  グループ全員
+                </span>
+                <div className={`relative w-8 h-4 rounded-full transition-colors duration-200 ${showGroupTagsInRanking ? 'bg-orange-500' : 'bg-gray-200'}`}>
+                  <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-transform duration-200 ${showGroupTagsInRanking ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                </div>
+              </button>
+            )}
+          </div>
           <button
             onClick={() => setShowTagDropdown(!showTagDropdown)}
             className="w-full flex items-center justify-between px-4 py-3.5 bg-white border border-gray-200 rounded-2xl text-sm font-bold text-left shadow-sm hover:border-orange-300 transition-colors"

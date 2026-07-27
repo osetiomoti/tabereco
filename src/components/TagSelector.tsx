@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { Search, Plus, X, Hash, Check } from 'lucide-react';
-import { useMyTags } from '@/hooks/useAppData';
+import { Search, Plus, X, Hash, Check, Users } from 'lucide-react';
+import { useMyTags, useGroupTags } from '@/hooks/useAppData';
 import type { Tag } from '@/lib/types';
 
 type Props = {
@@ -15,6 +15,8 @@ type Props = {
 export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) {
   // SWRキャッシュから即座に取得（ページ遷移をまたいで共有される）
   const { tags: swrTags, isLoading: swrLoading } = useMyTags();
+  const { tags: groupSwrTags, isLoading: groupLoading } = useGroupTags();
+  const [showGroupTags, setShowGroupTags] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [tempSelected, setTempSelected] = useState<string[]>([]);
   const [isCreating, setIsCreating] = useState(false);
@@ -33,9 +35,10 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
 
   // 表示するタグの計算（ユーザー作成タグ、重複排除）
   const allAvailableTags = useMemo(() => {
-    const userNames = swrTags.map((t: Tag) => t.name);
-    return Array.from(new Set(userNames));
-  }, [swrTags]);
+    const sourceTags = showGroupTags ? groupSwrTags : swrTags;
+    const names = sourceTags.map((t: Tag) => t.name);
+    return Array.from(new Set(names));
+  }, [swrTags, groupSwrTags, showGroupTags]);
 
   // 検索フィルタリング
   const filteredTags = useMemo(() => {
@@ -46,7 +49,7 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
     );
   }, [allAvailableTags, searchQuery]);
 
-  const isLoading = swrLoading;
+  const isLoading = showGroupTags ? groupLoading : swrLoading;
 
   const toggleTag = (tagName: string) => {
     setTempSelected((prev: string[]) => 
@@ -112,6 +115,23 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
             className="text-red-600 font-bold text-lg hover:opacity-70 transition-opacity"
           >
             決定
+          </button>
+        </div>
+
+        {/* グループ全員のタグ切替トグル */}
+        <div className="px-6 pt-3 pb-1 flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Users size={12} className={showGroupTags ? 'text-orange-500' : 'text-gray-300'} />
+            <span className={`text-[11px] font-bold ${showGroupTags ? 'text-orange-500' : 'text-gray-400'}`}>
+              グループ全員のタグを含む
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowGroupTags(v => !v)}
+            className={`relative w-10 h-5 rounded-full transition-colors duration-200 ${showGroupTags ? 'bg-orange-500' : 'bg-gray-200'}`}
+          >
+            <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${showGroupTags ? 'translate-x-5' : 'translate-x-0.5'}`} />
           </button>
         </div>
 

@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 
 function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const error = searchParams.get('error');
   const [isLoading, setIsLoading] = useState(true); // 自動復元チェックのため初期値をtrueに
   const [isRestoring, setIsRestoring] = useState(false);

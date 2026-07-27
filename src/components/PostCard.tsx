@@ -4,7 +4,7 @@ import type { Post } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, CheckCircle2, Calendar, Hash, User, MoreHorizontal, Star, MapPin, X, Bookmark, Utensils } from 'lucide-react';
+import { Heart, CheckCircle2, Calendar, Hash, User, MoreHorizontal, Star, MapPin, X, Bookmark, Utensils, MessageCircle } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { VisitedModal } from '@/components/VisitedModal';
@@ -12,9 +12,13 @@ import { VisitedModal } from '@/components/VisitedModal';
 type Props = { 
   post: Post;
   layout?: 'vertical' | 'horizontal' | 'compact';
+  onLike?: (postId: string) => void;
+  likedByMe?: boolean;
+  likesCount?: number;
+  commentCount?: number;
 };
 
-export function PostCard({ post, layout = 'vertical' }: Props) {
+export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCount, commentCount }: Props) {
   const router = useRouter();
   if (layout === 'horizontal') {
     return (
@@ -319,6 +323,17 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
               >
                 <Heart size={18} className={post.is_favorite ? 'fill-white' : ''} />
               </button>
+            ) : onLike ? (
+              <button
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLike(post.id); }}
+                className={`w-9 h-9 rounded-full backdrop-blur-md flex items-center justify-center shadow-lg transition-all ${
+                  likedByMe
+                  ? 'bg-pink-500 text-white'
+                  : 'bg-white/80 text-gray-400 hover:text-pink-500'
+                }`}
+              >
+                <Heart size={18} className={likedByMe ? 'fill-white' : ''} />
+              </button>
             ) : (
               <button 
                 onClick={toggleWantToGo}
@@ -391,6 +406,29 @@ export function PostCard({ post, layout = 'vertical' }: Props) {
                 <span key={tag.id} className="text-[10px] font-bold text-gray-400 bg-gray-50 px-2 py-0.5 rounded-full">#{tag.name}</span>
               ))}
               {post.tags.length > 3 && <span className="text-[10px] text-gray-300">...</span>}
+            </div>
+          )}
+
+          {/* いいね・コメント数バッジ */}
+          {(likesCount !== undefined || commentCount !== undefined) && (
+            <div className="flex items-center gap-3 mt-2">
+              {likesCount !== undefined && (
+                <button
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLike?.(post.id); }}
+                  className={`flex items-center gap-1 text-[11px] font-black transition-all active:scale-95 ${
+                    likedByMe ? 'text-pink-500' : 'text-gray-300 hover:text-pink-400'
+                  }`}
+                >
+                  <Heart size={13} className={likedByMe ? 'fill-pink-500 text-pink-500' : ''} />
+                  <span>{likesCount}</span>
+                </button>
+              )}
+              {commentCount !== undefined && (
+                <div className="flex items-center gap-1 text-[11px] font-black text-gray-300">
+                  <MessageCircle size={13} />
+                  <span>{commentCount}</span>
+                </div>
+              )}
             </div>
           )}
         </div>

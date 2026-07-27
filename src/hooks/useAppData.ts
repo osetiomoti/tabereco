@@ -28,6 +28,15 @@ export function useMyTags() {
   return { tags: data ?? [], isLoading, mutate };
 }
 
+/** グループ全員のタグ一覧（重複排除済み） */
+export function useGroupTags() {
+  const { data, isLoading } = useSWR<Tag[]>('/api/tags?scope=group', (url: string) =>
+    fetch(url).then(r => r.json()).then(j => j.data ?? []), {
+    dedupingInterval: 60_000,
+  });
+  return { tags: data ?? [], isLoading };
+}
+
 /** ともだち一覧（キャッシュ共有） */
 export function useFriends() {
   const { data, isLoading, mutate } = useSWR<any[]>('/api/friends', () => getFriends(), {

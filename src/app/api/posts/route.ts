@@ -86,6 +86,9 @@ export async function GET(request: NextRequest) {
           },
           want_to_gos: true,
           visiteds: true,
+          _count: {
+            select: { comments: true }
+          }
         },
         orderBy: {
           visited_at: 'desc',
@@ -97,6 +100,7 @@ export async function GET(request: NextRequest) {
         ...post,
         tags: post.tags.map((pt: any) => pt.tag),
         _isMarkedWantToGo: post.want_to_gos?.some((w: any) => w.user_id === auth.userId),
+        _comment_count: post._count?.comments ?? 0,
       }));
 
       return NextResponse.json({ success: true, data: result });
