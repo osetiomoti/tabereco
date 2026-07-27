@@ -9,7 +9,7 @@ import { StarDisplay, StarInput } from './StarRating';
 type RatingAndActionsProps = {
   postId: string;
   isOwner: boolean;
-  ownerRating: number;
+  ownerRating: number | null;
 };
 
 export function RatingAndActions({ postId, isOwner, ownerRating }: RatingAndActionsProps) {
