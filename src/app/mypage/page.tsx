@@ -381,6 +381,11 @@ export default function MyPage() {
                         </div>
                       </>
                     )}
+                    {post.is_favorite && (
+                      <div className="absolute top-1.5 right-1.5 bg-pink-500/90 text-white w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
+                        <span className="text-[10px] font-black">♥</span>
+                      </div>
+                    )}
                   </Link>
                 ))}
               </div>

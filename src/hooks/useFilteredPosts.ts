@@ -122,9 +122,10 @@ export function useFilteredPosts() {
       // ── 投稿者モード: 自分の投稿ベース、グループフィルターは無視 ──
       // 自分の投稿 + グループ内の他者投稿をすべてマージしてから registrantUserIds でフィルター
       const combinedMap = new Map<string, Post>();
-      ownPostsCache.forEach((p: Post) => combinedMap.set(p.id, p));
-      // グループ投稿も含める（メンバーフィルターで絞る）
+      // グループ投稿を先にセット
       groupPostsCache.forEach((g: any) => g.posts.forEach((p: Post) => combinedMap.set(p.id, p)));
+      // 自分の投稿で上書き（__is_mine: true が保持される）
+      ownPostsCache.forEach((p: Post) => combinedMap.set(p.id, p));
 
       result = Array.from(combinedMap.values());
 
