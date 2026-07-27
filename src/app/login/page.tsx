@@ -1,12 +1,48 @@
 'use client';
 
 import { useEffect, useState, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 
 function LoginForm() {
-  const searchParams = useSearchParams();
+  const router = useRouter();
   const error = searchParams.get('error');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true); // 自動復元チェックのため初期値をtrueに
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  useEffect(() => {
+    const tryRestore = async () => {
+      const storedRt = localStorage.getItem('tabereco_rt');
+      if (!storedRt) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsRestoring(true);
+      try {
+        const res = await fetch('/api/auth/refresh', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: storedRt }),
+        });
+
+        if (res.ok) {
+          console.log('[Login] Session restored from localStorage');
+          router.replace('/posts');
+          return;
+        } else {
+          console.log('[Login] Restore failed, clearing localStorage');
+          localStorage.removeItem('tabereco_rt');
+        }
+      } catch {
+        console.error('[Login] Restore request failed');
+      }
+
+      setIsRestoring(false);
+      setIsLoading(false);
+    };
+
+    tryRestore();
+  }, [router]);
 
   const handleLogin = () => {
     setIsLoading(true);
@@ -49,19 +85,19 @@ function LoginForm() {
       <button
         id="login-button"
         onClick={handleLogin}
-        disabled={isLoading}
+        disabled={isLoading || isRestoring}
         className="w-full max-w-xs bg-[#ff6b95] text-white py-4 rounded-full font-bold text-lg shadow-lg
            active:scale-95 transition-all duration-150
            disabled:opacity-70 disabled:cursor-not-allowed
            hover:bg-[#ff5a8a]"
       >
-        {isLoading ? (
+        {isLoading || isRestoring ? (
           <span className="flex items-center justify-center gap-2">
             <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24" fill="none">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
             </svg>
-            ログイン中...
+            {isRestoring ? 'セッション復元中...' : 'ログイン中...'}
           </span>
         ) : (
           'ログイン / はじめる'

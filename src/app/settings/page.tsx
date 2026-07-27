@@ -29,7 +29,10 @@ export default function SettingsPage() {
       });
   }, []);
 
-  const handleSignOut = () => router.push('/api/auth/logout');
+  const handleSignOut = () => {
+    localStorage.removeItem('tabereco_rt');
+    router.push('/api/auth/logout');
+  };
 
   const handleSaveName = async () => {
     if (!nameInput.trim()) return;
