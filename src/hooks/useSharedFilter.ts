@@ -13,15 +13,15 @@ type SharedFilterState = {
 };
 
 const defaultState: SharedFilterState = {
-  activeTab: 'all',
+  activeTab: 'visited',
   keyword: '',
   searchMode: 'store_name',
   activeGroups: ['all'],
-  advancedFilters: { include_mine: true },
+  advancedFilters: { include_mine: true, status: 'visited' },
   activeMapTag: null,
 };
 
-const STORAGE_KEY = 'tabereco_shared_filter';
+const STORAGE_KEY = 'tabereco_shared_filter_v2';
 const EVENT_KEY = 'tabereco_shared_filter_updated';
 
 // シンプルなイベントによる状態同期フック
