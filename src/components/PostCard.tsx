@@ -323,9 +323,23 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
                 </div>
               ))}
             </div>
+          ) : post.status === 'want_to_go' ? (
+            /* 行きたい・画像なしの場合はリッチカードを表示 */
+            <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-orange-50 via-amber-50 to-rose-50">
+              <div className="w-16 h-16 rounded-2xl bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm">
+                <span className="text-3xl">📍</span>
+              </div>
+              <div className="text-center px-6">
+                <p className="text-[13px] font-black text-gray-700 leading-snug">{post.store_name || post.title}</p>
+                <p className="text-[11px] text-orange-500 font-bold mt-1">行きたいリストに追加済み</p>
+              </div>
+            </div>
           ) : (
-            <div className="w-full h-full flex items-center justify-center bg-orange-50">
-              <span className="text-4xl opacity-30">🍽️</span>
+            <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-gray-50 to-gray-100">
+              <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow-sm">
+                <span className="text-3xl">🍽️</span>
+              </div>
+              <p className="text-[12px] font-bold text-gray-400">写真なし</p>
             </div>
           )}
           
@@ -401,10 +415,12 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-1 bg-orange-50 px-2 py-1 rounded-lg">
-              <Star size={12} className="fill-orange-500 text-orange-500" />
-              <span className="text-orange-600 font-black text-[13px]">{post.rating?.toFixed(1)}</span>
-            </div>
+            {post.status !== 'want_to_go' && post.rating != null && (
+              <div className="flex items-center gap-1 bg-orange-50 px-2 py-1 rounded-lg">
+                <Star size={12} className="fill-orange-500 text-orange-500" />
+                <span className="text-orange-600 font-black text-[13px]">{post.rating.toFixed(1)}</span>
+              </div>
+            )}
           </div>
           
           {/* Tags (Small) */}
