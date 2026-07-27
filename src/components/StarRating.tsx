@@ -25,7 +25,7 @@ function StarIcon({ fillPercent, size }: { fillPercent: number; size: number }) 
 // ─── 表示専用（0.1刻み） ─────────────────────────────────
 
 type DisplayProps = {
-  rating: number;
+  rating: number | null;
   size?: 'xs' | 'sm' | 'md' | 'lg';
 };
 
@@ -36,12 +36,12 @@ export function StarDisplay({ rating, size = 'md' }: DisplayProps) {
   return (
     <div className="flex gap-0.5 items-center">
       {STARS.map((s) => {
-        const fillPercent = Math.max(0, Math.min(1, rating - (s - 1)));
+        const fillPercent = Math.max(0, Math.min(1, (rating ?? 0) - (s - 1)));
         return (
           <StarIcon key={s} fillPercent={fillPercent} size={iconSize} />
         );
       })}
-      {rating > 0 && (
+      {rating != null && rating > 0 && (
         <span className="ml-1.5 text-[11px] font-black text-gray-400">
           {rating.toFixed(1)}
         </span>
@@ -53,22 +53,34 @@ export function StarDisplay({ rating, size = 'md' }: DisplayProps) {
 // ─── 入力可能（星クリック=0.5刻み、±ボタン=0.1刻み） ─────────────────────────────────
 
 type InputProps = {
-  value: number;
+  value: number | null;
   onChange: (rating: number) => void;
 };
 
 export function StarInput({ value, onChange }: InputProps) {
-  const clamp = (v: number) => Math.round(Math.max(0.5, Math.min(5, v)) * 10) / 10;
+  const displayValue = value ?? 3;
+
+  const handleStarClick = (e: React.MouseEvent<HTMLDivElement>, s: number) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const isHalf = clickX < rect.width / 2;
+    const newValue = isHalf ? s - 0.5 : s;
+    onChange(newValue);
+  };
+
+  const adjust = (delta: number) => {
+    const newVal = Math.max(1, Math.min(5, Number((displayValue + delta).toFixed(1))));
+    onChange(newVal);
+  };
 
   return (
-    <div className="flex items-center gap-1.5 sm:gap-3">
-      {/* Stars: click for 0.5 step */}
-      <div className="flex gap-0.5 sm:gap-1">
+    <div className="flex items-center justify-between bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
+      <div className="flex gap-1.5 items-center">
         {STARS.map((s) => {
-          const fillPercent = Math.max(0, Math.min(1, value - (s - 1)));
+          const fillPercent = Math.max(0, Math.min(1, displayValue - (s - 1)));
 
           return (
-            <div key={s} className="relative w-8 h-8 sm:w-10 sm:h-10 group shrink-0">
+            <div key={s} className="relative w-8 h-8 sm:w-10 sm:h-10 group shrink-0" onClick={(e) => handleStarClick(e, s)}>
               {/* Background visual exact fill */}
               <div className="absolute inset-0 pointer-events-none flex items-center justify-center transition-transform group-active:scale-90">
                 <div className="hidden sm:flex"><StarIcon fillPercent={fillPercent} size={32} /></div>
@@ -97,7 +109,7 @@ export function StarInput({ value, onChange }: InputProps) {
       {/* − 0.1 */}
       <button
         type="button"
-        onClick={() => onChange(clamp(value - 0.1))}
+        onClick={() => adjust(-0.1)}
         className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 active:scale-90 transition-all shrink-0"
       >
         <Minus size={14} strokeWidth={3} className="text-gray-500" />
@@ -105,13 +117,13 @@ export function StarInput({ value, onChange }: InputProps) {
 
       {/* Score */}
       <span className="text-2xl sm:text-3xl font-black text-[#ff6b95] min-w-[2.5rem] sm:min-w-[3.5rem] text-center drop-shadow-sm shrink-0">
-        {value.toFixed(1)}
+        {displayValue.toFixed(1)}
       </span>
 
       {/* + 0.1 */}
       <button
         type="button"
-        onClick={() => onChange(clamp(value + 0.1))}
+        onClick={() => adjust(0.1)}
         className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 active:scale-90 transition-all shrink-0"
       >
         <Plus size={14} strokeWidth={3} className="text-gray-500" />

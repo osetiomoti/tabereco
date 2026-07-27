@@ -8,7 +8,7 @@ export type Post = {
   title: string;
   store_name: string | null;
   comment: string | null;
-  rating: number;
+  rating: number | null;
   image_url?: string | null;
   image_urls: string[];
   visited_at?: string | null; // YYYY-MM-DD
@@ -36,7 +36,7 @@ export type PostInsert = {
   store_name: string; // 必須化
   title?: string;     // 任意化
   comment?: string | null;
-  rating: number;
+  rating: number | null;
   image_url?: string | null;
   image_urls?: string[];
   visited_at?: string | null;
@@ -56,7 +56,7 @@ export type PostUpdate = {
   store_name?: string; // 必須ではないが、更新時は文字列
   title?: string;
   comment?: string | null;
-  rating?: number;
+  rating?: number | null;
   image_url?: string | null;
   image_urls?: string[];
   visited_at?: string;
@@ -76,7 +76,7 @@ export type PostFormValues = {
   store_name: string; // 必須項目
   title?: string;     // 任意項目
   comment: string;
-  rating: number;
+  rating: number | null;
   visited_at: string; // empty string when not set
   images: File[];
   image_urls: string[]; // for keeping existing images during edit

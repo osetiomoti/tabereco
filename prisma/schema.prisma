@@ -64,7 +64,7 @@ model Post {
   title       String
   store_name  String?     
   comment     String?
-  rating      Float
+  rating      Float?
   image_url   String?      
   image_urls  String[]    @default([])
   visited_at  DateTime?   @db.Date

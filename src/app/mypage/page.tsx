@@ -14,6 +14,35 @@ import { useRouter } from 'next/navigation';
 import { useSharedFilter } from '@/hooks/useSharedFilter';
 import { useGroups } from '@/hooks/useAppData';
 
+function MiniNoImageMap({ post }: { post: Post }) {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+  const hasCoords = post.latitude != null && post.longitude != null;
+  const staticMapUrl = hasCoords && apiKey
+    ? `https://maps.googleapis.com/maps/api/staticmap?center=${post.latitude},${post.longitude}&zoom=15&size=300x300&markers=color:0xf43f5e%7C${post.latitude},${post.longitude}&key=${apiKey}`
+    : null;
+
+  return (
+    <div className="w-full h-full relative bg-gray-100 flex items-center justify-center group-hover:scale-105 transition-transform duration-500">
+      {staticMapUrl ? (
+        <>
+          <Image src={staticMapUrl} alt="Map" fill className="object-cover opacity-80" unoptimized />
+          <div className="absolute inset-0 bg-white/40 flex flex-col items-center justify-center pointer-events-none p-1">
+            <span className="text-gray-600 font-bold text-[8px] bg-white/80 px-2 py-1 rounded shadow-sm backdrop-blur-sm text-center leading-tight">
+              画像が登録されて<br />いません
+            </span>
+          </div>
+        </>
+      ) : (
+        <div className="flex flex-col items-center justify-center gap-1 p-2 bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 w-full h-full">
+          <span className="text-xl mb-1">📍</span>
+          <span className="text-[9px] font-black text-center leading-tight text-gray-700 line-clamp-2 px-1">{post.title}</span>
+          <span className="text-[8px] font-bold text-gray-500 mt-0.5 text-center leading-tight">画像がありません</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function MyPage() {
   const router = useRouter();
   const { updateFilter } = useSharedFilter();
@@ -342,11 +371,7 @@ export default function MyPage() {
                     {post.image_url ? (
                       <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 group-hover:scale-105 transition-transform duration-500">
-                        <span className="text-xl mb-1">🗓️</span>
-                        <span className="text-[9px] font-black text-center leading-tight text-gray-700 line-clamp-2 px-1">{post.title}</span>
-                        {post.store_name && <span className="text-[7px] font-bold text-gray-400 mt-0.5 truncate w-full text-center">{post.store_name}</span>}
-                      </div>
+                      <MiniNoImageMap post={post} />
                     )}
                     {post.image_url && (
                       <>
@@ -381,11 +406,7 @@ export default function MyPage() {
                     {post.image_url ? (
                       <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-gradient-to-br from-indigo-50 via-purple-50 to-indigo-100 group-hover:scale-105 transition-transform duration-500">
-                        <span className="text-xl mb-1">🗓️</span>
-                        <span className="text-[9px] font-black text-center leading-tight text-gray-700 line-clamp-2 px-1">{post.title}</span>
-                        {post.store_name && <span className="text-[7px] font-bold text-gray-400 mt-0.5 truncate w-full text-center">{post.store_name}</span>}
-                      </div>
+                      <MiniNoImageMap post={post} />
                     )}
                     {post.image_url && (
                       <>
@@ -510,13 +531,11 @@ export default function MyPage() {
             <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
               {post.image_url ? (
                 <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
+              ) : post.status === 'want_to_go' ? (
+                <MiniNoImageMap post={post} />
               ) : (
-                <div className={`w-full h-full flex flex-col items-center justify-center p-2 transition-transform duration-500 group-hover:scale-105 ${
-                  post.status === 'want_to_go'
-                    ? 'bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100'
-                    : 'bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100'
-                }`}>
-                  <span className="text-2xl mb-1">{post.status === 'want_to_go' ? '🗓️' : '🍽️'}</span>
+                <div className={`w-full h-full flex flex-col items-center justify-center p-2 transition-transform duration-500 group-hover:scale-105 bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100`}>
+                  <span className="text-2xl mb-1">🍽️</span>
                   <span className="text-[9px] font-black text-center leading-tight text-gray-700 line-clamp-2 px-1">{post.title}</span>
                   {post.store_name && <span className="text-[7px] font-bold text-gray-400 mt-0.5 truncate w-full text-center">{post.store_name}</span>}
                 </div>

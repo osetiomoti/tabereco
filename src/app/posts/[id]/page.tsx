@@ -94,9 +94,35 @@ export default async function PostDetailPage({ params }: Props) {
             <FavoriteToggle postId={post.id} initialValue={post.is_favorite} />
           </div>
         </div>
+      ) : post.status === 'want_to_go' ? (
+        <div className="w-full aspect-square bg-gray-100 flex items-center justify-center relative">
+          {staticMapUrl ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={staticMapUrl} alt="Map" className="w-full h-full object-cover opacity-80" />
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none p-4">
+                <span className="text-gray-600 font-bold text-sm bg-white/80 px-4 py-2 rounded-full shadow-sm backdrop-blur-sm">
+                  画像が登録されていません
+                </span>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-2">
+              <span className="text-4xl">📍</span>
+              <p className="text-sm font-bold text-gray-500">画像が登録されていません</p>
+            </div>
+          )}
+          <div className="absolute top-3 right-3 z-20">
+            <FavoriteToggle postId={post.id} initialValue={post.is_favorite} />
+          </div>
+        </div>
       ) : (
-        <div className="w-full aspect-square bg-gray-50 flex items-center justify-center text-gray-200">
+        <div className="w-full aspect-square bg-gray-50 flex flex-col items-center justify-center text-gray-300 gap-2 relative">
           <span className="text-5xl">🍽️</span>
+          <span className="text-sm font-bold">写真なし</span>
+          <div className="absolute top-3 right-3 z-20">
+            <FavoriteToggle postId={post.id} initialValue={post.is_favorite} />
+          </div>
         </div>
       )}
 
@@ -110,10 +136,12 @@ export default async function PostDetailPage({ params }: Props) {
           </div>
           <span className="text-sm text-gray-800">{post.user?.name || 'ゲスト'}</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          <StarDisplay rating={post.rating} size="md" />
-          <ChevronDown size={14} className="text-gray-400 font-bold ml-0.5" />
-        </div>
+        {post.status !== 'want_to_go' && post.rating != null && (
+          <div className="flex items-center gap-1.5">
+            <StarDisplay rating={post.rating} size="md" />
+            <ChevronDown size={14} className="text-gray-400 font-bold ml-0.5" />
+          </div>
+        )}
       </div>
 
       {/* 4. 訪問日、メモ、タグ */}

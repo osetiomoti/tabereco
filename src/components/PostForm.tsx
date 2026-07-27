@@ -42,7 +42,7 @@ export function PostForm({ post }: Props) {
     title: post?.title ?? '',
     store_name: post?.store_name ?? queryName,
     comment: post?.comment ?? '',
-    rating: post?.rating ?? 3,
+    rating: post?.rating ?? (post?.status === 'want_to_go' ? null : 3),
     visited_at: post?.visited_at
       ? typeof post.visited_at === 'string'
         ? post.visited_at.split('T')[0]
@@ -186,14 +186,12 @@ export function PostForm({ post }: Props) {
         })
       ).then(urls => urls.filter((url): url is string => url !== null));
 
-      const primaryImageUrl = finalImageUrls.length > 0 ? finalImageUrls[0] : null;
-
       const postData = {
         title: values.title?.trim() || values.store_name.trim(),
         store_name: values.store_name.trim(),
-        comment: values.comment.trim() || null,
-        rating: values.rating,
-        image_url: primaryImageUrl, // 後方互換のため最初の1枚
+        comment: values.comment?.trim() || null,
+        rating: values.status === 'want_to_go' ? null : (values.rating ?? 3),
+        image_url: finalImageUrls[0] || null, 
         image_urls: finalImageUrls, // すべての画像配列
         visited_at: values.visited_at,
         status: values.status,

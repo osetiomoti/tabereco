@@ -205,7 +205,7 @@ export function useFilteredPosts() {
 
     
     if (advancedFilters?.rating_min !== undefined) {
-      result = result.filter(p => p.rating >= advancedFilters.rating_min);
+      result = result.filter(p => p.rating !== null && p.rating >= advancedFilters.rating_min!);
     }
     if (advancedFilters?.price_min !== undefined) {
       result = result.filter(p => p.price_min !== null && p.price_min >= advancedFilters.price_min);
@@ -225,9 +225,9 @@ export function useFilteredPosts() {
     result.sort((a: Post, b: Post) => {
       switch (sortOrder) {
         case 'rating_desc':
-          return b.rating - a.rating;
+          return (b.rating ?? 0) - (a.rating ?? 0);
         case 'rating_asc':
-          return a.rating - b.rating;
+          return (a.rating ?? 0) - (b.rating ?? 0);
         case 'price_desc':
           return (b.price_min || 0) - (a.price_min || 0);
         case 'price_asc': {

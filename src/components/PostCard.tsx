@@ -20,6 +20,11 @@ type Props = {
 
 export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCount, commentCount }: Props) {
   const router = useRouter();
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+  const hasCoords = post.latitude != null && post.longitude != null;
+  const staticMapUrl = hasCoords && apiKey
+    ? `https://maps.googleapis.com/maps/api/staticmap?center=${post.latitude},${post.longitude}&zoom=16&size=600x400&markers=color:0xf43f5e%7C${post.latitude},${post.longitude}&key=${apiKey}`
+    : null;
 
   // 楽観的UIのためのローカルステート
   const [isFavorite, setIsFavorite] = useState(post.is_favorite);
@@ -324,15 +329,23 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
               ))}
             </div>
           ) : post.status === 'want_to_go' ? (
-            /* 行きたい・画像なしの場合はリッチカードを表示 */
-            <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-orange-50 via-amber-50 to-rose-50">
-              <div className="w-16 h-16 rounded-2xl bg-white/80 backdrop-blur-sm flex items-center justify-center shadow-sm">
-                <span className="text-3xl">📍</span>
-              </div>
-              <div className="text-center px-6">
-                <p className="text-[13px] font-black text-gray-700 leading-snug">{post.store_name || post.title}</p>
-                <p className="text-[11px] text-orange-500 font-bold mt-1">行きたいリストに追加済み</p>
-              </div>
+            /* 行きたい・画像なしの場合はマップを表示 */
+            <div className="w-full h-full relative bg-gray-100 flex items-center justify-center">
+              {staticMapUrl ? (
+                <>
+                  <Image src={staticMapUrl} alt="Map" fill className="object-cover opacity-80" unoptimized />
+                  <div className="absolute inset-0 bg-white/40 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-gray-600 font-bold text-[13px] bg-white/80 px-4 py-2 rounded-full shadow-sm backdrop-blur-sm">
+                      画像が登録されていません
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-2">
+                  <span className="text-3xl">📍</span>
+                  <p className="text-[12px] font-bold text-gray-500">画像が登録されていません</p>
+                </div>
+              )}
             </div>
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-gray-50 to-gray-100">
