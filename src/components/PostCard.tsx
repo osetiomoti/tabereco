@@ -323,17 +323,6 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
               >
                 <Heart size={18} className={post.is_favorite ? 'fill-white' : ''} />
               </button>
-            ) : onLike ? (
-              <button
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLike(post.id); }}
-                className={`w-9 h-9 rounded-full backdrop-blur-md flex items-center justify-center shadow-lg transition-all ${
-                  likedByMe
-                  ? 'bg-pink-500 text-white'
-                  : 'bg-white/80 text-gray-400 hover:text-pink-500'
-                }`}
-              >
-                <ThumbsUp size={18} className={likedByMe ? 'fill-white' : ''} />
-              </button>
             ) : (
               <button 
                 onClick={toggleWantToGo}
