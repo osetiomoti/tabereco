@@ -476,6 +476,11 @@ export default function MyPage() {
                         <span className="text-[10px] font-black">{post.rating.toFixed(1)}</span>
                       </div>
                     )}
+                    {post.is_favorite && (
+                      <div className="absolute top-1.5 right-1.5 bg-pink-500/90 text-white w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
+                        <span className="text-[10px] font-black">♥</span>
+                      </div>
+                    )}
                   </Link>
                 ))}
               </div>
@@ -514,9 +519,11 @@ export default function MyPage() {
                         <span className="text-[10px] font-black">{post.rating.toFixed(1)}</span>
                       </div>
                     )}
-                    <div className="absolute top-1.5 right-1.5 bg-orange-500/90 text-white w-5 h-5 rounded-full flex items-center justify-center shadow-sm">
-                      <Bookmark size={10} className="fill-white" />
-                    </div>
+                    {post.is_favorite && (
+                      <div className="absolute top-1.5 right-1.5 bg-pink-500/90 text-white w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
+                        <span className="text-[10px] font-black">♥</span>
+                      </div>
+                    )}
                   </Link>
                 ))}
               </div>
