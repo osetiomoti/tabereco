@@ -235,18 +235,20 @@ export default function RankingsPage() {
               {isReadOnly ? 'ランキングを見るタグを選択' : 'ランキングするタグを選択'}
             </label>
             {!isReadOnly && (
-              <button
-                type="button"
-                onClick={() => setShowGroupTagsInRanking(v => !v)}
-                className="flex items-center gap-1.5"
-              >
-                <span className={`text-[10px] font-bold ${showGroupTagsInRanking ? 'text-orange-500' : 'text-gray-400'}`}>
-                  グループ全員
+              <label className="flex items-center gap-2 cursor-pointer bg-gray-50/50 px-2 py-1 rounded-lg border border-gray-100 hover:bg-orange-50/50 transition-colors">
+                <span className="text-[10px] font-bold text-gray-500 whitespace-nowrap">
+                  全員
                 </span>
-                <div className={`relative w-8 h-4 rounded-full transition-colors duration-200 ${showGroupTagsInRanking ? 'bg-orange-500' : 'bg-gray-200'}`}>
-                  <span className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow-sm transition-transform duration-200 ${showGroupTagsInRanking ? 'translate-x-4' : 'translate-x-0.5'}`} />
+                <div className="relative flex items-center">
+                  <input
+                    type="checkbox"
+                    className="peer sr-only"
+                    checked={showGroupTagsInRanking}
+                    onChange={(e) => setShowGroupTagsInRanking(e.target.checked)}
+                  />
+                  <div className="w-8 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-orange-500 shadow-inner"></div>
                 </div>
-              </button>
+              </label>
             )}
           </div>
           <button

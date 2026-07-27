@@ -411,21 +411,21 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
 
           {/* いいね・コメント数バッジ */}
           {(likesCount !== undefined || commentCount !== undefined) && (
-            <div className="flex items-center gap-3 mt-2">
+            <div className="flex items-center gap-1 mt-1 -ml-2">
               {likesCount !== undefined && (
                 <button
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLike?.(post.id); }}
-                  className={`flex items-center gap-1 text-[11px] font-black transition-all active:scale-95 ${
-                    likedByMe ? 'text-pink-500' : 'text-gray-300 hover:text-pink-400'
+                  className={`flex items-center gap-1.5 p-2 text-[12px] font-black transition-all active:scale-95 rounded-full ${
+                    likedByMe ? 'text-pink-500 hover:bg-pink-50' : 'text-gray-300 hover:text-pink-400 hover:bg-pink-50/50'
                   }`}
                 >
-                  <Heart size={13} className={likedByMe ? 'fill-pink-500 text-pink-500' : ''} />
+                  <Heart size={15} className={likedByMe ? 'fill-pink-500 text-pink-500' : ''} />
                   <span>{likesCount}</span>
                 </button>
               )}
               {commentCount !== undefined && (
-                <div className="flex items-center gap-1 text-[11px] font-black text-gray-300">
-                  <MessageCircle size={13} />
+                <div className="flex items-center gap-1.5 p-2 text-[12px] font-black text-gray-300">
+                  <MessageCircle size={15} />
                   <span>{commentCount}</span>
                 </div>
               )}

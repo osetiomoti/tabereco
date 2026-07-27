@@ -143,12 +143,12 @@ export default function PostsPage() {
     setLikedPosts(prev => {
       const isLiked = !prev[postId];
       setLikesCount(cPrev => {
-        const base = cPrev[postId] ?? (posts.find(p => p.id === postId) as any)?.want_to_gos?.length ?? 0;
+        const base = cPrev[postId] ?? (posts.find(p => p.id === postId) as any)?._like_count ?? 0;
         return { ...cPrev, [postId]: isLiked ? base + 1 : Math.max(0, base - 1) };
       });
       return { ...prev, [postId]: isLiked };
     });
-    fetch(`/api/posts/${postId}/want-to-go`, { method: 'POST' }).catch(console.error);
+    fetch(`/api/posts/${postId}/like`, { method: 'POST' }).catch(console.error);
   };
 
   const handleRefresh = async () => {
@@ -283,15 +283,14 @@ export default function PostsPage() {
               <div className="space-y-1 animate-in fade-in slide-in-from-bottom-4 duration-700">
                 {posts.map((post) => {
                   const isOthersPosts = (post as any).__is_mine === false;
-                  const wantToGosArr = (post as any).want_to_gos ?? [];
-                  const postLikesCount = likesCount[post.id] ?? wantToGosArr.length;
+                  const postLikesCount = likesCount[post.id] ?? (post as any)._like_count ?? 0;
                   const postCommentCount = (post as any)._comment_count ?? (post as any).comments?.length;
                   return (
                     <PostCard
                       key={post.id}
                       post={post}
                       onLike={isOthersPosts ? toggleLike : undefined}
-                      likedByMe={isOthersPosts ? (likedPosts[post.id] ?? wantToGosArr.some((w: any) => w.user_id && w.is_mine !== false)) : undefined}
+                      likedByMe={isOthersPosts ? (likedPosts[post.id] ?? (post as any)._isLikedByMe ?? false) : undefined}
                       likesCount={postLikesCount}
                       commentCount={postCommentCount}
                     />

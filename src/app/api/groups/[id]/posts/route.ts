@@ -50,8 +50,9 @@ export async function GET(
           },
         },
         want_to_gos: true,
+        likes: true,
         _count: {
-          select: { comments: true }
+          select: { comments: true, likes: true }
         }
       },
       orderBy: {
@@ -65,7 +66,9 @@ export async function GET(
       tags: post.tags.map((pt: any) => pt.tag),
       shared_at: post.created_at, // Use created_at as shared_at for compatibility
       _isMarkedWantToGo: post.want_to_gos?.some((w: any) => w.user_id === auth.userId),
+      _isLikedByMe: post.likes?.some((l: any) => l.user_id === auth.userId),
       _comment_count: post._count?.comments ?? 0,
+      _like_count: post._count?.likes ?? 0,
     }));
 
     return NextResponse.json({ success: true, data: posts });

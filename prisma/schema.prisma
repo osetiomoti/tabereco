@@ -26,6 +26,7 @@ model User {
   want_to_gos     PostWantToGo[]
   visiteds        PostVisited[]
   comments        PostComment[]
+  likes           PostLike[]
 
   @@map("users")
 }
@@ -84,6 +85,7 @@ model Post {
   want_to_gos  PostWantToGo[]
   visiteds     PostVisited[]
   comments     PostComment[]
+  likes        PostLike[]
 
   @@map("posts")
 }
@@ -186,4 +188,16 @@ model PostVisited {
 
   @@unique([post_id, user_id])
   @@map("post_visiteds")
+}
+
+model PostLike {
+  id         String   @id @default(uuid()) @db.Uuid
+  post_id    String   @db.Uuid
+  user_id    String   @db.Uuid
+  created_at DateTime @default(now())
+  post       Post     @relation(fields: [post_id], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([post_id, user_id])
+  @@map("post_likes")
 }

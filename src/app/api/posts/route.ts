@@ -16,6 +16,7 @@ export async function GET(request: NextRequest) {
       const tagId = searchParams.get('tag_id');
       const markedWantToGo = searchParams.get('marked_want_to_go') === 'true';
       const markedVisited = searchParams.get('marked_visited') === 'true';
+      const likedByMe = searchParams.get('liked_by_me') === 'true';
       const isMine = searchParams.get('is_mine') === 'true';
 
       if (markedWantToGo) {
@@ -62,7 +63,30 @@ export async function GET(request: NextRequest) {
             ...v.post,
             tags: v.post.tags.map((pt: any) => pt.tag),
             _markedVisitedAt: v.created_at,
-            _myRating: v.rating,
+          }));
+        return NextResponse.json({ success: true, data: result });
+      }
+
+      if (likedByMe) {
+        const likes = await prisma.postLike.findMany({
+          where: { user_id: auth.userId },
+          include: {
+            post: {
+              include: {
+                user: { select: { id: true, name: true, avatar_url: true } },
+                tags: { include: { tag: true } },
+              },
+            },
+          },
+          orderBy: { created_at: 'desc' },
+        });
+
+        const result = likes
+          .filter((l) => l.post.user_id !== auth.userId)
+          .map((l) => ({
+            ...l.post,
+            tags: l.post.tags.map((pt: any) => pt.tag),
+            _likedAt: l.created_at,
           }));
         return NextResponse.json({ success: true, data: result });
       }
@@ -86,8 +110,9 @@ export async function GET(request: NextRequest) {
           },
           want_to_gos: true,
           visiteds: true,
+          likes: true,
           _count: {
-            select: { comments: true }
+            select: { comments: true, likes: true }
           }
         },
         orderBy: {
@@ -100,7 +125,9 @@ export async function GET(request: NextRequest) {
         ...post,
         tags: post.tags.map((pt: any) => pt.tag),
         _isMarkedWantToGo: post.want_to_gos?.some((w: any) => w.user_id === auth.userId),
+        _isLikedByMe: post.likes?.some((l: any) => l.user_id === auth.userId),
         _comment_count: post._count?.comments ?? 0,
+        _like_count: post._count?.likes ?? 0,
       }));
 
       return NextResponse.json({ success: true, data: result });

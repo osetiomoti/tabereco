@@ -120,19 +120,20 @@ export function TagSelector({ isOpen, onClose, selectedTags, onSelect }: Props) 
 
         {/* グループ全員のタグ切替トグル */}
         <div className="px-6 pt-3 pb-1 flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <Users size={12} className={showGroupTags ? 'text-orange-500' : 'text-gray-300'} />
-            <span className={`text-[11px] font-bold ${showGroupTags ? 'text-orange-500' : 'text-gray-400'}`}>
-              グループ全員のタグを含む
+          <label className="flex items-center gap-2 cursor-pointer bg-gray-50/50 px-2 py-1.5 rounded-lg border border-gray-100 hover:bg-orange-50/50 transition-colors">
+            <span className="text-[11px] font-bold text-gray-500 whitespace-nowrap">
+              全員のタグを含む
             </span>
-          </div>
-          <button
-            type="button"
-            onClick={() => setShowGroupTags(v => !v)}
-            className={`relative w-10 h-5 rounded-full transition-colors duration-200 ${showGroupTags ? 'bg-orange-500' : 'bg-gray-200'}`}
-          >
-            <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200 ${showGroupTags ? 'translate-x-5' : 'translate-x-0.5'}`} />
-          </button>
+            <div className="relative flex items-center">
+              <input
+                type="checkbox"
+                className="peer sr-only"
+                checked={showGroupTags}
+                onChange={(e) => setShowGroupTags(e.target.checked)}
+              />
+              <div className="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-orange-500 shadow-inner"></div>
+            </div>
+          </label>
         </div>
 
         {/* Search Bar */}

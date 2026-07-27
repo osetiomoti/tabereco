@@ -1,0 +1,51 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { withAuth } from '@/lib/auth';
+
+/**
+ * POST /api/posts/[id]/like
+ * Toggle like for a post (for other user's posts)
+ */
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  return withAuth(request, async (auth) => {
+    const post = await prisma.post.findUnique({
+      where: { id },
+    });
+
+    if (!post) {
+      return NextResponse.json({ success: false, error: 'Post not found' }, { status: 404 });
+    }
+
+    // 他人の投稿へのいいねかどうかのバリデーションは特にしない（UI側で制限するがAPIでは許可してもOK）
+
+    const existingLike = await prisma.postLike.findUnique({
+      where: {
+        post_id_user_id: {
+          post_id: id,
+          user_id: auth.userId,
+        },
+      },
+    });
+
+    if (existingLike) {
+      // 既にいいねしている場合は削除 (Toggle OFF)
+      await prisma.postLike.delete({
+        where: { id: existingLike.id },
+      });
+      return NextResponse.json({ success: true, action: 'removed' });
+    } else {
+      // いいね作成 (Toggle ON)
+      await prisma.postLike.create({
+        data: {
+          post_id: id,
+          user_id: auth.userId,
+        },
+      });
+      return NextResponse.json({ success: true, action: 'added' });
+    }
+  });
+}

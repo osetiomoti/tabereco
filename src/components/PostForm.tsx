@@ -66,7 +66,7 @@ export function PostForm({ post }: Props) {
   });
 
   const isCustomPrice = post ? 
-    !['1-1000', '1000-2000', '2000-3000', '3000-4000', '4000-5000', '5000-10000', '10000-'].includes(`${post.price_min}-${post.price_max || ''}`)
+    (post.price_min === null && post.price_max === null ? false : !['1-1000', '1000-2000', '2000-3000', '3000-4000', '4000-5000', '5000-10000', '10000-'].includes(`${post.price_min}-${post.price_max || ''}`))
     : false;
   const [priceMode, setPriceMode] = useState<'preset' | 'custom'>(isCustomPrice ? 'custom' : 'preset');
 
@@ -370,11 +370,15 @@ export function PostForm({ post }: Props) {
           <label className="text-[12px] font-black text-gray-500 tracking-widest ml-1 block">値段帯</label>
           <div className="flex flex-col gap-2 relative">
             <select
-              value={priceMode === 'custom' ? 'custom' : `${values.price_min}-${values.price_max || ''}`}
+              value={priceMode === 'custom' ? 'custom' : (values.price_min === null && values.price_max === null ? '' : `${values.price_min}-${values.price_max || ''}`)}
               onChange={(e) => {
                 const val = e.target.value;
                 if (val === 'custom') {
                   setPriceMode('custom');
+                } else if (val === '') {
+                  setPriceMode('preset');
+                  set('price_min', null as any);
+                  set('price_max', null as any);
                 } else {
                   setPriceMode('preset');
                   const [min, max] = val.split('-');
@@ -384,6 +388,7 @@ export function PostForm({ post }: Props) {
               }}
               className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 focus:outline-none focus:ring-4 focus:ring-[#ff6b95]/5 focus:bg-white transition-all text-base font-bold appearance-none cursor-pointer"
             >
+              <option value="">未設定</option>
               <option value="1-1000">1〜1,000円</option>
               <option value="1000-2000">1,000〜2,000円</option>
               <option value="2000-3000">2,000〜3,000円</option>
