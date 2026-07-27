@@ -114,7 +114,7 @@ export default function MyPage() {
   const likedPosts: Post[] = likedPostsData?.data || [];
 
   const ownVisitedPosts = posts.filter(p => p.status === 'visited');
-  const ownWantToGoPosts = posts.filter(p => p.is_favorite || p.status === 'want_to_go');
+  const ownWantToGoPosts = posts.filter(p => p.status === 'want_to_go');
 
   const ownVisitedCount = ownVisitedPosts.length;
   const ownWantCount = ownWantToGoPosts.length;
@@ -422,9 +422,11 @@ export default function MyPage() {
                         </div>
                       </>
                     )}
-                    <div className="absolute top-1.5 right-1.5 bg-orange-500/90 text-white w-5 h-5 rounded-full flex items-center justify-center shadow-sm">
-                      <Bookmark size={10} className="fill-white" />
-                    </div>
+                    {post.is_favorite && (
+                      <div className="absolute top-1.5 right-1.5 bg-pink-500/90 text-white w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
+                        <span className="text-[10px] font-black">♥</span>
+                      </div>
+                    )}
                   </Link>
                 ))}
               </div>
