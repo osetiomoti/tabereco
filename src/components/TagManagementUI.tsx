@@ -132,22 +132,20 @@ export function TagManagementUI({ initialTags }: { initialTags?: Tag[] }) {
   );
 
   const handleDragEnd = useCallback(
-    async (event: DragEndEvent) => {
+    (event: DragEndEvent) => {
       const { active, over } = event;
       if (!over || active.id === over.id) return;
       
-      let newTags = [...tags];
       setTags(prev => {
         const oldIdx = prev.findIndex(t => t.id === active.id);
         const newIdx = prev.findIndex(t => t.id === over.id);
-        newTags = arrayMove(prev, oldIdx, newIdx);
+        const newTags = arrayMove(prev, oldIdx, newIdx);
+        // Fire-and-forget: save in background without blocking UI
+        saveOrder(newTags);
         return newTags;
       });
-      
-      // Save order in background
-      await saveOrder(newTags);
     },
-    [tags, saveOrder]
+    [saveOrder]
   );
 
   return (

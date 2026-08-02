@@ -3,6 +3,30 @@ import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
 
 /**
+ * GET /api/posts/[id]/like
+ * Get like count and whether current user liked this post.
+ */
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  return withAuth(request, async (auth) => {
+    try {
+      const [count, myLike] = await Promise.all([
+        prisma.postLike.count({ where: { post_id: id } }),
+        prisma.postLike.findUnique({
+          where: { post_id_user_id: { post_id: id, user_id: auth.userId } },
+        }),
+      ]);
+      return NextResponse.json({ success: true, data: { count, isLiked: !!myLike } });
+    } catch (e: any) {
+      return NextResponse.json({ success: false, error: e.message }, { status: 500 });
+    }
+  });
+}
+
+/**
  * POST /api/posts/[id]/like
  * Toggle like for a post (for other user's posts)
  */

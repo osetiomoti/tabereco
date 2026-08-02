@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { Bookmark, BookmarkCheck, Star, Send, Trash2, User, ChevronDown, Pencil, X } from 'lucide-react';
+import { Bookmark, BookmarkCheck, Star, Send, Trash2, User, ChevronDown, Pencil, X, ThumbsUp } from 'lucide-react';
 import { StarDisplay, StarInput } from './StarRating';
 
 // ── Rating and Actions (Visited / Want-to-Go) ────────────────────────────────────
@@ -23,18 +23,30 @@ export function RatingAndActions({ postId, isOwner, ownerRating }: RatingAndActi
   const [visCount, setVisCount] = useState(0);
   const [visUsers, setVisUsers] = useState<any[]>([]);
   const [myRating, setMyRating] = useState<number | null>(null);
+  const [pendingRating, setPendingRating] = useState<number | null>(null); // unsaved local edit
+  const [showRatingInput, setShowRatingInput] = useState(false); // user explicitly toggled rating section
   const [showVisUsers, setShowVisUsers] = useState(false);
   const [visToggling, setVisToggling] = useState(false);
   const [showRatingDetails, setShowRatingDetails] = useState(false);
-  
+  const [ratingSaving, setRatingSaving] = useState(false);
+
+  // Like state (for non-owner)
+  const [likeCount, setLikeCount] = useState(0);
+  const [isLiked, setIsLiked] = useState(false);
+  const [likeToggling, setLikeToggling] = useState(false);
+
   const [loading, setLoading] = useState(true);
 
   const fetchData = async () => {
     try {
-      const [wtgRes, visRes] = await Promise.all([
+      const requests: Promise<any>[] = [
         fetch(`/api/posts/${postId}/want-to-go`).then(r => r.json()),
-        fetch(`/api/posts/${postId}/visited`).then(r => r.json())
-      ]);
+        fetch(`/api/posts/${postId}/visited`).then(r => r.json()),
+      ];
+      if (!isOwner) {
+        requests.push(fetch(`/api/posts/${postId}/like`).then(r => r.json()));
+      }
+      const [wtgRes, visRes, likeRes] = await Promise.all(requests);
       if (wtgRes.success) {
         setWtgMarked(wtgRes.data.isMarked);
         setWtgCount(wtgRes.data.count);
@@ -45,6 +57,11 @@ export function RatingAndActions({ postId, isOwner, ownerRating }: RatingAndActi
         setVisCount(visRes.data.count);
         setVisUsers(visRes.data.users);
         setMyRating(visRes.data.myRating);
+        setPendingRating(visRes.data.myRating);
+      }
+      if (likeRes?.success) {
+        setLikeCount(likeRes.data.count);
+        setIsLiked(likeRes.data.isLiked);
       }
     } finally {
       setLoading(false);
@@ -78,19 +95,70 @@ export function RatingAndActions({ postId, isOwner, ownerRating }: RatingAndActi
     }
   };
 
-  const updateMyRating = async (val: number | null) => {
-    setMyRating(val); // optimistic UI
-    await fetch(`/api/posts/${postId}/visited`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ rating: val })
-    });
-    fetchData();
+  const toggleLike = async () => {
+    if (likeToggling) return;
+    setLikeToggling(true);
+    // Optimistic update
+    const wasLiked = isLiked;
+    setIsLiked(!wasLiked);
+    setLikeCount(c => wasLiked ? c - 1 : c + 1);
+    try {
+      const res = await fetch(`/api/posts/${postId}/like`, { method: 'POST' });
+      if (!res.ok) {
+        // revert
+        setIsLiked(wasLiked);
+        setLikeCount(c => wasLiked ? c + 1 : c - 1);
+      }
+    } catch {
+      setIsLiked(wasLiked);
+      setLikeCount(c => wasLiked ? c + 1 : c - 1);
+    } finally {
+      setLikeToggling(false);
+    }
+  };
+
+  const saveRating = async () => {
+    setRatingSaving(true);
+    try {
+      await fetch(`/api/posts/${postId}/visited`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating: pendingRating })
+      });
+      setMyRating(pendingRating);
+      // Refresh to update averages
+      fetchData();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRatingSaving(false);
+    }
+  };
+
+  const clearRating = async () => {
+    setRatingSaving(true);
+    try {
+      await fetch(`/api/posts/${postId}/visited`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating: null })
+      });
+      setMyRating(null);
+      setPendingRating(null);
+      setShowRatingInput(false);
+      fetchData();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRatingSaving(false);
+    }
   };
 
   const allRatings = visUsers.filter(u => u.rating != null).map(u => u.rating as number);
   if (ownerRating != null && ownerRating > 0) allRatings.push(ownerRating);
   const avgRating = allRatings.length > 0 ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length : null;
+
+  const ratingChanged = pendingRating !== myRating;
 
   if (loading) return null;
 
@@ -98,7 +166,8 @@ export function RatingAndActions({ postId, isOwner, ownerRating }: RatingAndActi
     <div>
       {!isOwner && (
         <div className="px-4 py-4 border-b border-gray-100 bg-white">
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3">
+            {/* Action buttons row */}
             <div className="flex items-center gap-3">
               <button
                 onClick={toggleVis}
@@ -127,17 +196,73 @@ export function RatingAndActions({ postId, isOwner, ownerRating }: RatingAndActi
               </button>
             </div>
 
-            {visMarked && (
+            {/* Like button row */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={toggleLike}
+                disabled={likeToggling}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-black text-[13px] transition-all active:scale-95 ${
+                  isLiked
+                    ? 'bg-pink-500 text-white shadow-md shadow-pink-200'
+                    : 'bg-gray-100 text-gray-600 hover:bg-pink-50 hover:text-pink-500'
+                }`}
+              >
+                <ThumbsUp size={16} className={isLiked ? 'fill-white' : ''} />
+                {isLiked ? `グッド！ (${likeCount})` : `グッド (${likeCount})`}
+              </button>
+
+              {/* Rating toggle button - only visible when visited */}
+              {visMarked && (
+                <button
+                  onClick={() => setShowRatingInput(v => !v)}
+                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-black text-[13px] transition-all active:scale-95 ${
+                    showRatingInput
+                      ? 'bg-yellow-400 text-white shadow-sm'
+                      : myRating != null
+                        ? 'bg-yellow-50 text-yellow-600 border border-yellow-200'
+                        : 'bg-gray-100 text-gray-600 hover:bg-yellow-50 hover:text-yellow-600'
+                  }`}
+                >
+                  <Star size={16} className={showRatingInput || myRating != null ? 'fill-current' : ''} />
+                  {myRating != null ? `評価: ${myRating.toFixed(1)}` : '評価する'}
+                </button>
+              )}
+            </div>
+
+            {/* Rating Input - shown only when user toggles it */}
+            {visMarked && showRatingInput && (
               <div className="bg-orange-50/50 border border-orange-100 rounded-2xl p-4 animate-in slide-in-from-top-2 duration-300">
-                <div className="flex items-center justify-between mb-2">
-                  <label className="text-[12px] font-bold text-orange-800">あなたの評価 (任意)</label>
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-[12px] font-bold text-orange-800">あなたの評価</label>
                   {myRating !== null && (
-                    <button onClick={() => updateMyRating(null)} className="text-[10px] text-gray-400 font-bold hover:text-red-400">
+                    <button
+                      onClick={clearRating}
+                      disabled={ratingSaving}
+                      className="text-[10px] text-gray-400 font-bold hover:text-red-400"
+                    >
                       評価をクリア
                     </button>
                   )}
                 </div>
-                <StarInput value={myRating ?? 3.0} onChange={(val) => updateMyRating(val)} />
+                <StarInput value={pendingRating ?? 3.0} onChange={(val) => setPendingRating(val)} />
+                <button
+                  onClick={saveRating}
+                  disabled={ratingSaving || !ratingChanged}
+                  className={`mt-3 w-full py-2.5 rounded-xl font-black text-[13px] flex items-center justify-center gap-2 transition-all active:scale-95 ${
+                    ratingChanged && !ratingSaving
+                      ? 'bg-orange-500 text-white shadow-sm shadow-orange-200 hover:bg-orange-600'
+                      : 'bg-gray-100 text-gray-400'
+                  }`}
+                >
+                  {ratingSaving ? (
+                    <div className="w-4 h-4 border-2 border-white/50 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      <Star size={14} />
+                      評価を保存
+                    </>
+                  )}
+                </button>
               </div>
             )}
           </div>

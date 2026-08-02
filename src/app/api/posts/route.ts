@@ -61,6 +61,7 @@ export async function GET(request: NextRequest) {
           .filter((v) => v.post.user_id !== auth.userId)
           .map((v) => ({
             ...v.post,
+            rating: v.rating, // Overwrite with my rating instead of owner's rating
             tags: v.post.tags.map((pt: any) => pt.tag),
             _markedVisitedAt: v.created_at,
           }));
