@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import Image from 'next/image';
 import { ChevronLeft, ChevronRight, ZoomIn } from 'lucide-react';
 
 type Props = {
@@ -35,6 +34,7 @@ export function ImageCarousel({ images, alt = '' }: Props) {
   const prev = () => setCurrent(c => (c - 1 + totalImages) % totalImages);
   const next = () => setCurrent(c => (c + 1) % totalImages);
 
+  // Fullscreen touch handlers (with pinch-to-zoom)
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) {
       startXRef.current = e.touches[0].clientX;
@@ -78,14 +78,13 @@ export function ImageCarousel({ images, alt = '' }: Props) {
       lastDistRef.current = null;
       isPinchingRef.current = false;
     }
-    // Reset position if zoomed out
     if (scale <= 1) {
       setTranslateX(0);
       setTranslateY(0);
     }
   };
 
-  // Simple touch handler for non-fullscreen (no zoom)
+  // Simple touch handler for non-fullscreen (swipe only)
   const handleSimpleTouchStart = (e: React.TouchEvent) => {
     startXRef.current = e.touches[0].clientX;
   };
@@ -99,22 +98,21 @@ export function ImageCarousel({ images, alt = '' }: Props) {
 
   return (
     <>
-      {/* Main carousel - uses object-contain to show full image */}
+      {/* Main carousel - object-contain to show full image without cropping */}
       <div
-        className="relative w-full bg-black select-none"
+        className="relative w-full bg-black overflow-hidden select-none"
         onTouchStart={handleSimpleTouchStart}
         onTouchEnd={handleSimpleTouchEnd}
       >
-        {/* Images container */}
+        {/* Sliding strip: each image is 100vw wide, strip is totalImages * 100vw */}
         <div
           className="flex transition-transform duration-300 ease-out"
-          style={{ transform: `translateX(-${current * 100}%)`, width: `${totalImages * 100}%` }}
+          style={{ transform: `translateX(-${current * 100}%)` }}
         >
           {images.map((src, i) => (
             <div
               key={i}
-              className="relative flex-shrink-0 flex items-center justify-center"
-              style={{ width: `${100 / totalImages}%` }}
+              className="w-full flex-shrink-0 flex items-center justify-center"
               onClick={() => setIsFullscreen(true)}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -146,7 +144,7 @@ export function ImageCarousel({ images, alt = '' }: Props) {
           </button>
         )}
 
-        {/* Zoom hint + fullscreen button */}
+        {/* Zoom / fullscreen button */}
         <button
           onClick={() => setIsFullscreen(true)}
           className="absolute bottom-3 right-3 bg-black/50 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1.5 rounded-full z-10 flex items-center gap-1.5 hover:bg-black/70 transition-colors"
@@ -179,21 +177,22 @@ export function ImageCarousel({ images, alt = '' }: Props) {
       {/* Fullscreen Modal with pinch-to-zoom */}
       {isFullscreen && (
         <div className="fixed inset-0 z-[9999] bg-black flex flex-col animate-in fade-in duration-200">
+          {/* Header */}
           <div className="flex justify-between items-center p-4 z-10 bg-gradient-to-b from-black/50 to-transparent absolute top-0 left-0 right-0">
-            {totalImages > 1 && (
+            {totalImages > 1 ? (
               <div className="text-white text-sm font-bold">
                 {current + 1} / {totalImages}
               </div>
-            )}
-            <div className="ml-auto" />
+            ) : <div />}
             <button
               onClick={() => setIsFullscreen(false)}
-              className="w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white backdrop-blur-sm transition-all"
+              className="ml-auto w-10 h-10 bg-white/20 hover:bg-white/30 rounded-full flex items-center justify-center text-white backdrop-blur-sm transition-all"
             >
               <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
             </button>
           </div>
 
+          {/* Image area */}
           <div
             className="flex-1 relative overflow-hidden"
             onTouchStart={handleTouchStart}
@@ -201,28 +200,28 @@ export function ImageCarousel({ images, alt = '' }: Props) {
             onTouchEnd={handleTouchEnd}
             style={{ touchAction: scale > 1 ? 'none' : 'pan-x' }}
           >
+            {/* Single image shown at a time in fullscreen, transformed for zoom/pan */}
             <div
-              className="flex h-full transition-transform duration-300 ease-out"
-              style={scale > 1
-                ? { transform: `translateX(calc(-${current * 100}% + ${translateX}px)) scale(${scale}) translateY(${translateY / scale}px)`, width: `${totalImages * 100}%`, transition: 'none' }
-                : { transform: `translateX(-${current * 100}%)`, width: `${totalImages * 100}%` }
-              }
+              className="w-full h-full flex items-center justify-center"
+              style={{
+                transform: `scale(${scale}) translate(${translateX / scale}px, ${translateY / scale}px)`,
+                transition: isPinchingRef.current ? 'none' : 'transform 0.1s ease-out',
+              }}
+              onDoubleClick={() => {
+                if (scale > 1) { setScale(1); setTranslateX(0); setTranslateY(0); }
+                else { setScale(2); }
+              }}
             >
-              {images.map((src, i) => (
-                <div
-                  key={i}
-                  className="relative flex-shrink-0 h-full flex items-center justify-center"
-                  style={{ width: `${100 / totalImages}%` }}
-                  onClick={(e) => { if (scale <= 1 && e.detail === 2) { setIsFullscreen(false); } }}
-                  onDoubleClick={() => { if (scale > 1) { setScale(1); setTranslateX(0); setTranslateY(0); } else { setScale(2); } }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={src} alt={`${alt} ${i + 1}`} className="max-w-full max-h-full object-contain" style={{ userSelect: 'none', WebkitUserSelect: 'none' }} />
-                </div>
-              ))}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={images[current]}
+                alt={`${alt} ${current + 1}`}
+                className="max-w-full max-h-full object-contain"
+                style={{ userSelect: 'none', WebkitUserSelect: 'none', pointerEvents: 'none' }}
+              />
             </div>
 
-            {/* Prev/Next in fullscreen */}
+            {/* Prev/Next in fullscreen (only when not zoomed) */}
             {current > 0 && scale <= 1 && (
               <button
                 onClick={(e) => { e.stopPropagation(); prev(); }}
@@ -240,8 +239,13 @@ export function ImageCarousel({ images, alt = '' }: Props) {
               </button>
             )}
 
-            {/* Zoom hint */}
-            {scale <= 1 && (
+            {/* Hint text */}
+            {scale <= 1 && totalImages > 1 && (
+              <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-sm text-white/70 text-[11px] font-medium px-3 py-1.5 rounded-full pointer-events-none">
+                スワイプで切替 · ダブルタップで拡大
+              </div>
+            )}
+            {scale <= 1 && totalImages === 1 && (
               <div className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-white/10 backdrop-blur-sm text-white/70 text-[11px] font-medium px-3 py-1.5 rounded-full pointer-events-none">
                 ダブルタップまたはピンチで拡大
               </div>

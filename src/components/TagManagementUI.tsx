@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Trash2, GripVertical, ChevronLeft, Loader2 } from 'lucide-react';
+import { Trash2, ChevronLeft, Loader2 } from 'lucide-react';
 import { getUserTags, deleteTag, updateTagOrder } from '@/lib/api/posts';
 import type { Tag } from '@/lib/types';
 import Link from 'next/link';
@@ -34,38 +34,45 @@ function SortableTagRow({ tag, onDelete }: { tag: Tag; onDelete: (id: string) =>
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : 1,
   };
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center justify-between px-6 py-5 group transition-all bg-white select-none ${
-        isDragging ? 'shadow-lg border-y border-pink-200 z-10' : 'hover:bg-gray-50/50'
+      className={`flex items-center justify-between px-4 py-4 bg-white rounded-2xl border border-gray-100 transition-all select-none relative ${
+        isDragging ? 'shadow-lg border-pink-200' : 'shadow-sm hover:border-gray-200'
       }`}
     >
       <div className="flex items-center gap-3">
         <span className="text-gray-300 font-bold text-lg">#</span>
         <span className="text-gray-700 font-bold">{tag.name}</span>
       </div>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <button
           onClick={() => onDelete(tag.id)}
-          className="p-2 text-pink-200 hover:text-pink-400 hover:bg-pink-50 rounded-xl transition-all relative z-10"
+          className="p-2 text-pink-200 hover:text-pink-400 hover:bg-pink-50 rounded-xl transition-all z-10"
         >
-          <Trash2 size={20} />
+          <Trash2 size={18} />
         </button>
         <div
           {...attributes}
           {...listeners}
-          className="p-2 text-gray-300 hover:text-gray-500 transition-colors cursor-grab active:cursor-grabbing touch-none"
+          className="p-2 text-gray-300 hover:text-gray-500 transition-colors cursor-grab active:cursor-grabbing touch-none z-10"
         >
-          <GripVertical size={20} />
+          <svg width="16" height="20" viewBox="0 0 16 20" fill="currentColor">
+            <circle cx="5" cy="4" r="2" /><circle cx="11" cy="4" r="2" />
+            <circle cx="5" cy="10" r="2" /><circle cx="11" cy="10" r="2" />
+            <circle cx="5" cy="16" r="2" /><circle cx="11" cy="16" r="2" />
+          </svg>
         </div>
       </div>
     </div>
   );
 }
+
+const LS_KEY = 'tags_order';
 
 export function TagManagementUI({ initialTags }: { initialTags?: Tag[] }) {
   const [tags, setTags] = useState<Tag[]>(initialTags || []);
@@ -73,15 +80,35 @@ export function TagManagementUI({ initialTags }: { initialTags?: Tag[] }) {
   const [isLoading, setIsLoading] = useState(!initialTags);
   const [isActionLoading, setIsActionLoading] = useState(false);
 
+  const applyStoredOrder = useCallback((raw: Tag[]): Tag[] => {
+    try {
+      const saved = localStorage.getItem(LS_KEY);
+      if (!saved) return raw;
+      const order = JSON.parse(saved) as string[];
+      return [...raw].sort((a, b) => {
+        const ia = order.indexOf(a.id);
+        const ib = order.indexOf(b.id);
+        if (ia !== -1 && ib !== -1) return ia - ib;
+        if (ia !== -1) return -1;
+        if (ib !== -1) return 1;
+        return 0;
+      });
+    } catch {
+      return raw;
+    }
+  }, []);
+
   useEffect(() => {
     if (!initialTags) loadTags();
+    else setTags(applyStoredOrder(initialTags));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialTags]);
 
   const loadTags = async () => {
     setIsLoading(true);
     try {
       const data = await getUserTags();
-      setTags(data);
+      setTags(applyStoredOrder(data));
     } catch (err) {
       console.error(err);
     } finally {
@@ -89,12 +116,9 @@ export function TagManagementUI({ initialTags }: { initialTags?: Tag[] }) {
     }
   };
 
-  const saveOrder = useCallback(async (ordered: Tag[]) => {
-    try {
-      await updateTagOrder(ordered.map((t, i) => ({ id: t.id, sort_order: i })));
-    } catch (e) {
-      console.error(e);
-    }
+  // Save order to API in the background (fire-and-forget)
+  const saveOrder = useCallback((ordered: Tag[]) => {
+    updateTagOrder(ordered.map((t, i) => ({ id: t.id, sort_order: i }))).catch(console.error);
   }, []);
 
   const handleAddTag = async () => {
@@ -117,7 +141,11 @@ export function TagManagementUI({ initialTags }: { initialTags?: Tag[] }) {
     setIsActionLoading(true);
     try {
       await deleteTag(id);
-      setTags(prev => prev.filter(t => t.id !== id));
+      setTags(prev => {
+        const next = prev.filter(t => t.id !== id);
+        localStorage.setItem(LS_KEY, JSON.stringify(next.map(t => t.id)));
+        return next;
+      });
     } catch (err) {
       console.error(err);
     } finally {
@@ -125,7 +153,7 @@ export function TagManagementUI({ initialTags }: { initialTags?: Tag[] }) {
     }
   };
 
-  // dnd-kit sensors
+  // dnd-kit sensors — same config as friends/groups page
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
@@ -135,14 +163,15 @@ export function TagManagementUI({ initialTags }: { initialTags?: Tag[] }) {
     (event: DragEndEvent) => {
       const { active, over } = event;
       if (!over || active.id === over.id) return;
-      
       setTags(prev => {
         const oldIdx = prev.findIndex(t => t.id === active.id);
         const newIdx = prev.findIndex(t => t.id === over.id);
-        const newTags = arrayMove(prev, oldIdx, newIdx);
-        // Fire-and-forget: save in background without blocking UI
-        saveOrder(newTags);
-        return newTags;
+        const newOrder = arrayMove(prev, oldIdx, newIdx);
+        // Persist order to localStorage immediately (no freeze)
+        localStorage.setItem(LS_KEY, JSON.stringify(newOrder.map(t => t.id)));
+        // Save to API in background
+        saveOrder(newOrder);
+        return newOrder;
       });
     },
     [saveOrder]
@@ -185,7 +214,7 @@ export function TagManagementUI({ initialTags }: { initialTags?: Tag[] }) {
           </div>
         </div>
 
-        {/* Tags List Card */}
+        {/* Tags List */}
         <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden">
           <div className="px-6 py-5 border-b border-gray-50 flex items-center justify-between">
             <span className="text-sm font-bold text-gray-500">
@@ -196,7 +225,7 @@ export function TagManagementUI({ initialTags }: { initialTags?: Tag[] }) {
             </span>
           </div>
 
-          <div className="divide-y divide-gray-50">
+          <div className="p-4 space-y-2">
             {isLoading ? (
               <div className="py-12 flex justify-center">
                 <Loader2 className="text-pink-200 animate-spin" size={32} />

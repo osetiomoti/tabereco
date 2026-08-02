@@ -356,9 +356,9 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
             </div>
           )}
           
-          {/* Quick Stats Overlay */}
-          <div className="absolute top-3 right-3 flex flex-col gap-2 z-10">
-            {isMine ? (
+          {/* Quick Stats Overlay - only show for own posts */}
+          {isMine && (
+            <div className="absolute top-3 right-3 flex flex-col gap-2 z-10">
               <button 
                 onClick={toggleFavorite}
                 className={`w-9 h-9 rounded-full backdrop-blur-md flex items-center justify-center shadow-lg transition-all ${
@@ -369,27 +369,14 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
               >
                 <Heart size={18} className={isFavorite ? 'fill-white' : ''} />
               </button>
-            ) : (
-              <button 
-                onClick={toggleWantToGo}
-                className={`w-9 h-9 rounded-full backdrop-blur-md flex items-center justify-center shadow-lg transition-all ${
-                  isWantToGo
-                  ? 'bg-orange-500 text-white' 
-                  : 'bg-white/80 text-gray-400 hover:text-orange-500'
-                }`}
-              >
-                <Bookmark size={18} className={isWantToGo ? 'fill-white text-white' : ''} />
-              </button>
-            )}
-            {isMine && (
               <button 
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(!isMenuOpen); }}
                 className="w-9 h-9 bg-white/80 backdrop-blur-md text-gray-600 rounded-full flex items-center justify-center shadow-lg hover:bg-white"
               >
                 <MoreHorizontal size={18} />
               </button>
-            )}
-          </div>
+            </div>
+          )}
 
           {isMenuOpen && (
             <div className="absolute top-14 right-3 w-36 bg-white border border-gray-100 rounded-xl shadow-2xl z-20 overflow-hidden animate-in fade-in slide-in-from-top-1">
