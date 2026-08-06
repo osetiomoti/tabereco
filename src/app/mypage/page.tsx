@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
-import { Settings, Hash, ArrowDownUp, Plus, MapPin, Calendar, User, Search, Bookmark } from 'lucide-react';
+import { Settings, Hash, ArrowDownUp, Plus, MapPin, Calendar, User, Search, Bookmark, Star, Heart } from 'lucide-react';
 import { Header } from '@/components/Header';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -13,7 +13,6 @@ import { formatDate } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useSharedFilter } from '@/hooks/useSharedFilter';
 import { useScrollRestore } from '@/hooks/useScrollRestore';
-import { useGroups } from '@/hooks/useAppData';
 
 function MiniNoImageMap({ post }: { post: Post }) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
@@ -40,6 +39,28 @@ function MiniNoImageMap({ post }: { post: Post }) {
           <span className="text-[8px] font-bold text-gray-500 mt-0.5 text-center leading-tight">画像がありません</span>
         </div>
       )}
+    </div>
+  );
+}
+
+function StarRating({ rating }: { rating: number }) {
+  const full = Math.floor(rating);
+  const half = rating - full >= 0.5;
+  return (
+    <div className="flex items-center gap-0.5">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <Star
+          key={i}
+          size={11}
+          className={
+            i < full
+              ? 'text-orange-400 fill-orange-400'
+              : i === full && half
+                ? 'text-orange-400 fill-orange-200'
+                : 'text-gray-200 fill-gray-200'
+          }
+        />
+      ))}
     </div>
   );
 }
@@ -78,8 +99,6 @@ export default function MyPage() {
     () => import('@/lib/api/friends').then(m => m.getFriends())
   );
 
-  const { groups: myGroups } = useGroups();
-
   // 他人の投稿に付けた「行きたい」
   const { data: markedWantToGoData, isLoading: markedWtgLoading } = useSWR<{ success: boolean, data: Post[] }>(
     !targetUserId ? '/api/posts?marked_want_to_go=true' : null,
@@ -102,7 +121,15 @@ export default function MyPage() {
   const posts: Post[] = targetUserId ? (targetUserData?.data?.posts || []) : (ownPostsData || []);
   const loading = targetUserId ? !targetUserData : ownPostsLoading;
   const friendsCount = targetUserId ? (targetUserData?.data?.friendsCount || 0) : (friendsData?.length || 0);
-  const groupsCount = targetUserId ? (targetUserData?.data?.groupsCount || 0) : myGroups.length;
+
+  // Stats from API
+  const avgRating = targetUserId
+    ? (targetUserData?.data?.avgRating ?? null)
+    : (myUserData?.data?.avgRating ?? null);
+  const totalLikesReceived = targetUserId
+    ? (targetUserData?.data?.totalLikesReceived ?? 0)
+    : (myUserData?.data?.totalLikesReceived ?? 0);
+  const ratingUserId = targetUserId ?? undefined;
 
   const [sortField, setSortField] = useState<'date' | 'rating'>('date');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
@@ -123,31 +150,31 @@ export default function MyPage() {
   const markedWtgCount = markedWantToGoPosts.length;
   const markedVisCount = markedVisitedPosts.length;
 
-  const visitedCount = ownVisitedCount + markedVisCount;
-  const wantCount = ownWantCount + markedWtgCount;
+  // 投稿合計（行った+行きたい+他の人の行った+行きたい）
+  const totalPostCount = targetUserId
+    ? (targetUserData?.data?.totalPostCount ?? ownVisitedCount + ownWantCount)
+    : ownVisitedCount + ownWantCount + markedWtgCount + markedVisCount;
+
   const likedCount = likedPosts.length;
 
   // まとめ用
   let filteredPosts: any[] = [];
   if (activeTab === 'visited') {
-    // 自分の「行った」と、他人の「行った」をマージ
     const allMap = new Map<string, any>();
     [...ownVisitedPosts, ...markedVisitedPosts].forEach(p => allMap.set(p.id, p));
     filteredPosts = Array.from(allMap.values());
   } else if (activeTab === 'want_to_go') {
-    // 自分の「行きたい/お気に入り」と、他人の「行きたい」をマージ
     const allMap = new Map<string, any>();
     [...ownWantToGoPosts, ...markedWantToGoPosts].forEach(p => allMap.set(p.id, p));
     filteredPosts = Array.from(allMap.values());
   } else if (activeTab === 'liked') {
-    // いいねした投稿
     filteredPosts = [...likedPosts];
   }
 
   if (keyword) {
     const lower = keyword.toLowerCase();
-    filteredPosts = filteredPosts.filter(p => 
-      p.title?.toLowerCase().includes(lower) || 
+    filteredPosts = filteredPosts.filter(p =>
+      p.title?.toLowerCase().includes(lower) ||
       p.store_name?.toLowerCase().includes(lower) ||
       p.comment?.toLowerCase().includes(lower)
     );
@@ -173,16 +200,13 @@ export default function MyPage() {
 
   const goToMap = async () => {
     if (targetUserId) {
-      // 友達ページからマップに遷移: その人だけフィルター
       updateFilter({
         activeGroups: ['all'],
         advancedFilters: { registrantUserIds: [targetUserId], include_mine: false }
       });
     } else {
-      // 自分のマイページからマップに遷移: 自分だけ
       let myId = myUserData?.data?.id;
       if (!myId) {
-        // まだ読み込まれていない場合は直接取得
         try {
           const r = await fetch('/api/profiles/me');
           const j = await r.json();
@@ -199,13 +223,11 @@ export default function MyPage() {
 
   const goToCalendar = async () => {
     if (targetUserId) {
-      // 友達ページからカレンダーに遷移: その人だけフィルター
       updateFilter({
         activeGroups: ['all'],
         advancedFilters: { registrantUserIds: [targetUserId], include_mine: false }
       });
     } else {
-      // 自分のマイページからカレンダーに遷移: 自分だけ
       let myId = myUserData?.data?.id;
       if (!myId) {
         try {
@@ -222,10 +244,14 @@ export default function MyPage() {
     router.push('/calendar');
   };
 
+  const ratingsHref = targetUserId
+    ? `/mypage/ratings?userId=${targetUserId}`
+    : '/mypage/ratings';
+
   return (
     <div className="min-h-screen bg-white pb-[100px]">
-      <Header 
-        title={targetUserId ? `${user?.name || 'ともだち'}のページ` : (user?.name || 'マイページ')} 
+      <Header
+        title={targetUserId ? `${user?.name || 'ともだち'}のページ` : (user?.name || 'マイページ')}
         hideSettings={!!targetUserId}
         showBackButton={!!targetUserId}
       />
@@ -235,7 +261,7 @@ export default function MyPage() {
         <div className="relative shrink-0">
           <div className="w-[84px] h-[84px] rounded-full bg-gray-100 flex items-center justify-center border-2 border-white shadow-sm overflow-hidden relative">
             {user?.avatar_url ? (
-              <Image src={user.avatar_url} alt="User" fill className="object-cover" />
+              <Image src={user.avatar_url} alt="User" fill className="object-cover" unoptimized />
             ) : (
               <UserPlaceholder />
             )}
@@ -247,27 +273,56 @@ export default function MyPage() {
           )}
         </div>
 
-        <div className="flex-1 flex justify-around ml-6">
-          <StatBox count={visitedCount} label="行った" />
-          <StatBox count={wantCount} label="行きたい" />
+        {/* Stats Row: 平均レビュー | 投稿 | ともだち | いいね */}
+        <div className="flex-1 flex justify-around ml-4">
+          {/* 平均レビュー */}
+          <Link href={ratingsHref} className="flex flex-col items-center justify-center relative -top-1 group">
+            <div className="flex flex-col items-center">
+              {avgRating !== null ? (
+                <>
+                  <span className="text-[17px] font-black text-orange-500 leading-none">
+                    {avgRating.toFixed(1)}
+                  </span>
+                  <div className="mt-0.5">
+                    <StarRating rating={avgRating} />
+                  </div>
+                </>
+              ) : (
+                <span className="text-[17px] font-black text-gray-300 leading-none">-</span>
+              )}
+              <span className="text-[10px] text-gray-400 font-black mt-1">平均評価</span>
+            </div>
+          </Link>
+
+          {/* 投稿 */}
+          <div className="flex flex-col items-center justify-center relative -top-1">
+            <span className="text-[17px] font-black text-gray-900 leading-none">{totalPostCount}</span>
+            <span className="text-[10px] text-gray-400 font-black mt-1.5">投稿</span>
+          </div>
+
+          {/* ともだち */}
           {!targetUserId ? (
             <Link href="/groups" className="hover:scale-105 transition-transform">
-              <StatBox count={friendsCount} label="ともだち" />
+              <div className="flex flex-col items-center justify-center relative -top-1">
+                <span className="text-[17px] font-black text-gray-900 leading-none">{friendsCount}</span>
+                <span className="text-[10px] text-gray-400 font-black mt-1.5">ともだち</span>
+              </div>
             </Link>
           ) : (
-            <div className="text-center">
-              <StatBox count={friendsCount} label="ともだち" />
+            <div className="flex flex-col items-center justify-center relative -top-1">
+              <span className="text-[17px] font-black text-gray-900 leading-none">{friendsCount}</span>
+              <span className="text-[10px] text-gray-400 font-black mt-1.5">ともだち</span>
             </div>
           )}
-          {!targetUserId ? (
-            <Link href="/groups?tab=groups" className="hover:scale-105 transition-transform">
-              <StatBox count={groupsCount} label="グループ" />
-            </Link>
-          ) : (
-            <div className="text-center">
-              <StatBox count={groupsCount} label="グループ" />
+
+          {/* もらったいいね */}
+          <div className="flex flex-col items-center justify-center relative -top-1">
+            <div className="flex items-center gap-0.5">
+              <Heart size={14} className="text-pink-400 fill-pink-400" />
+              <span className="text-[17px] font-black text-gray-900 leading-none">{totalLikesReceived}</span>
             </div>
-          )}
+            <span className="text-[10px] text-gray-400 font-black mt-1.5">いいね</span>
+          </div>
         </div>
       </div>
 
@@ -285,7 +340,7 @@ export default function MyPage() {
       )}
 
       {/* Action Row */}
-      <div className={`px-4 mb-5 grid ${targetUserId ? 'grid-cols-4' : 'grid-cols-4'} gap-2`}>
+      <div className={`px-4 mb-5 grid grid-cols-4 gap-2`}>
         <button onClick={() => setIsTagSelectorOpen(true)} className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
           <Hash size={20} strokeWidth={2.5} className="mb-0.5" />
           <span className="text-[9px] font-black tracking-wider">タグ</span>
@@ -295,7 +350,7 @@ export default function MyPage() {
             <ArrowDownUp size={20} className="mb-0.5" strokeWidth={2.5} />
             <span className="text-[9px] font-black tracking-wider">並び替え</span>
           </button>
-          
+
           {showSortMenu && (
             <div className="absolute top-16 left-1/2 -translate-x-1/2 w-[160px] bg-white border border-gray-100 shadow-2xl rounded-2xl overflow-hidden z-20 animate-in fade-in zoom-in-95 duration-200">
               <div className="py-2">
@@ -424,11 +479,6 @@ export default function MyPage() {
                         </div>
                       </>
                     )}
-                    {post.is_favorite && (
-                      <div className="absolute top-1.5 right-1.5 bg-pink-500/90 text-white w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
-                        <span className="text-[10px] font-black">♥</span>
-                      </div>
-                    )}
                   </Link>
                 ))}
               </div>
@@ -521,11 +571,6 @@ export default function MyPage() {
                         <span className="text-[10px] font-black">{post.rating.toFixed(1)}</span>
                       </div>
                     )}
-                    {post.is_favorite && (
-                      <div className="absolute top-1.5 right-1.5 bg-pink-500/90 text-white w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
-                        <span className="text-[10px] font-black">♥</span>
-                      </div>
-                    )}
                   </Link>
                 ))}
               </div>
@@ -556,9 +601,9 @@ export default function MyPage() {
                   {post.store_name && <span className="text-[7px] font-bold text-gray-400 mt-0.5 truncate w-full text-center">{post.store_name}</span>}
                 </div>
               )}
-              
+
               {post.image_url && <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />}
-              
+
               {post.image_url && (
                 <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
                   <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
@@ -618,15 +663,6 @@ function UserPlaceholder() {
     <svg viewBox="0 0 24 24" fill="none" className="w-[42px] h-[42px] text-gray-300" stroke="currentColor" strokeWidth="1.5">
       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z" />
     </svg>
-  );
-}
-
-function StatBox({ count, label }: { count: number, label: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center relative -top-1">
-      <span className="text-[17px] font-black text-gray-900 leading-none">{count}</span>
-      <span className="text-[10px] text-gray-400 font-black mt-1.5">{label}</span>
-    </div>
   );
 }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
+import { sendPushNotification } from '@/lib/webpush';
 
 /**
  * POST /api/groups/[id]/invite
@@ -35,6 +36,24 @@ export async function POST(
       const member = await prisma.groupMember.create({
         data: { group_id: groupId, user_id: userId, role: 'member' },
         include: { user: { select: { id: true, name: true, avatar_url: true } } },
+      });
+
+      // Notify the added user
+      const group = await prisma.group.findUnique({ where: { id: groupId }, select: { name: true } });
+      const inviter = await prisma.user.findUnique({ where: { id: auth.userId }, select: { name: true } });
+      await prisma.notification.create({
+        data: {
+          user_id: userId,
+          actor_id: auth.userId,
+          type: 'group_added',
+          message: `グループ「${group?.name || 'グループ'}」に追加されました`,
+        }
+      });
+      await sendPushNotification(userId, {
+        title: '食べレコ',
+        body: `${inviter?.name || '誰か'}さんが「${group?.name || 'グループ'}」に追加しました！`,
+        url: '/groups',
+        tag: `group-added-${groupId}`,
       });
 
       return NextResponse.json({ success: true, data: member });

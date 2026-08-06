@@ -43,6 +43,28 @@ export async function POST(
           update: { rating: rating },
           create: { post_id: postId, user_id: auth.userId, rating: rating },
         });
+
+        // Notify post owner about new rating
+        const post = await prisma.post.findUnique({ where: { id: postId } });
+        if (post && post.user_id !== auth.userId) {
+          const actor = await prisma.user.findUnique({ where: { id: auth.userId }, select: { name: true } });
+          await prisma.notification.create({
+            data: {
+              user_id: post.user_id,
+              actor_id: auth.userId,
+              type: 'rating',
+              post_id: postId,
+              message: `あなたの投稿に★${rating}の評価をつけました`,
+            }
+          });
+          await sendPushNotification(post.user_id, {
+            title: '食べレコ',
+            body: `${actor?.name || '誰か'}さんが「${post.title}」に★${rating}をつけました`,
+            url: `/posts/${postId}`,
+            tag: `rating-${postId}`,
+          });
+        }
+
         return NextResponse.json({ success: true, marked: true, data: updated });
       }
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
+import { sendPushNotification } from '@/lib/webpush';
 
 /**
  * GET /api/friends
@@ -72,7 +73,25 @@ export async function POST(request: NextRequest) {
         data: { user_id: auth.userId, friend_id: friendUserId, status: 'pending' },
         include: {
           friend: { select: { id: true, name: true, avatar_url: true } },
+          user: { select: { id: true, name: true } },
         },
+      });
+
+      // Notify the target user about the friend request
+      const actor = await prisma.user.findUnique({ where: { id: auth.userId }, select: { name: true } });
+      await prisma.notification.create({
+        data: {
+          user_id: friendUserId,
+          actor_id: auth.userId,
+          type: 'friend_request',
+          message: 'あなたにともだちリクエストを送りました',
+        }
+      });
+      await sendPushNotification(friendUserId, {
+        title: '食べレコ',
+        body: `${actor?.name || '誰か'}さんからともだちリクエストが届きました！`,
+        url: '/groups?tab=pending',
+        tag: `friend-request-${auth.userId}`,
       });
 
       return NextResponse.json({ success: true, data: friendship });
