@@ -57,7 +57,7 @@ export async function PATCH(
       // Whitelist: only fields that exist in the Post model
       const ALLOWED = ['title','store_name','comment','rating','image_url','image_urls',
         'visited_at','status','address','google_place_id','latitude','longitude',
-        'is_favorite','is_mine_only','price_min','price_max'];
+        'is_favorite','is_mine_only','price_min','price_max','visit_count'];
       const values: Record<string, any> = {};
       for (const key of ALLOWED) {
         if (key in rawValues) values[key] = rawValues[key];

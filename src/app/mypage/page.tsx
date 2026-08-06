@@ -12,6 +12,7 @@ import { TagSelector } from '@/components/TagSelector';
 import { formatDate } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useSharedFilter } from '@/hooks/useSharedFilter';
+import { useScrollRestore } from '@/hooks/useScrollRestore';
 import { useGroups } from '@/hooks/useAppData';
 
 function MiniNoImageMap({ post }: { post: Post }) {
@@ -44,6 +45,7 @@ function MiniNoImageMap({ post }: { post: Post }) {
 }
 
 export default function MyPage() {
+  useScrollRestore('mypage');
   const router = useRouter();
   const { updateFilter } = useSharedFilter();
   const [activeTab, setActiveTab] = useState<'visited' | 'want_to_go' | 'liked'>('visited');

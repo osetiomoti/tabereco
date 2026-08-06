@@ -27,6 +27,8 @@ model User {
   visiteds        PostVisited[]
   comments        PostComment[]
   likes           PostLike[]
+  notifications_received Notification[] @relation("NotificationsReceived")
+  notifications_sent     Notification[] @relation("NotificationsSent")
 
   @@map("users")
 }
@@ -78,6 +80,7 @@ model Post {
   is_mine_only Boolean    @default(false)
   price_min   Int?
   price_max   Int?
+  visit_count Int         @default(1)
   user        User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
   tags        PostTag[]
   groups      PostGroup[]
@@ -86,6 +89,7 @@ model Post {
   visiteds     PostVisited[]
   comments     PostComment[]
   likes        PostLike[]
+  notifications Notification[]
 
   @@map("posts")
 }
@@ -181,6 +185,7 @@ model PostVisited {
   post_id    String   @db.Uuid
   user_id    String   @db.Uuid
   rating     Float?   
+  visit_count Int      @default(1)
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
   post       Post     @relation(fields: [post_id], references: [id], onDelete: Cascade)
@@ -200,4 +205,22 @@ model PostLike {
 
   @@unique([post_id, user_id])
   @@map("post_likes")
+}
+
+model Notification {
+  id          String   @id @default(uuid()) @db.Uuid
+  user_id     String   @db.Uuid       
+  actor_id    String   @db.Uuid       
+  type        String   @db.VarChar(30) 
+  post_id     String?  @db.Uuid       
+  message     String                   
+  is_read     Boolean  @default(false)
+  created_at  DateTime @default(now())
+  
+  user        User     @relation("NotificationsReceived", fields: [user_id], references: [id], onDelete: Cascade)
+  actor       User     @relation("NotificationsSent", fields: [actor_id], references: [id], onDelete: Cascade)
+  post        Post?    @relation(fields: [post_id], references: [id], onDelete: Cascade)
+
+  @@index([user_id, is_read])
+  @@map("notifications")
 }

@@ -8,9 +8,10 @@ type Props = {
   items: (File | string)[];
   onChange: (items: (File | string)[]) => void;
   maxFiles?: number;
+  uploadProgress?: Record<number, 'pending' | 'uploading' | 'done' | 'error'>;
 };
 
-export function ImageUpload({ items = [], onChange, maxFiles = 5 }: Props) {
+export function ImageUpload({ items = [], onChange, maxFiles = 5, uploadProgress }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   
   // URL オブジェクトを管理 (メモリリーク防止のため)
@@ -141,6 +142,28 @@ export function ImageUpload({ items = [], onChange, maxFiles = 5 }: Props) {
               >
                 <X size={16} />
               </button>
+
+              {/* Upload Progress Overlay */}
+              {uploadProgress?.[i] && (
+                <div className={`absolute inset-0 z-20 flex flex-col items-center justify-center backdrop-blur-sm transition-all duration-300 ${
+                  uploadProgress[i] === 'done' ? 'bg-green-500/20 opacity-0' : 'bg-black/40'
+                }`}>
+                  {uploadProgress[i] === 'pending' && (
+                    <div className="w-8 h-8 rounded-full bg-white/20 animate-pulse" />
+                  )}
+                  {uploadProgress[i] === 'uploading' && (
+                    <div className="w-8 h-8 border-4 border-white/20 border-t-white rounded-full animate-spin shadow-lg" />
+                  )}
+                  {uploadProgress[i] === 'done' && (
+                    <div className="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center shadow-lg animate-in zoom-in duration-300">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                    </div>
+                  )}
+                  {uploadProgress[i] === 'error' && (
+                    <div className="text-white text-xs font-bold bg-red-500/80 px-2 py-1 rounded">失敗</div>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}

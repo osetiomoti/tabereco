@@ -69,6 +69,20 @@ export async function POST(
           user_id: auth.userId,
         },
       });
+
+      // Notify post owner
+      if (post && post.user_id !== auth.userId) {
+        await prisma.notification.create({
+          data: {
+            user_id: post.user_id,
+            actor_id: auth.userId,
+            type: 'like',
+            post_id: id,
+            message: 'あなたの投稿にいいねしました',
+          }
+        });
+      }
+
       return NextResponse.json({ success: true, action: 'added' });
     }
   });

@@ -78,6 +78,11 @@ export function PostForm({ post }: Props) {
   const [extractingGps, setExtractingGps] = useState(false);
   const [orderedImages, setOrderedImages] = useState<(File | string)[]>([...(post?.image_urls ?? (post?.image_url ? [post.image_url] : []))]);
 
+  // Image upload progress tracking
+  const [uploadProgress, setUploadProgress] = useState<Record<number, 'pending' | 'uploading' | 'done' | 'error'>>({});
+  const [uploadCurrent, setUploadCurrent] = useState(0);
+  const [uploadTotal, setUploadTotal] = useState(0);
+
 
   const set = <K extends keyof PostFormValues>(key: K, val: PostFormValues[K]) =>
     setValues((prev) => ({ ...prev, [key]: val }));
@@ -174,25 +179,49 @@ export function PostForm({ post }: Props) {
 
     setLoading(true);
     try {
-      // 並び順を保持しつつ、ファイルだけをアップロードする
-      const finalImageUrls = await Promise.all(
-        orderedImages.map(async (item) => {
-          if (typeof item === 'string') {
-            return item;
+      // 並び順を保持しつつ、ファイルだけをアップロードする（プログレス表示付き）
+      const filesToUpload = orderedImages.filter(item => item instanceof File);
+      const totalFiles = filesToUpload.length;
+      setUploadTotal(totalFiles);
+      setUploadCurrent(0);
+
+      // Initialize progress for all items
+      const initialProgress: Record<number, 'pending' | 'uploading' | 'done' | 'error'> = {};
+      orderedImages.forEach((item, i) => {
+        if (item instanceof File) initialProgress[i] = 'pending';
+      });
+      setUploadProgress(initialProgress);
+
+      // Upload sequentially for visible progress
+      const finalImageUrls: (string | null)[] = new Array(orderedImages.length);
+      let uploadedCount = 0;
+      for (let i = 0; i < orderedImages.length; i++) {
+        const item = orderedImages[i];
+        if (typeof item === 'string') {
+          finalImageUrls[i] = item;
+        } else {
+          setUploadProgress(prev => ({ ...prev, [i]: 'uploading' }));
+          const uploadedUrl = await uploadFile(item);
+          if (uploadedUrl) {
+            finalImageUrls[i] = uploadedUrl;
+            setUploadProgress(prev => ({ ...prev, [i]: 'done' }));
           } else {
-            const uploadedUrl = await uploadFile(item);
-            return uploadedUrl;
+            finalImageUrls[i] = null;
+            setUploadProgress(prev => ({ ...prev, [i]: 'error' }));
           }
-        })
-      ).then(urls => urls.filter((url): url is string => url !== null));
+          uploadedCount++;
+          setUploadCurrent(uploadedCount);
+        }
+      }
+      const filteredUrls = finalImageUrls.filter((url): url is string => url !== null);
 
       const postData = {
         title: values.title?.trim() || values.store_name.trim(),
         store_name: values.store_name.trim(),
         comment: values.comment?.trim() || null,
         rating: values.status === 'want_to_go' ? null : (values.rating ?? 3),
-        image_url: finalImageUrls[0] || null, 
-        image_urls: finalImageUrls, // すべての画像配列
+        image_url: filteredUrls[0] || null, 
+        image_urls: filteredUrls, // すべての画像配列
         visited_at: values.visited_at,
         status: values.status,
         is_public: values.is_public,
@@ -224,6 +253,9 @@ export function PostForm({ post }: Props) {
       setError(err instanceof Error ? err.message : '予期しないエラーが発生しました');
     } finally {
       setLoading(false);
+      setUploadProgress({});
+      setUploadCurrent(0);
+      setUploadTotal(0);
     }
   };
 
@@ -235,6 +267,7 @@ export function PostForm({ post }: Props) {
           items={orderedImages}
           onChange={handleImagesChange}
           maxFiles={5}
+          uploadProgress={uploadProgress}
         />
 
         <div className="flex p-1.5 bg-gray-100/50 backdrop-blur-md border border-gray-100 rounded-2xl shadow-inner mx-1">
@@ -521,7 +554,17 @@ export function PostForm({ post }: Props) {
           className="w-full py-5 rounded-[2rem] bg-gradient-to-r from-[#ff6b95] to-[#ff9a8b] text-white font-black text-[18px] hover:brightness-105 disabled:opacity-50 transition-all shadow-xl shadow-[#ff6b95]/30 flex items-center justify-center gap-3 active:scale-[0.98] relative overflow-hidden group"
         >
           {loading ? (
-            <Loader2 size={24} className="animate-spin text-white" />
+            uploadTotal > 0 ? (
+              <>
+                <Loader2 size={20} className="animate-spin text-white" />
+                <span className="text-[15px]">画像をアップロード中... ({uploadCurrent}/{uploadTotal})</span>
+              </>
+            ) : (
+              <>
+                <Loader2 size={20} className="animate-spin text-white" />
+                <span className="text-[15px]">保存中...</span>
+              </>
+            )
           ) : (
             <>
               <Check size={24} strokeWidth={4} className="group-hover:scale-110 transition-transform" />

@@ -6,6 +6,7 @@ import { PostCard, FilterChips } from '@/components/PostCard';
 import { PostCardSkeleton } from '@/components/Skeleton';
 import { FilterModal } from '@/components/FilterModal';
 import { useFilteredPosts } from '@/hooks/useFilteredPosts';
+import { useScrollRestore } from '@/hooks/useScrollRestore';
 import { Filter, Search, UtensilsCrossed, List, Calendar as CalendarIcon, RefreshCw } from 'lucide-react';
 import { FloatingActionButton } from '@/components/FloatingActionButton';
 import { format, startOfMonth, endOfMonth, isSameDay, addMonths, subMonths, getDay, addDays, startOfWeek, isSameMonth } from 'date-fns';
@@ -129,6 +130,7 @@ function CalendarView({ posts }: { posts: any[] }) {
 }
 
 export default function PostsPage() {
+  useScrollRestore('posts');
   const { posts, loading, filterState, updateFilter, activeFilterCount, removeFilter, memberUsers, joinedGroups } = useFilteredPosts();
   const { activeTab, keyword, searchMode, activeGroups, advancedFilters } = filterState;
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);

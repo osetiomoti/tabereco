@@ -415,10 +415,19 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
                 )}
               </div>
             </div>
-            {post.status !== 'want_to_go' && post.rating != null && (
-              <div className="flex items-center gap-1 bg-orange-50 px-2 py-1 rounded-lg">
-                <Star size={12} className="fill-orange-500 text-orange-500" />
-                <span className="text-orange-600 font-black text-[13px]">{post.rating.toFixed(1)}</span>
+            {post.status !== 'want_to_go' && post._avgRating != null && (
+              <div className="flex flex-col items-end gap-0.5">
+                <div className="flex items-center gap-1 bg-orange-50 px-2 py-1 rounded-lg">
+                  <Star size={12} className="fill-orange-500 text-orange-500" />
+                  <span className="text-orange-600 font-black text-[13px]">
+                    {post._avgRating.toFixed(1)}
+                  </span>
+                </div>
+                {post._ratingCount && post._ratingCount > 1 && (
+                  <span className="text-[9px] text-gray-400 font-bold mr-1">
+                    ({post._ratingCount}人)
+                  </span>
+                )}
               </div>
             )}
           </div>

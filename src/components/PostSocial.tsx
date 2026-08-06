@@ -10,9 +10,10 @@ type RatingAndActionsProps = {
   postId: string;
   isOwner: boolean;
   ownerRating: number | null;
+  ownerVisitCount?: number;
 };
 
-export function RatingAndActions({ postId, isOwner, ownerRating }: RatingAndActionsProps) {
+export function RatingAndActions({ postId, isOwner, ownerRating, ownerVisitCount = 1 }: RatingAndActionsProps) {
   const [wtgMarked, setWtgMarked] = useState(false);
   const [wtgCount, setWtgCount] = useState(0);
   const [wtgUsers, setWtgUsers] = useState<any[]>([]);
@@ -23,6 +24,8 @@ export function RatingAndActions({ postId, isOwner, ownerRating }: RatingAndActi
   const [visCount, setVisCount] = useState(0);
   const [visUsers, setVisUsers] = useState<any[]>([]);
   const [myRating, setMyRating] = useState<number | null>(null);
+  const [myVisitCount, setMyVisitCount] = useState<number>(1);
+  const [localOwnerVisitCount, setLocalOwnerVisitCount] = useState<number>(ownerVisitCount);
   const [pendingRating, setPendingRating] = useState<number | null>(null); // unsaved local edit
   const [showRatingInput, setShowRatingInput] = useState(false); // user explicitly toggled rating section
   const [showVisUsers, setShowVisUsers] = useState(false);
@@ -58,6 +61,7 @@ export function RatingAndActions({ postId, isOwner, ownerRating }: RatingAndActi
         setVisUsers(visRes.data.users);
         setMyRating(visRes.data.myRating);
         setPendingRating(visRes.data.myRating);
+        setMyVisitCount(visRes.data.myVisitCount);
       }
       if (likeRes?.success) {
         setLikeCount(likeRes.data.count);
@@ -159,6 +163,40 @@ export function RatingAndActions({ postId, isOwner, ownerRating }: RatingAndActi
   const avgRating = allRatings.length > 0 ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length : null;
 
   const ratingChanged = pendingRating !== myRating;
+
+  const updateVisitCount = async (action: 'increment' | 'decrement') => {
+    if (visToggling) return;
+    setVisToggling(true);
+    try {
+      if (isOwner) {
+        let newCount = localOwnerVisitCount;
+        if (action === 'increment') newCount++;
+        if (action === 'decrement' && newCount > 1) newCount--;
+        setLocalOwnerVisitCount(newCount);
+        
+        await fetch(`/api/posts/${postId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ visit_count: newCount })
+        });
+      } else {
+        const res = await fetch(`/api/posts/${postId}/visited`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action })
+        });
+        const data = await res.json();
+        if (data.success && data.data) {
+          setMyVisitCount(data.data.visit_count);
+          fetchData();
+        }
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setVisToggling(false);
+    }
+  };
 
   if (loading) return null;
 
@@ -265,6 +303,34 @@ export function RatingAndActions({ postId, isOwner, ownerRating }: RatingAndActi
                 </button>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 訪問回数 UI (オーナーまたは行った追加済みのユーザーに表示) */}
+      {(isOwner || (!isOwner && visMarked)) && (
+        <div className="px-5 py-4 border-b border-gray-100 bg-white flex items-center justify-between">
+          <span className="text-[13px] font-black text-gray-700 tracking-widest">
+            {isOwner ? '訪問回数' : 'あなたの訪問回数'}
+          </span>
+          <div className="flex items-center gap-4 bg-gray-50 rounded-full p-1 border border-gray-200">
+            <button
+              onClick={() => updateVisitCount('decrement')}
+              disabled={visToggling || (isOwner ? localOwnerVisitCount <= 1 : myVisitCount <= 1)}
+              className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-gray-600 shadow-sm border border-gray-100 hover:bg-gray-100 disabled:opacity-50 transition-colors"
+            >
+              <span className="text-lg font-bold leading-none select-none">−</span>
+            </button>
+            <span className="text-[14px] font-black text-gray-800 w-8 text-center select-none">
+              {isOwner ? localOwnerVisitCount : myVisitCount}回
+            </span>
+            <button
+              onClick={() => updateVisitCount('increment')}
+              disabled={visToggling}
+              className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center text-orange-600 shadow-sm border border-orange-100 hover:bg-orange-100 transition-colors"
+            >
+              <span className="text-lg font-bold leading-none select-none">＋</span>
+            </button>
           </div>
         </div>
       )}

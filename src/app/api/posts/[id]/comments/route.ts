@@ -57,6 +57,20 @@ export async function POST(
         },
       });
 
+      // Notify post owner
+      const post = await prisma.post.findUnique({ where: { id: postId } });
+      if (post && post.user_id !== auth.userId) {
+        await prisma.notification.create({
+          data: {
+            user_id: post.user_id,
+            actor_id: auth.userId,
+            type: 'comment',
+            post_id: postId,
+            message: 'あなたの投稿にコメントしました',
+          }
+        });
+      }
+
       return NextResponse.json({ success: true, data: comment });
     } catch (e: any) {
       console.error('[POST /api/posts/[id]/comments] Error:', e);

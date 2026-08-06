@@ -15,10 +15,25 @@ export async function POST(
     try {
       const body = await request.json().catch(() => ({}));
       const rating = body.rating !== undefined ? body.rating : undefined;
+      const action = body.action; // 'increment' | 'decrement' | undefined
 
       const existing = await prisma.postVisited.findUnique({
         where: { post_id_user_id: { post_id: postId, user_id: auth.userId } },
       });
+
+      if (action === 'increment' || action === 'decrement') {
+        if (!existing) return NextResponse.json({ success: false, error: 'Not visited yet' }, { status: 400 });
+        
+        let newCount = existing.visit_count;
+        if (action === 'increment') newCount++;
+        if (action === 'decrement' && newCount > 1) newCount--;
+        
+        const updated = await prisma.postVisited.update({
+          where: { post_id_user_id: { post_id: postId, user_id: auth.userId } },
+          data: { visit_count: newCount },
+        });
+        return NextResponse.json({ success: true, marked: true, data: updated });
+      }
 
       if (rating !== undefined) {
         // Update or Create with specific rating
@@ -40,6 +55,21 @@ export async function POST(
         await prisma.postVisited.create({
           data: { post_id: postId, user_id: auth.userId },
         });
+
+        // Notify post owner
+        const post = await prisma.post.findUnique({ where: { id: postId } });
+        if (post && post.user_id !== auth.userId) {
+          await prisma.notification.create({
+            data: {
+              user_id: post.user_id,
+              actor_id: auth.userId,
+              type: 'visited',
+              post_id: postId,
+              message: 'あなたの投稿を行ったに追加しました',
+            }
+          });
+        }
+
         return NextResponse.json({ success: true, marked: true });
       }
     } catch (e: any) {
@@ -76,7 +106,8 @@ export async function GET(
           count: visiteds.length,
           isMarked: !!myRecord,
           myRating: myRecord?.rating ?? null,
-          users: visiteds.map((w) => ({ ...w.user, rating: w.rating })),
+          myVisitCount: myRecord?.visit_count ?? 1,
+          users: visiteds.map((w) => ({ ...w.user, rating: w.rating, visit_count: w.visit_count })),
         },
       });
     } catch (e: any) {

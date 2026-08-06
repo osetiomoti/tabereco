@@ -23,6 +23,9 @@ export type Post = {
   address: string | null;
   latitude: number | null;
   longitude: number | null;
+  visit_count: number;
+  _avgRating?: number | null;
+  _ratingCount?: number;
   tags?: Tag[];
   user?: {
     id: string;
@@ -50,6 +53,7 @@ export type PostInsert = {
   address?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  visit_count?: number;
 };
 
 export type PostUpdate = {
@@ -70,6 +74,7 @@ export type PostUpdate = {
   address?: string | null;
   latitude?: number | null;
   longitude?: number | null;
+  visit_count?: number;
 };
 
 export type PostFormValues = {

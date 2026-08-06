@@ -122,14 +122,24 @@ export async function GET(request: NextRequest) {
       });
 
       // Flatten tags for easier consumption
-      const result = posts.map((post: any) => ({
-        ...post,
-        tags: post.tags.map((pt: any) => pt.tag),
-        _isMarkedWantToGo: post.want_to_gos?.some((w: any) => w.user_id === auth.userId),
-        _isLikedByMe: post.likes?.some((l: any) => l.user_id === auth.userId),
-        _comment_count: post._count?.comments ?? 0,
-        _like_count: post._count?.likes ?? 0,
-      }));
+      const result = posts.map((post: any) => {
+        // Calculate average rating
+        const allRatings = post.visiteds.filter((v: any) => v.rating != null).map((v: any) => v.rating);
+        if (post.rating != null && post.rating > 0) allRatings.push(post.rating);
+        const rawAvg = allRatings.length > 0 ? allRatings.reduce((a: number, b: number) => a + b, 0) / allRatings.length : null;
+        const avgRating = rawAvg !== null ? Math.round(rawAvg * 10) / 10 : null;
+
+        return {
+          ...post,
+          tags: post.tags.map((pt: any) => pt.tag),
+          _isMarkedWantToGo: post.want_to_gos?.some((w: any) => w.user_id === auth.userId),
+          _isLikedByMe: post.likes?.some((l: any) => l.user_id === auth.userId),
+          _comment_count: post._count?.comments ?? 0,
+          _like_count: post._count?.likes ?? 0,
+          _avgRating: avgRating,
+          _ratingCount: allRatings.length,
+        };
+      });
 
       return NextResponse.json({ success: true, data: result });
     } catch (e: any) {
@@ -178,11 +188,35 @@ export async function POST(request: NextRequest) {
         
         if (userGroups.length > 0) {
           await prisma.postGroup.createMany({
-            data: userGroups.map(g => ({
+            data: userGroups.map((g: any) => ({
               post_id: post.id,
               group_id: g.group_id
             })),
             skipDuplicates: true
+          });
+        }
+
+        // Notify friends about the new post
+        const friends = await prisma.friendship.findMany({
+          where: {
+            status: 'accepted',
+            OR: [
+              { user_id: auth.userId },
+              { friend_id: auth.userId }
+            ]
+          }
+        });
+
+        const friendIds = friends.map((f: any) => f.user_id === auth.userId ? f.friend_id : f.user_id);
+        if (friendIds.length > 0) {
+          await prisma.notification.createMany({
+            data: friendIds.map((friendId: string) => ({
+              user_id: friendId,
+              actor_id: auth.userId,
+              type: 'new_post',
+              post_id: post.id,
+              message: '新しい投稿を作成しました',
+            }))
           });
         }
       }

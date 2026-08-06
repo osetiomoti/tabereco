@@ -26,6 +26,21 @@ export async function POST(
         await prisma.postWantToGo.create({
           data: { post_id: postId, user_id: auth.userId },
         });
+
+        // Notify post owner
+        const post = await prisma.post.findUnique({ where: { id: postId } });
+        if (post && post.user_id !== auth.userId) {
+          await prisma.notification.create({
+            data: {
+              user_id: post.user_id,
+              actor_id: auth.userId,
+              type: 'want_to_go',
+              post_id: postId,
+              message: 'あなたの投稿を行きたいに追加しました',
+            }
+          });
+        }
+
         return NextResponse.json({ success: true, marked: true });
       }
     } catch (e: any) {

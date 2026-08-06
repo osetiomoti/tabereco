@@ -260,7 +260,7 @@ export default async function PostDetailPage({ params }: Props) {
       </div>
 
       {/* 6. 行動・評価 */}
-      <RatingAndActions postId={post.id} isOwner={isOwner} ownerRating={post.rating} />
+      <RatingAndActions postId={post.id} isOwner={isOwner} ownerRating={post.rating} ownerVisitCount={post.visit_count} />
 
       {/* 7. コメント */}
       <CommentsSection

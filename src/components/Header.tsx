@@ -2,8 +2,19 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { UtensilsCrossed, Settings, ChevronLeft } from 'lucide-react';
+import { UtensilsCrossed, Settings, ChevronLeft, Bell } from 'lucide-react';
 import { useMyProfile } from '@/hooks/useAppData';
+import { useUnreadNotifications } from '@/hooks/useNotifications';
+
+function NotificationBadge() {
+  const { count } = useUnreadNotifications();
+  if (count === 0) return null;
+  return (
+    <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[9px] font-black text-white border-2 border-white shadow-sm">
+      {count > 9 ? '9+' : count}
+    </div>
+  );
+}
 
 type HeaderProps = {
   children?: React.ReactNode;
@@ -52,12 +63,22 @@ export function Header({ children, title, showBackButton, hideSettings }: Header
           {children}
           
           {!isLoading && user && !hideSettings ? (
-            <Link
-              href="/settings"
-              className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-orange-50 hover:text-orange-500 transition-all"
-            >
-              <Settings size={18} />
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link
+                href="/notifications"
+                className="relative w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-orange-50 hover:text-orange-500 transition-all"
+              >
+                <Bell size={18} />
+                {/* 🔴 未読バッジは専用コンポーネントかここで取得して表示する */}
+                <NotificationBadge />
+              </Link>
+              <Link
+                href="/settings"
+                className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-orange-50 hover:text-orange-500 transition-all"
+              >
+                <Settings size={18} />
+              </Link>
+            </div>
           ) : !isLoading && !user && !hideSettings && (
             <Link
               href="/login"
