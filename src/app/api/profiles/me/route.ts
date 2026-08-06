@@ -27,30 +27,55 @@ export async function GET(request: NextRequest) {
         }
       });
 
-      // Average rating (Ratings the user has given)
-      const ownPostsWithRating = await prisma.post.findMany({
+      // Own posts with rating (ratings the user gave on their own posts)
+      const ownRatedPosts = await prisma.post.findMany({
         where: { user_id: auth.userId, rating: { not: null } },
-        include: { tags: { include: { tag: true } }, user: { select: { id: true, name: true, avatar_url: true } } },
-      });
-      const visitedWithRating = await prisma.postVisited.findMany({
-        where: { user_id: auth.userId, rating: { not: null } },
-        include: { post: { include: { tags: { include: { tag: true } }, user: { select: { id: true, name: true, avatar_url: true } } } } },
+        select: {
+          id: true,
+          title: true,
+          image_url: true,
+          rating: true,
+          user: { select: { id: true, name: true, avatar_url: true } },
+        },
       });
 
+      // PostVisited entries where user gave a rating (on others' posts)
+      const visitedRated = await prisma.postVisited.findMany({
+        where: { user_id: auth.userId, rating: { not: null } },
+        select: {
+          rating: true,
+          post: {
+            select: {
+              id: true,
+              title: true,
+              image_url: true,
+              user: { select: { id: true, name: true, avatar_url: true } },
+            },
+          },
+        },
+      });
+
+      // Collect all ratings
       const allRatings: number[] = [];
       const ratedPosts: any[] = [];
 
-      ownPostsWithRating.forEach(p => { 
-        if (p.rating) {
+      ownRatedPosts.forEach(p => {
+        if (p.rating != null) {
           allRatings.push(p.rating);
-          ratedPosts.push({ ...p, tags: p.tags.map((pt: any) => pt.tag) });
+          ratedPosts.push({ id: p.id, title: p.title, image_url: p.image_url, rating: p.rating, user: p.user });
         }
       });
-      
-      visitedWithRating.forEach(v => { 
-        if (v.rating) {
+
+      visitedRated.forEach(v => {
+        if (v.rating != null && v.post) {
           allRatings.push(v.rating);
-          ratedPosts.push({ ...v.post, rating: v.rating, tags: v.post.tags.map((pt: any) => pt.tag) });
+          ratedPosts.push({
+            id: v.post.id,
+            title: v.post.title,
+            image_url: v.post.image_url,
+            rating: v.rating,
+            user: v.post.user,
+          });
         }
       });
 
@@ -58,24 +83,37 @@ export async function GET(request: NextRequest) {
         ? Math.round(allRatings.reduce((a, b) => a + b, 0) / allRatings.length * 10) / 10
         : null;
 
-      // Rating distribution
+      // Rating distribution: bins [0-1), [1-2), [2-3), [3-4), [4-5]
       const ratingDistribution = [0, 1, 2, 3, 4].map(bin => ({
         label: `${bin}〜${bin + 1}`,
         min: bin,
         max: bin + 1,
-        count: allRatings.filter(r => bin === 4 ? r >= bin && r <= bin + 1 : r >= bin && r < bin + 1).length,
+        count: allRatings.filter(r =>
+          bin === 4 ? r >= bin && r <= bin + 1 : r >= bin && r < bin + 1
+        ).length,
       }));
 
       // Total likes received (on their own posts)
-      const ownPosts = await prisma.post.findMany({ where: { user_id: auth.userId }, select: { id: true } });
-      const postIds = ownPosts.map(p => p.id);
+      const ownPostIds = await prisma.post.findMany({
+        where: { user_id: auth.userId },
+        select: { id: true },
+      });
+      const postIds = ownPostIds.map(p => p.id);
       const totalLikesReceived = postIds.length > 0
         ? await prisma.postLike.count({ where: { post_id: { in: postIds } } })
         : 0;
 
       return NextResponse.json({
         success: true,
-        data: { ...user, totalPostCount, friendsCount, avgRating, ratingDistribution, totalLikesReceived, ratedPosts },
+        data: {
+          ...user,
+          totalPostCount,
+          friendsCount,
+          avgRating,
+          ratingDistribution,
+          totalLikesReceived,
+          ratedPosts,
+        },
       });
     } catch (e: any) {
       console.error('[GET /api/profiles/me]', e);
