@@ -50,6 +50,7 @@ export async function GET(
           },
         },
         want_to_gos: true,
+        visiteds: true,
         likes: true,
         _count: {
           select: { comments: true, likes: true }
@@ -61,15 +62,25 @@ export async function GET(
     });
 
     // Flatten results
-    const posts = postsResult.map((post: any) => ({
-      ...post,
-      tags: post.tags.map((pt: any) => pt.tag),
-      shared_at: post.created_at, // Use created_at as shared_at for compatibility
-      _isMarkedWantToGo: post.want_to_gos?.some((w: any) => w.user_id === auth.userId),
-      _isLikedByMe: post.likes?.some((l: any) => l.user_id === auth.userId),
-      _comment_count: post._count?.comments ?? 0,
-      _like_count: post._count?.likes ?? 0,
-    }));
+    const posts = postsResult.map((post: any) => {
+      // Calculate average rating
+      const allRatings = post.visiteds.filter((v: any) => v.rating != null).map((v: any) => v.rating);
+      if (post.rating != null && post.rating > 0) allRatings.push(post.rating);
+      const rawAvg = allRatings.length > 0 ? allRatings.reduce((a: number, b: number) => a + b, 0) / allRatings.length : null;
+      const avgRating = rawAvg !== null ? Math.round(rawAvg * 10) / 10 : null;
+
+      return {
+        ...post,
+        tags: post.tags.map((pt: any) => pt.tag),
+        shared_at: post.created_at, // Use created_at as shared_at for compatibility
+        _isMarkedWantToGo: post.want_to_gos?.some((w: any) => w.user_id === auth.userId),
+        _isLikedByMe: post.likes?.some((l: any) => l.user_id === auth.userId),
+        _comment_count: post._count?.comments ?? 0,
+        _like_count: post._count?.likes ?? 0,
+        _avgRating: avgRating,
+        _ratingCount: allRatings.length,
+      };
+    });
 
     return NextResponse.json({ success: true, data: posts });
   });
