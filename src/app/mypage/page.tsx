@@ -68,7 +68,7 @@ function StarRating({ rating }: { rating: number }) {
 export default function MyPage() {
   useScrollRestore('mypage');
   const router = useRouter();
-  const { updateFilter } = useSharedFilter();
+  const { filterState, updateFilter } = useSharedFilter();
   const [activeTab, setActiveTab] = useState<'visited' | 'want_to_go' | 'liked'>('visited');
 
   const [targetUserId, setTargetUserId] = useState<string | null>(null);
@@ -201,8 +201,9 @@ export default function MyPage() {
   const goToMap = async () => {
     if (targetUserId) {
       updateFilter({
-        activeGroups: ['all'],
-        advancedFilters: { registrantUserIds: [targetUserId], include_mine: false }
+        filterMode: 'registrant',
+        activeGroups: [],
+        advancedFilters: { ...filterState?.advancedFilters, registrantUserIds: [targetUserId], include_mine: false }
       });
     } else {
       let myId = myUserData?.data?.id;
@@ -214,8 +215,9 @@ export default function MyPage() {
         } catch (e) {}
       }
       updateFilter({
+        filterMode: 'registrant',
         activeGroups: [],
-        advancedFilters: myId ? { registrantUserIds: [myId], include_mine: true } : { include_mine: true }
+        advancedFilters: { ...filterState?.advancedFilters, registrantUserIds: myId ? [myId] : [], include_mine: true }
       });
     }
     router.push('/map');
@@ -224,8 +226,9 @@ export default function MyPage() {
   const goToCalendar = async () => {
     if (targetUserId) {
       updateFilter({
-        activeGroups: ['all'],
-        advancedFilters: { registrantUserIds: [targetUserId], include_mine: false }
+        filterMode: 'registrant',
+        activeGroups: [],
+        advancedFilters: { ...filterState?.advancedFilters, registrantUserIds: [targetUserId], include_mine: false }
       });
     } else {
       let myId = myUserData?.data?.id;
@@ -237,8 +240,9 @@ export default function MyPage() {
         } catch (e) {}
       }
       updateFilter({
+        filterMode: 'registrant',
         activeGroups: [],
-        advancedFilters: myId ? { registrantUserIds: [myId], include_mine: true } : { include_mine: true }
+        advancedFilters: { ...filterState?.advancedFilters, registrantUserIds: myId ? [myId] : [], include_mine: true }
       });
     }
     router.push('/calendar');
