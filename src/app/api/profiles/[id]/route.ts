@@ -118,24 +118,32 @@ export async function GET(
       ]);
       const totalPostCount = visitedCount + wantToGoCount;
 
-      // Average rating: from own posts + visiteds on those posts
-      const ownPosts = await prisma.post.findMany({
-        where: { user_id: targetUserId, is_mine_only: false },
-        select: { id: true, rating: true },
+      // Average rating (Ratings the target user has given)
+      const ownPostsWithRating = await prisma.post.findMany({
+        where: { user_id: targetUserId, rating: { not: null }, is_mine_only: false },
+        include: { tags: { include: { tag: true } }, user: { select: { id: true, name: true, avatar_url: true } } },
       });
-      const postIds = ownPosts.map(p => p.id);
+      const visitedWithRating = await prisma.postVisited.findMany({
+        where: { user_id: targetUserId, rating: { not: null } },
+        include: { post: { include: { tags: { include: { tag: true } }, user: { select: { id: true, name: true, avatar_url: true } } } } },
+      });
 
-      // Collect all ratings: own post ratings + others' visited ratings
       const allRatings: number[] = [];
-      ownPosts.forEach(p => { if (p.rating) allRatings.push(p.rating); });
+      const ratedPosts: any[] = [];
 
-      if (postIds.length > 0) {
-        const visitedRatings = await prisma.postVisited.findMany({
-          where: { post_id: { in: postIds }, rating: { not: null } },
-          select: { rating: true },
-        });
-        visitedRatings.forEach(v => { if (v.rating) allRatings.push(v.rating); });
-      }
+      ownPostsWithRating.forEach(p => { 
+        if (p.rating) {
+          allRatings.push(p.rating);
+          ratedPosts.push({ ...p, tags: p.tags.map((pt: any) => pt.tag) });
+        }
+      });
+      
+      visitedWithRating.forEach(v => { 
+        if (v.rating) {
+          allRatings.push(v.rating);
+          ratedPosts.push({ ...v.post, rating: v.rating, tags: v.post.tags.map((pt: any) => pt.tag) });
+        }
+      });
 
       const avgRating = allRatings.length > 0
         ? Math.round(allRatings.reduce((a, b) => a + b, 0) / allRatings.length * 10) / 10
@@ -150,6 +158,11 @@ export async function GET(
       }));
 
       // Total likes received on user's posts
+      const ownPosts = await prisma.post.findMany({
+        where: { user_id: targetUserId },
+        select: { id: true },
+      });
+      const postIds = ownPosts.map(p => p.id);
       const totalLikesReceived = postIds.length > 0
         ? await prisma.postLike.count({ where: { post_id: { in: postIds } } })
         : 0;
@@ -165,6 +178,7 @@ export async function GET(
           avgRating,
           ratingDistribution,
           totalLikesReceived,
+          ratedPosts,
         }
       });
     } catch (e: any) {

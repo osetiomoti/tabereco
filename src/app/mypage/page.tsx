@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
-import { Settings, Hash, ArrowDownUp, Plus, MapPin, Calendar, User, Search, Bookmark, Star, Heart } from 'lucide-react';
+import { Settings, Hash, ArrowDownUp, Plus, MapPin, Calendar, User, Search, Bookmark, Star, Heart, ThumbsUp } from 'lucide-react';
 import { Header } from '@/components/Header';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -321,11 +321,11 @@ export default function MyPage() {
 
           {/* もらったいいね */}
           <div className="flex flex-col items-center justify-center relative -top-1">
-            <div className="flex items-center gap-0.5">
-              <Heart size={14} className="text-pink-400 fill-pink-400" />
+            <div className="flex items-center gap-1">
+              <ThumbsUp size={14} className="text-pink-400 fill-pink-400" />
               <span className="text-[17px] font-black text-gray-900 leading-none">{totalLikesReceived}</span>
             </div>
-            <span className="text-[10px] text-gray-400 font-black mt-1.5">いいね</span>
+            <span className="text-[10px] text-gray-400 font-black mt-1.5 whitespace-nowrap -ml-1 -mr-1 text-center scale-90">もらったいいね</span>
           </div>
         </div>
       </div>
