@@ -2,11 +2,19 @@ import webpush from 'web-push';
 import { prisma } from '@/lib/prisma';
 
 // Initialize VAPID details
-webpush.setVapidDetails(
-  `mailto:${process.env.VAPID_CONTACT_EMAIL}`,
-  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
-  process.env.VAPID_PRIVATE_KEY!
-);
+if (
+  process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY &&
+  process.env.VAPID_PRIVATE_KEY &&
+  process.env.VAPID_CONTACT_EMAIL
+) {
+  webpush.setVapidDetails(
+    `mailto:${process.env.VAPID_CONTACT_EMAIL}`,
+    process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+} else {
+  console.warn('VAPID keys are missing. Web Push notifications will not work.');
+}
 
 export interface PushNotificationPayload {
   title: string;
