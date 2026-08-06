@@ -78,13 +78,13 @@ export default function SettingsPage() {
           {/* Avatar */}
           <div className="flex items-center gap-5 mb-5">
             <div className="relative flex-shrink-0">
-              <div className="w-20 h-20 rounded-full bg-gray-100 overflow-hidden border-4 border-white shadow-md">
+              <div className="w-20 h-20 rounded-full bg-gray-100 overflow-hidden border-4 border-white shadow-md relative">
                 {isUploading ? (
                   <div className="w-full h-full flex items-center justify-center bg-gray-100">
                     <Loader2 size={24} className="text-orange-500 animate-spin" />
                   </div>
                 ) : user?.avatar_url ? (
-                  <Image src={user.avatar_url} alt="Profile" fill className="object-cover" />
+                  <Image src={user.avatar_url} alt="Profile" fill className="object-cover" unoptimized />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
                     <User size={32} className="text-gray-400" />

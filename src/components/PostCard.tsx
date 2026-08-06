@@ -294,7 +294,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
           >
             {post.user?.avatar_url ? (
               <div className="w-8 h-8 rounded-full overflow-hidden relative shadow-sm border border-gray-50">
-                <Image src={post.user.avatar_url} alt={post.user.name || 'User'} fill className="object-cover" sizes="32px" />
+                <Image src={post.user.avatar_url} alt={post.user.name || 'User'} fill className="object-cover" sizes="32px" unoptimized />
               </div>
             ) : (
               <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-300">

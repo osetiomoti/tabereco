@@ -370,7 +370,7 @@ export function RatingAndActions({ postId, isOwner, ownerRating, ownerVisitCount
                     <div className="flex items-center gap-2 text-[12px] font-bold text-gray-700">
                       <div className="w-5 h-5 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">
                         {u.avatar_url ? (
-                          <Image src={u.avatar_url} alt={u.name} width={20} height={20} className="object-cover" />
+                          <Image src={u.avatar_url} alt={u.name} width={20} height={20} className="object-cover" unoptimized />
                         ) : (
                           <User size={10} className="text-gray-400" />
                         )}
@@ -544,7 +544,7 @@ export function CommentsSection({
                 <div className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center flex-shrink-0 mt-0.5">
                     {c.user.avatar_url ? (
-                      <Image src={c.user.avatar_url} alt={c.user.name} width={32} height={32} className="object-cover" />
+                      <Image src={c.user.avatar_url} alt={c.user.name} width={32} height={32} className="object-cover" unoptimized />
                     ) : (
                       <User size={14} className="text-gray-400" />
                     )}
