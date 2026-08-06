@@ -279,19 +279,21 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
                   <MapPin size={12} className="text-orange-400 shrink-0" />
                   {selectedPost.store_name || '店舗名なし'}
                 </p>
-                {selectedPost.status !== 'want_to_go' && (selectedPost._avgRating != null || selectedPost.rating != null) && (
-                  <div className="flex flex-col items-end gap-0.5 mt-2">
-                    <div className="flex items-center gap-1 bg-orange-50 px-2 py-1 rounded-lg">
-                      <Star size={12} className="fill-orange-500 text-orange-500" />
-                      <span className="text-orange-600 font-black text-[13px]">
-                        {(selectedPost._avgRating ?? selectedPost.rating)?.toFixed(1) || '0.0'}
-                      </span>
-                    </div>
-                    {selectedPost._ratingCount && selectedPost._ratingCount > 1 && (
-                      <span className="text-[9px] text-gray-400 font-bold mr-1">
-                        ({selectedPost._ratingCount}人)
-                      </span>
+                {selectedPost.status !== 'want_to_go' && (selectedPost.rating != null || selectedPost._avgRating != null) && (
+                  <div className="flex flex-col items-end gap-1 mt-2">
+                    {selectedPost.rating != null && selectedPost.rating > 0 && (
+                      <div className="flex items-center gap-1 bg-orange-50 px-2 py-1 rounded-lg">
+                        <Star size={12} className="fill-orange-500 text-orange-500" />
+                        <span className="text-orange-600 font-black text-[13px]">
+                          {selectedPost.rating.toFixed(1)}
+                        </span>
+                      </div>
                     )}
+                    {selectedPost._ratingCount && selectedPost._ratingCount > (selectedPost.rating != null && selectedPost.rating > 0 ? 1 : 0) ? (
+                      <span className="text-[10px] text-gray-400 font-bold mr-1">
+                        平均: {selectedPost._avgRating?.toFixed(1)} ({selectedPost._ratingCount}人)
+                      </span>
+                    ) : null}
                   </div>
                 )}
               </div>

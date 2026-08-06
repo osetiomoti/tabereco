@@ -49,10 +49,10 @@ export function Header({ children, title, showBackButton, hideSettings }: Header
           )}
         </div>
 
-        {/* Center Title (Absolute) */}
+        {/* Center Title */}
         {title && (
-          <div className="absolute inset-x-0 flex justify-center items-center pointer-events-none">
-            <h1 className="font-bold text-gray-900 tracking-wide text-[16px]">
+          <div className="absolute inset-0 flex justify-center items-center pointer-events-none px-24">
+            <h1 className="font-bold text-gray-900 tracking-wide text-[16px] truncate">
               {title}
             </h1>
           </div>

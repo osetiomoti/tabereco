@@ -163,14 +163,6 @@ export default function PostsPage() {
     <>
       <Header title="タイムライン">
         <button
-          onClick={handleRefresh}
-          className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-            isRefreshing ? 'bg-orange-100 text-orange-400' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-          }`}
-        >
-          <RefreshCw size={17} className={isRefreshing ? 'animate-spin' : ''} />
-        </button>
-        <button
           onClick={() => setIsFilterModalOpen(true)}
           className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-all ${
             activeFilterCount > 0
@@ -231,16 +223,26 @@ export default function PostsPage() {
                   📍 住所
                 </button>
               </div>
-              {/* Search input */}
-              <div className="relative mb-2">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-                <input
-                  type="text"
-                  placeholder={searchMode === 'address' ? '住所・エリアで検索（例：渋谷区、銀座...）' : '店名で検索...'}
-                  className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-orange-100 transition-all font-medium text-gray-800 placeholder:text-gray-300"
-                  value={keyword}
-                  onChange={(e) => updateFilter({ keyword: e.target.value })}
-                />
+              {/* Search input and Refresh */}
+              <div className="flex gap-2 mb-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+                  <input
+                    type="text"
+                    placeholder={searchMode === 'address' ? '住所・エリアで検索（例：渋谷区、銀座...）' : '店名で検索...'}
+                    className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-orange-100 transition-all font-medium text-gray-800 placeholder:text-gray-300"
+                    value={keyword}
+                    onChange={(e) => updateFilter({ keyword: e.target.value })}
+                  />
+                </div>
+                <button
+                  onClick={handleRefresh}
+                  className={`w-[52px] shrink-0 rounded-2xl flex items-center justify-center transition-all ${
+                    isRefreshing ? 'bg-orange-100 text-orange-400' : 'bg-gray-50 text-gray-400 hover:bg-gray-100'
+                  }`}
+                >
+                  <RefreshCw size={20} className={isRefreshing ? 'animate-spin' : ''} />
+                </button>
               </div>
               <FilterChips
                 filters={{ 

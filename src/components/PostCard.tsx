@@ -415,19 +415,21 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
                 )}
               </div>
             </div>
-            {post.status !== 'want_to_go' && post._avgRating != null && (
-              <div className="flex flex-col items-end gap-0.5">
-                <div className="flex items-center gap-1 bg-orange-50 px-2 py-1 rounded-lg">
-                  <Star size={12} className="fill-orange-500 text-orange-500" />
-                  <span className="text-orange-600 font-black text-[13px]">
-                    {post._avgRating.toFixed(1)}
-                  </span>
-                </div>
-                {post._ratingCount && post._ratingCount > 1 && (
-                  <span className="text-[9px] text-gray-400 font-bold mr-1">
-                    ({post._ratingCount}人)
-                  </span>
+            {post.status !== 'want_to_go' && (post.rating != null || post._avgRating != null) && (
+              <div className="flex flex-col items-end gap-1">
+                {post.rating != null && post.rating > 0 && (
+                  <div className="flex items-center gap-1 bg-orange-50 px-2 py-1 rounded-lg">
+                    <Star size={12} className="fill-orange-500 text-orange-500" />
+                    <span className="text-orange-600 font-black text-[13px]">
+                      {post.rating.toFixed(1)}
+                    </span>
+                  </div>
                 )}
+                {post._ratingCount && post._ratingCount > (post.rating != null && post.rating > 0 ? 1 : 0) ? (
+                  <span className="text-[10px] text-gray-400 font-bold mr-1">
+                    平均: {post._avgRating?.toFixed(1)} ({post._ratingCount}人)
+                  </span>
+                ) : null}
               </div>
             )}
           </div>
