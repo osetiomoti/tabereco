@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
+import { sendPushNotification } from '@/lib/webpush';
 
 /**
  * GET /api/posts
@@ -209,6 +210,7 @@ export async function POST(request: NextRequest) {
 
         const friendIds = friends.map((f: any) => f.user_id === auth.userId ? f.friend_id : f.user_id);
         if (friendIds.length > 0) {
+          const actor = await prisma.user.findUnique({ where: { id: auth.userId }, select: { name: true } });
           await prisma.notification.createMany({
             data: friendIds.map((friendId: string) => ({
               user_id: friendId,
@@ -218,6 +220,17 @@ export async function POST(request: NextRequest) {
               message: '新しい投稿を作成しました',
             }))
           });
+          // Send Web Push to all friends
+          await Promise.all(
+            friendIds.map((friendId: string) =>
+              sendPushNotification(friendId, {
+                title: '食べレコ',
+                body: `${actor?.name || '誰か'}さんが新しい投稿をしました！`,
+                url: `/posts/${post.id}`,
+                tag: `new-post-${post.id}`,
+              })
+            )
+          );
         }
       }
 

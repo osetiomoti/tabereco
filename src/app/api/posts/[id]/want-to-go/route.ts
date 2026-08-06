@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
+import { sendPushNotification } from '@/lib/webpush';
 
 /**
  * POST /api/posts/[id]/want-to-go
@@ -30,6 +31,7 @@ export async function POST(
         // Notify post owner
         const post = await prisma.post.findUnique({ where: { id: postId } });
         if (post && post.user_id !== auth.userId) {
+          const actor = await prisma.user.findUnique({ where: { id: auth.userId }, select: { name: true } });
           await prisma.notification.create({
             data: {
               user_id: post.user_id,
@@ -38,6 +40,13 @@ export async function POST(
               post_id: postId,
               message: 'あなたの投稿を行きたいに追加しました',
             }
+          });
+          // Send Web Push
+          await sendPushNotification(post.user_id, {
+            title: '食べレコ',
+            body: `${actor?.name || '誰か'}さんが「${post.title}」を行きたいに追加しました`,
+            url: `/posts/${postId}`,
+            tag: `want-to-go-${postId}`,
           });
         }
 

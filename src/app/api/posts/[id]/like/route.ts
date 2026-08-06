@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
+import { sendPushNotification } from '@/lib/webpush';
 
 /**
  * GET /api/posts/[id]/like
@@ -72,6 +73,7 @@ export async function POST(
 
       // Notify post owner
       if (post && post.user_id !== auth.userId) {
+        const actor = await prisma.user.findUnique({ where: { id: auth.userId }, select: { name: true } });
         await prisma.notification.create({
           data: {
             user_id: post.user_id,
@@ -80,6 +82,13 @@ export async function POST(
             post_id: id,
             message: 'あなたの投稿にいいねしました',
           }
+        });
+        // Send Web Push
+        await sendPushNotification(post.user_id, {
+          title: '食べレコ',
+          body: `${actor?.name || '誰か'}さんがあなたの投稿にいいねしました`,
+          url: `/posts/${id}`,
+          tag: `like-${id}`,
         });
       }
 

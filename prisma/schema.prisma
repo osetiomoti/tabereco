@@ -29,6 +29,7 @@ model User {
   likes           PostLike[]
   notifications_received Notification[] @relation("NotificationsReceived")
   notifications_sent     Notification[] @relation("NotificationsSent")
+  push_subscriptions     PushSubscription[]
 
   @@map("users")
 }
@@ -223,4 +224,16 @@ model Notification {
 
   @@index([user_id, is_read])
   @@map("notifications")
+}
+
+model PushSubscription {
+  id         String   @id @default(uuid()) @db.Uuid
+  user_id    String   @db.Uuid
+  endpoint   String   @unique
+  p256dh     String
+  auth       String
+  created_at DateTime @default(now())
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("push_subscriptions")
 }

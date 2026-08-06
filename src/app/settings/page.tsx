@@ -7,6 +7,7 @@ import { Pencil, Camera, Tag, LogOut, ChevronRight, User, Check, X, Loader2, Use
 import Image from 'next/image';
 import { Header } from '@/components/Header';
 import { useUpload } from '@/hooks/useUpload';
+import { PushNotificationToggle } from '@/components/PushNotificationToggle';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -150,6 +151,8 @@ export default function SettingsPage() {
 
         {/* Menu List */}
         <div className="bg-white rounded-[2rem] shadow-sm border border-gray-100 overflow-hidden mb-8">
+          <PushNotificationToggle />
+          <div className="border-b border-gray-50" />
           <MenuItem 
             icon={<span className="text-orange-500"><Users size={20} fill="currentColor" fillOpacity={0.2} /></span>} 
             label="ともだち・グループ" 

@@ -5,6 +5,7 @@ import { BottomNav } from '@/components/BottomNav';
 import { SWRProvider } from '@/components/SWRProvider';
 import { SessionKeepAlive } from '@/components/SessionKeepAlive';
 import { ToastProvider } from '@/components/Toast';
+import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -59,6 +60,7 @@ export default function RootLayout({
         <SWRProvider>
           <ToastProvider>
             <SessionKeepAlive />
+            <ServiceWorkerRegister />
             {children}
             <BottomNav />
           </ToastProvider>
