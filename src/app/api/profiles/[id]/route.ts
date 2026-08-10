@@ -111,12 +111,14 @@ export async function GET(
         where: { user_id: targetUserId }
       });
 
-      // Total post count (own visited + own want_to_go)
-      const [visitedCount, wantToGoCount] = await Promise.all([
+      // Total post count (own visited + own want_to_go + marked)
+      const [visitedCount, wantToGoCount, markedVisitedCount, markedWantToGoCount] = await Promise.all([
         prisma.post.count({ where: { user_id: targetUserId, status: 'visited', is_mine_only: false } }),
         prisma.post.count({ where: { user_id: targetUserId, status: 'want_to_go', is_mine_only: false } }),
+        prisma.postVisited.count({ where: { user_id: targetUserId, post: { is_mine_only: false } } }),
+        prisma.postWantToGo.count({ where: { user_id: targetUserId, post: { is_mine_only: false } } }),
       ]);
-      const totalPostCount = visitedCount + wantToGoCount;
+      const totalPostCount = visitedCount + wantToGoCount + markedVisitedCount + markedWantToGoCount;
 
       // Average rating (Ratings the target user has given)
       const ownRatedPosts = await prisma.post.findMany({

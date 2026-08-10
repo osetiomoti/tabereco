@@ -5,15 +5,17 @@ import { Header } from '@/components/Header';
 import { PostCard, FilterChips } from '@/components/PostCard';
 import { PostCardSkeleton } from '@/components/Skeleton';
 import { FilterModal } from '@/components/FilterModal';
-import { useFilteredPosts } from '@/hooks/useFilteredPosts';
+import { useTimeline } from '@/hooks/useTimeline';
 import { useScrollRestore } from '@/hooks/useScrollRestore';
-import { Filter, Search, UtensilsCrossed, List, Calendar as CalendarIcon, RefreshCw } from 'lucide-react';
+import { useSharedFilter } from '@/hooks/useSharedFilter';
+import useSWR from 'swr';
+import { Filter, Search, UtensilsCrossed, List, Calendar as CalendarIcon, RefreshCw, Loader2 } from 'lucide-react';
 import { FloatingActionButton } from '@/components/FloatingActionButton';
 import { format, startOfMonth, endOfMonth, isSameDay, addMonths, subMonths, getDay, addDays, startOfWeek, isSameMonth } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import Image from 'next/image';
 import Link from 'next/link';
-import { mutate } from 'swr';
+import { useEffect, useRef } from 'react';
 
 function CalendarView({ posts }: { posts: any[] }) {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -130,12 +132,45 @@ function CalendarView({ posts }: { posts: any[] }) {
 }
 
 export default function PostsPage() {
-  useScrollRestore('posts');
-  const { posts, loading, filterState, updateFilter, activeFilterCount, removeFilter, memberUsers, joinedGroups } = useFilteredPosts();
+  useScrollRestore('posts_list');
+  const { filterState, updateFilter } = useSharedFilter();
   const { activeTab, keyword, searchMode, activeGroups, advancedFilters } = filterState;
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  
+  const {
+    posts,
+    isLoading,
+    isLoadingMore,
+    isReachingEnd,
+    isRefreshing,
+    loadMore,
+    mutate
+  } = useTimeline({ timelineMode: 'home' });
+
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
-  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [activeFilterCount, setActiveFilterCount] = useState(0);
+
+  // Group members and joined groups for filter chips
+  const { data: groupsData } = useSWR<{ data: any[] }>('/api/groups', (url: string) => fetch(url).then(r => r.json()));
+  const joinedGroups = groupsData?.data || [];
+  const memberUsers = [] as any[]; 
+
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isLoadingMore && !isReachingEnd) {
+          loadMore();
+        }
+      },
+      { rootMargin: '400px' }
+    );
+    if (loadMoreRef.current) {
+      observer.observe(loadMoreRef.current);
+    }
+    return () => observer.disconnect();
+  }, [isLoadingMore, isReachingEnd, loadMore]);
 
   // いいね管理（オプティミスティックUI）
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
@@ -154,9 +189,29 @@ export default function PostsPage() {
   };
 
   const handleRefresh = async () => {
-    setIsRefreshing(true);
-    await mutate(() => true, undefined, { revalidate: true });
-    setTimeout(() => setIsRefreshing(false), 800);
+    await mutate();
+  };
+
+  const removeFilter = (key: string | string[] | Record<string, any>) => {
+    if (typeof key === 'object' && !Array.isArray(key) && 'registrantUserIds' in key) {
+      updateFilter({ advancedFilters: { ...(advancedFilters || {}), registrantUserIds: (key as any).registrantUserIds } });
+      return;
+    }
+    let next = { ...(advancedFilters || {}) } as any;
+    if (Array.isArray(key)) {
+      if (key.length === 0) {
+        updateFilter({ activeTab: 'all', advancedFilters: null });
+        return;
+      } else {
+        next.tags = key;
+      }
+    } else if (key === 'status') {
+      updateFilter({ activeTab: 'all' });
+      return;
+    } else {
+      delete next[key as string];
+    }
+    updateFilter({ advancedFilters: Object.keys(next).length > 0 ? next : null });
   };
 
   return (
@@ -261,7 +316,7 @@ export default function PostsPage() {
 
         {/* Content */}
         {viewMode === 'calendar' ? (
-          loading ? (
+          isLoading ? (
             <div className="space-y-1">
               <div className="h-64 bg-white rounded-3xl border border-gray-100 animate-pulse" />
             </div>
@@ -270,7 +325,7 @@ export default function PostsPage() {
           )
         ) : (
           <div>
-            {loading ? (
+            {isLoading ? (
               <div className="space-y-1">
                 <PostCardSkeleton />
                 <PostCardSkeleton />
@@ -300,6 +355,16 @@ export default function PostsPage() {
                     />
                   );
                 })}
+                
+                {/* Infinite Scroll trigger */}
+                <div ref={loadMoreRef} className="py-8 flex justify-center h-20">
+                  {isLoadingMore && !isReachingEnd && (
+                    <Loader2 size={24} className="text-orange-400 animate-spin" />
+                  )}
+                  {isReachingEnd && posts.length > 0 && (
+                    <p className="text-xs font-bold text-gray-300 tracking-wider">すべての投稿を読み込みました</p>
+                  )}
+                </div>
               </div>
             )}
           </div>

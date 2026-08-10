@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { mutate } from 'swr';
 import { ImageUpload } from './ImageUpload';
@@ -74,6 +74,7 @@ export function PostForm({ post }: Props) {
   const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
   const [addressLanguage, setAddressLanguage] = useState<'ja' | 'en'>('ja');
   const [loading, setLoading] = useState(false);
+  const submittedRef = useRef(false); // 二重送信防止用ref
   const [error, setError] = useState<string | null>(null);
   const [extractingGps, setExtractingGps] = useState(false);
   const [orderedImages, setOrderedImages] = useState<(File | string)[]>([...(post?.image_urls ?? (post?.image_url ? [post.image_url] : []))]);
@@ -172,11 +173,13 @@ export function PostForm({ post }: Props) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (loading || submittedRef.current) return; // 二重送信防止
     setError(null);
 
     if (!values.store_name.trim()) return setError('店名を入力してください');
     if (values.status !== 'want_to_go' && !values.rating) return setError('評価を選択してください');
 
+    submittedRef.current = true;
     setLoading(true);
     try {
       // 並び順を保持しつつ、ファイルだけをアップロードする（プログレス表示付き）

@@ -12,12 +12,14 @@ export async function GET(request: NextRequest) {
       const user = await prisma.user.findUnique({ where: { id: auth.userId } });
       if (!user) return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
 
-      // Total post count
-      const [visitedCount, wantToGoCount] = await Promise.all([
+      // Total post count (own posts + marked posts)
+      const [visitedCount, wantToGoCount, markedVisitedCount, markedWantToGoCount] = await Promise.all([
         prisma.post.count({ where: { user_id: auth.userId, status: 'visited' } }),
         prisma.post.count({ where: { user_id: auth.userId, status: 'want_to_go' } }),
+        prisma.postVisited.count({ where: { user_id: auth.userId } }),
+        prisma.postWantToGo.count({ where: { user_id: auth.userId } }),
       ]);
-      const totalPostCount = visitedCount + wantToGoCount;
+      const totalPostCount = visitedCount + wantToGoCount + markedVisitedCount + markedWantToGoCount;
 
       // Friends count
       const friendsCount = await prisma.friendship.count({

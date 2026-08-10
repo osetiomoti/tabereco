@@ -78,7 +78,7 @@ export default async function PostDetailPage({ params }: Props) {
       {/* 1. Header */}
       <Header title={post.store_name || post.title || ''} showBackButton hideSettings>
         <div className="flex items-center gap-2">
-          {allImages.length === 0 && (
+          {allImages.length === 0 && isOwner && (
             <FavoriteToggle postId={post.id} initialValue={post.is_favorite} />
           )}
           <PostMenu postId={post.id} postUserId={post.user_id} isOwner={isOwner} />
@@ -89,10 +89,12 @@ export default async function PostDetailPage({ params }: Props) {
       {allImages.length > 0 ? (
         <div className="relative">
           <ImageCarousel images={allImages} alt={post.store_name || post.title || ''} />
-          {/* お気に入りボタン: 画像右上 */}
-          <div className="absolute top-3 right-3 z-20">
-            <FavoriteToggle postId={post.id} initialValue={post.is_favorite} />
-          </div>
+          {/* お気に入りボタン: 画像右上（自分の投稿のみ） */}
+          {isOwner && (
+            <div className="absolute top-3 right-3 z-20">
+              <FavoriteToggle postId={post.id} initialValue={post.is_favorite} />
+            </div>
+          )}
         </div>
       ) : post.status === 'want_to_go' ? (
         <div className="w-full aspect-square bg-gray-100 flex items-center justify-center relative">

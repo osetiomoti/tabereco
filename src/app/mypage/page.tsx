@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import useSWR from 'swr';
 import { Settings, Hash, ArrowDownUp, Plus, MapPin, Calendar, User, Search, Bookmark, Star, Heart, ThumbsUp } from 'lucide-react';
 import { Header } from '@/components/Header';
@@ -13,6 +13,8 @@ import { formatDate } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useSharedFilter } from '@/hooks/useSharedFilter';
 import { useScrollRestore } from '@/hooks/useScrollRestore';
+import { useMyProfile } from '@/hooks/useAppData';
+import { useTimeline } from '@/hooks/useTimeline';
 
 function MiniNoImageMap({ post }: { post: Post }) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
@@ -80,56 +82,16 @@ export default function MyPage() {
     }
   }, []);
 
-  const { data: myUserData } = useSWR<{ success: boolean, data: any }>(
-    !targetUserId ? '/api/profiles/me' : null,
-    (url: string) => fetch(url, { cache: 'no-store' }).then(r => r.json())
-  );
+  const { profile: myProfile } = useMyProfile();
   const { data: targetUserData } = useSWR<{ success: boolean, data: any }>(
     targetUserId ? `/api/profiles/${targetUserId}` : null,
     (url: string) => fetch(url, { cache: 'no-store' }).then(r => r.json())
-  );
-
-  const { data: ownPostsData, isLoading: ownPostsLoading } = useSWR<Post[]>(
-    !targetUserId ? '/api/posts?is_mine=true' : null,
-    () => getPosts({ is_mine: true })
   );
 
   const { data: friendsData } = useSWR<any[]>(
     !targetUserId ? '/api/friends' : null,
     () => import('@/lib/api/friends').then(m => m.getFriends())
   );
-
-  // 他人の投稿に付けた「行きたい」
-  const { data: markedWantToGoData, isLoading: markedWtgLoading } = useSWR<{ success: boolean, data: Post[] }>(
-    !targetUserId ? '/api/posts?marked_want_to_go=true' : null,
-    (url: string) => fetch(url).then(r => r.json())
-  );
-
-  // 他人の投稿に付けた「行った」
-  const { data: markedVisitedData, isLoading: markedVisLoading } = useSWR<{ success: boolean, data: Post[] }>(
-    !targetUserId ? '/api/posts?marked_visited=true' : null,
-    (url: string) => fetch(url).then(r => r.json())
-  );
-
-  // 他人の投稿に付けた「いいね」
-  const { data: likedPostsData, isLoading: likedPostsLoading } = useSWR<{ success: boolean, data: Post[] }>(
-    !targetUserId ? '/api/posts?liked_by_me=true' : null,
-    (url: string) => fetch(url).then(r => r.json())
-  );
-
-  const user = targetUserId ? targetUserData?.data?.user : myUserData?.data;
-  const posts: Post[] = targetUserId ? (targetUserData?.data?.posts || []) : (ownPostsData || []);
-  const loading = targetUserId ? !targetUserData : ownPostsLoading;
-  const friendsCount = targetUserId ? (targetUserData?.data?.friendsCount || 0) : (friendsData?.length || 0);
-
-  // Stats from API
-  const avgRating = targetUserId
-    ? (targetUserData?.data?.avgRating ?? null)
-    : (myUserData?.data?.avgRating ?? null);
-  const totalLikesReceived = targetUserId
-    ? (targetUserData?.data?.totalLikesReceived ?? 0)
-    : (myUserData?.data?.totalLikesReceived ?? 0);
-  const ratingUserId = targetUserId ?? undefined;
 
   const [sortField, setSortField] = useState<'date' | 'rating'>('date');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
@@ -138,65 +100,58 @@ export default function MyPage() {
   const [isTagSelectorOpen, setIsTagSelectorOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
 
-  const markedWantToGoPosts: Post[] = markedWantToGoData?.data || [];
-  const markedVisitedPosts: Post[] = markedVisitedData?.data || [];
-  const likedPosts: Post[] = likedPostsData?.data || [];
-
-  const ownVisitedPosts = posts.filter(p => p.status === 'visited');
-  const ownWantToGoPosts = posts.filter(p => p.status === 'want_to_go');
-
-  const ownVisitedCount = ownVisitedPosts.length;
-  const ownWantCount = ownWantToGoPosts.length;
-  const markedWtgCount = markedWantToGoPosts.length;
-  const markedVisCount = markedVisitedPosts.length;
-
-  // 投稿合計（行った+行きたい+他の人の行った+行きたい）
-  const totalPostCount = targetUserId
-    ? (targetUserData?.data?.totalPostCount ?? ownVisitedCount + ownWantCount)
-    : ownVisitedCount + ownWantCount + markedWtgCount + markedVisCount;
-
-  const likedCount = likedPosts.length;
-
-  // まとめ用
-  let filteredPosts: any[] = [];
-  if (activeTab === 'visited') {
-    const allMap = new Map<string, any>();
-    [...ownVisitedPosts, ...markedVisitedPosts].forEach(p => allMap.set(p.id, p));
-    filteredPosts = Array.from(allMap.values());
-  } else if (activeTab === 'want_to_go') {
-    const allMap = new Map<string, any>();
-    [...ownWantToGoPosts, ...markedWantToGoPosts].forEach(p => allMap.set(p.id, p));
-    filteredPosts = Array.from(allMap.values());
-  } else if (activeTab === 'liked') {
-    filteredPosts = [...likedPosts];
-  }
-
-  if (keyword) {
-    const lower = keyword.toLowerCase();
-    filteredPosts = filteredPosts.filter(p =>
-      p.title?.toLowerCase().includes(lower) ||
-      p.store_name?.toLowerCase().includes(lower) ||
-      p.comment?.toLowerCase().includes(lower)
-    );
-  }
-
-  if (selectedTags.length > 0) {
-    filteredPosts = filteredPosts.filter(p =>
-      selectedTags.every(tag => p.tags?.some((t: any) => t.name === tag))
-    );
-  }
-
-  filteredPosts.sort((a, b) => {
-    if (sortField === 'date') {
-      const tA = new Date(a.visited_at || a.created_at).getTime();
-      const tB = new Date(b.visited_at || b.created_at).getTime();
-      return sortOrder === 'desc' ? tB - tA : tA - tB;
-    } else {
-      const rA = a.rating || 0;
-      const rB = b.rating || 0;
-      return sortOrder === 'desc' ? rB - rA : rA - rB;
+  const {
+    posts: filteredPosts,
+    isLoading: loading,
+    isLoadingMore,
+    isReachingEnd,
+    loadMore
+  } = useTimeline({
+    timelineMode: 'user',
+    targetUserId: targetUserId || myProfile?.id,
+    filters: {
+      status: activeTab,
+      keyword: keyword,
+      tags: selectedTags,
+      sortField,
+      sortOrder,
+      searchMode: 'all',
     }
   });
+
+  const observerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && !isLoadingMore && !isReachingEnd) {
+          loadMore();
+        }
+      },
+      { rootMargin: '400px' }
+    );
+    if (observerRef.current) {
+      observer.observe(observerRef.current);
+    }
+    return () => observer.disconnect();
+  }, [isLoadingMore, isReachingEnd, loadMore]);
+
+  const user = targetUserId ? targetUserData?.data?.user : myProfile;
+  const friendsCount = targetUserId ? (targetUserData?.data?.friendsCount || 0) : (friendsData?.length || 0);
+
+  // Stats from API
+  const avgRating = targetUserId
+    ? (targetUserData?.data?.avgRating ?? null)
+    : (myProfile?.avgRating ?? null);
+  const totalLikesReceived = targetUserId
+    ? (targetUserData?.data?.totalLikesReceived ?? 0)
+    : (myProfile?.totalLikesReceived ?? 0);
+  const ratingUserId = targetUserId ?? undefined;
+
+  // 投稿合計
+  const totalPostCount = targetUserId
+    ? (targetUserData?.data?.totalPostCount ?? 0)
+    : (myProfile?.totalPostCount ?? 0);
 
   const goToMap = async () => {
     if (targetUserId) {
@@ -206,7 +161,7 @@ export default function MyPage() {
         advancedFilters: { ...filterState?.advancedFilters, registrantUserIds: [targetUserId], include_mine: false }
       });
     } else {
-      let myId = myUserData?.data?.id;
+      let myId = myProfile?.id;
       if (!myId) {
         try {
           const r = await fetch('/api/profiles/me');
@@ -231,7 +186,7 @@ export default function MyPage() {
         advancedFilters: { ...filterState?.advancedFilters, registrantUserIds: [targetUserId], include_mine: false }
       });
     } else {
-      let myId = myUserData?.data?.id;
+      let myId = myProfile?.id;
       if (!myId) {
         try {
           const r = await fetch('/api/profiles/me');
@@ -411,182 +366,9 @@ export default function MyPage() {
         </div>
       </div>
 
-      {/* Tab Content (Grid) */}
-      {activeTab === 'want_to_go' && !targetUserId ? (
-        <div className="animate-in fade-in duration-500">
-          <div className="mb-2">
-            <div className="px-4 py-2 flex items-center gap-2">
-              <span className="text-[11px] font-black text-gray-400 tracking-wider uppercase">自分の「行きたい」</span>
-              <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">{ownWantCount}</span>
-            </div>
-            {loading ? (
-              <div className="px-0.5 grid grid-cols-3 gap-0.5">
-                {[1,2,3].map(i => <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />)}
-              </div>
-            ) : ownWantToGoPosts.length === 0 ? (
-              <div className="py-3 text-center text-gray-300 text-[12px] font-bold">まだ登録がありません</div>
-            ) : (
-              <div className="px-0.5 grid grid-cols-3 gap-0.5">
-                {ownWantToGoPosts.map(post => (
-                  <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
-                    {post.image_url ? (
-                      <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
-                    ) : (
-                      <MiniNoImageMap post={post} />
-                    )}
-                    {post.image_url && (
-                      <>
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
-                        <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
-                          <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
-                        </div>
-                      </>
-                    )}
-                    {post.is_favorite && (
-                      <div className="absolute top-1.5 right-1.5 bg-pink-500/90 text-white w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
-                        <span className="text-[10px] font-black">♥</span>
-                      </div>
-                    )}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="mx-4 my-3 border-t border-gray-100" />
-          <div>
-            <div className="px-4 py-2 flex items-center gap-2">
-              <Bookmark size={12} className="text-orange-400" />
-              <span className="text-[11px] font-black text-gray-400 tracking-wider uppercase">みんなの投稿の「行きたい」</span>
-              <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">{markedWtgCount}</span>
-            </div>
-            {markedWtgLoading ? (
-              <div className="px-0.5 grid grid-cols-3 gap-0.5">
-                {[1,2,3].map(i => <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />)}
-              </div>
-            ) : markedWantToGoPosts.length === 0 ? (
-              <div className="py-8 text-center text-gray-300 text-[12px] font-bold">他の人の投稿で「行きたい」を押してみよう</div>
-            ) : (
-              <div className="px-0.5 grid grid-cols-3 gap-0.5 pb-4">
-                {markedWantToGoPosts.map(post => (
-                  <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
-                    {post.image_url ? (
-                      <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
-                    ) : (
-                      <MiniNoImageMap post={post} />
-                    )}
-                    {post.image_url && (
-                      <>
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
-                        <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
-                          <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
-                          {post.user?.name && <span className="text-orange-300 font-black text-[8px] drop-shadow-md truncate mt-0.5">by {post.user.name}</span>}
-                        </div>
-                      </>
-                    )}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      ) : activeTab === 'visited' && !targetUserId ? (
-        <div className="animate-in fade-in duration-500">
-          <div className="mb-2">
-            <div className="px-4 py-2 flex items-center gap-2">
-              <span className="text-[11px] font-black text-gray-400 tracking-wider uppercase">自分の「行った」</span>
-              <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">{ownVisitedCount}</span>
-            </div>
-            {loading ? (
-              <div className="px-0.5 grid grid-cols-3 gap-0.5">
-                {[1,2,3].map(i => <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />)}
-              </div>
-            ) : ownVisitedPosts.length === 0 ? (
-              <div className="py-8 text-center text-gray-300 text-[12px] font-bold">まだ記録がありません</div>
-            ) : (
-              <div className="px-0.5 grid grid-cols-3 gap-0.5">
-                {ownVisitedPosts.map(post => (
-                  <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
-                    {post.image_url ? (
-                      <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100 group-hover:scale-105 transition-transform duration-500">
-                        <span className="text-xl mb-1">🍽️</span>
-                        <span className="text-[9px] font-black text-center leading-tight text-gray-700 line-clamp-2 px-1">{post.title}</span>
-                        {post.store_name && <span className="text-[7px] font-bold text-gray-400 mt-0.5 truncate w-full text-center">{post.store_name}</span>}
-                      </div>
-                    )}
-                    {post.image_url && (
-                      <>
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
-                        <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
-                          <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
-                          <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate mt-0.5 opacity-80">
-                            {post.store_name} • {post.visited_at ? formatDate(post.visited_at).split('-').slice(1).join('/') : ''}
-                          </span>
-                        </div>
-                      </>
-                    )}
-                    {post.rating && (
-                      <div className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur-sm text-orange-500 px-1 py-0.5 rounded flex items-center gap-0.5 shadow-sm scale-75 origin-top-left">
-                        <span className="text-[10px] font-black">★</span>
-                        <span className="text-[10px] font-black">{post.rating.toFixed(1)}</span>
-                      </div>
-                    )}
-                    {post.is_favorite && (
-                      <div className="absolute top-1.5 right-1.5 bg-pink-500/90 text-white w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
-                        <span className="text-[10px] font-black">♥</span>
-                      </div>
-                    )}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="mx-4 my-3 border-t border-gray-100" />
-          <div>
-            <div className="px-4 py-2 flex items-center gap-2">
-              <Bookmark size={12} className="text-orange-400" />
-              <span className="text-[11px] font-black text-gray-400 tracking-wider uppercase">みんなの投稿の「行った」</span>
-              <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">{markedVisCount}</span>
-            </div>
-            {markedVisLoading ? (
-              <div className="px-0.5 grid grid-cols-3 gap-0.5">
-                {[1,2,3].map(i => <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />)}
-              </div>
-            ) : markedVisitedPosts.length === 0 ? (
-              <div className="py-8 text-center text-gray-300 text-[12px] font-bold">他の人の投稿で「行った」を押してみよう</div>
-            ) : (
-              <div className="px-0.5 grid grid-cols-3 gap-0.5 pb-4">
-                {markedVisitedPosts.map(post => (
-                  <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
-                    {post.image_url ? (
-                      <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-indigo-50"><span className="text-2xl opacity-50">🍽️</span></div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
-                    <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
-                      <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
-                      {post.user?.name && <span className="text-orange-300 font-black text-[8px] drop-shadow-md truncate mt-0.5">by {post.user.name}</span>}
-                    </div>
-                    {post.rating && (
-                      <div className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur-sm text-orange-500 px-1 py-0.5 rounded flex items-center gap-0.5 shadow-sm scale-75 origin-top-left">
-                        <span className="text-[10px] font-black">★</span>
-                        <span className="text-[10px] font-black">{post.rating.toFixed(1)}</span>
-                      </div>
-                    )}
-                  </Link>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-      ) : loading ? (
-        <div className="px-0.5 grid grid-cols-3 gap-0.5">
-          {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => (
-            <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />
-          ))}
+      {loading && filteredPosts.length === 0 ? (
+        <div className="flex justify-center items-center py-12">
+          <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
         </div>
       ) : filteredPosts.length === 0 ? (
         <div className="py-20 text-center text-gray-400 font-bold text-[14px]">記録が見つかりません</div>
@@ -629,7 +411,7 @@ export default function MyPage() {
                    <span className="text-[10px] font-black">♥</span>
                 </div>
               )}
-              {post.user_id !== myUserData?.data?.id && (
+              {post.user_id !== myProfile?.id && (
                 <div className="absolute bottom-1.5 right-1.5 bg-gray-800/80 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full z-10 shadow-sm opacity-90 scale-90 origin-bottom-right">
                   みんなの投稿
                 </div>

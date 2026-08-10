@@ -19,6 +19,7 @@ export function VisitedModal({ postId, storeName, onClose, onSuccess }: Props) {
   const { showToast } = useToast();
 
   const handleSubmit = async () => {
+    if (loading) return; // 二重送信防止
     setLoading(true);
     try {
       const res = await fetch(`/api/posts/${postId}`, {

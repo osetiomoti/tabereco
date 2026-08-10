@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 
 type SharedFilterState = {
-  activeTab: 'all' | 'want_to_go' | 'visited';
+  activeTab: 'all' | 'want_to_go' | 'visited' | 'liked';
   keyword: string;
   searchMode: 'store_name' | 'address';
   activeGroups: string[];
