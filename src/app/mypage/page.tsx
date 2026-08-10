@@ -82,11 +82,11 @@ export default function MyPage() {
 
   const { data: myUserData } = useSWR<{ success: boolean, data: any }>(
     !targetUserId ? '/api/profiles/me' : null,
-    (url: string) => fetch(url).then(r => r.json())
+    (url: string) => fetch(url, { cache: 'no-store' }).then(r => r.json())
   );
   const { data: targetUserData } = useSWR<{ success: boolean, data: any }>(
     targetUserId ? `/api/profiles/${targetUserId}` : null,
-    (url: string) => fetch(url).then(r => r.json())
+    (url: string) => fetch(url, { cache: 'no-store' }).then(r => r.json())
   );
 
   const { data: ownPostsData, isLoading: ownPostsLoading } = useSWR<Post[]>(

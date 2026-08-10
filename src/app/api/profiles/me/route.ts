@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
         ? await prisma.postLike.count({ where: { post_id: { in: postIds } } })
         : 0;
 
-      return NextResponse.json({
+      const response = NextResponse.json({
         success: true,
         data: {
           ...user,
@@ -115,6 +115,8 @@ export async function GET(request: NextRequest) {
           ratedPosts,
         },
       });
+      response.headers.set('Cache-Control', 'no-store, no-cache');
+      return response;
     } catch (e: any) {
       console.error('[GET /api/profiles/me]', e);
       return NextResponse.json({ success: false, error: e.message }, { status: 500 });
