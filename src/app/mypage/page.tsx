@@ -46,23 +46,19 @@ function MiniNoImageMap({ post }: { post: Post }) {
 }
 
 function StarRating({ rating }: { rating: number }) {
-  const full = Math.floor(rating);
-  const half = rating - full >= 0.5;
   return (
     <div className="flex items-center gap-0.5">
-      {Array.from({ length: 5 }).map((_, i) => (
-        <Star
-          key={i}
-          size={11}
-          className={
-            i < full
-              ? 'text-orange-400 fill-orange-400'
-              : i === full && half
-                ? 'text-orange-400 fill-orange-200'
-                : 'text-gray-200 fill-gray-200'
-          }
-        />
-      ))}
+      {Array.from({ length: 5 }).map((_, i) => {
+        const fillPercentage = Math.max(0, Math.min(100, (rating - i) * 100));
+        return (
+          <div key={i} className="relative w-[11px] h-[11px]">
+            <Star size={11} className="text-gray-200 fill-gray-200 absolute inset-0" />
+            <div className="absolute inset-0 overflow-hidden" style={{ width: `${fillPercentage}%` }}>
+              <Star size={11} className="text-orange-400 fill-orange-400" />
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -233,10 +229,10 @@ export default function MyPage() {
         </div>
 
         {/* Stats Row: 平均レビュー | 投稿 | ともだち | いいね */}
-        <div className="flex-1 flex justify-around ml-4">
-          {/* 平均レビュー */}
-          <Link href={ratingsHref} className="flex flex-col items-center justify-center relative -top-1 group">
-            <div className="flex flex-col items-center">
+        <div className="flex-1 flex justify-around ml-4 items-end pb-1">
+          {/* 平均評価 */}
+          <Link href={ratingsHref} className="flex flex-col items-center justify-end h-[42px] group relative -top-1">
+            <div className="flex flex-col items-center flex-1 justify-end">
               {avgRating !== null ? (
                 <>
                   <span className="text-[17px] font-black text-orange-500 leading-none">
@@ -254,33 +250,39 @@ export default function MyPage() {
           </Link>
 
           {/* 投稿 */}
-          <div className="flex flex-col items-center justify-center relative -top-1">
-            <span className="text-[17px] font-black text-gray-900 leading-none">{totalPostCount}</span>
-            <span className="text-[10px] text-gray-400 font-black mt-1.5">投稿</span>
+          <div className="flex flex-col items-center justify-end h-[42px] relative -top-1">
+            <div className="flex-1 flex flex-col justify-end items-center">
+              <span className="text-[17px] font-black text-gray-900 leading-none">{totalPostCount}</span>
+            </div>
+            <span className="text-[10px] text-gray-400 font-black mt-1.5 h-[12px] flex items-center">投稿</span>
           </div>
 
           {/* ともだち */}
           {!targetUserId ? (
-            <Link href="/groups" className="hover:scale-105 transition-transform">
-              <div className="flex flex-col items-center justify-center relative -top-1">
+            <Link href="/groups" className="hover:scale-105 transition-transform h-[42px] flex flex-col items-center justify-end relative -top-1">
+              <div className="flex-1 flex flex-col justify-end items-center">
                 <span className="text-[17px] font-black text-gray-900 leading-none">{friendsCount}</span>
-                <span className="text-[10px] text-gray-400 font-black mt-1.5">ともだち</span>
               </div>
+              <span className="text-[10px] text-gray-400 font-black mt-1.5 h-[12px] flex items-center">ともだち</span>
             </Link>
           ) : (
-            <div className="flex flex-col items-center justify-center relative -top-1">
-              <span className="text-[17px] font-black text-gray-900 leading-none">{friendsCount}</span>
-              <span className="text-[10px] text-gray-400 font-black mt-1.5">ともだち</span>
+            <div className="flex flex-col items-center justify-end h-[42px] relative -top-1">
+              <div className="flex-1 flex flex-col justify-end items-center">
+                <span className="text-[17px] font-black text-gray-900 leading-none">{friendsCount}</span>
+              </div>
+              <span className="text-[10px] text-gray-400 font-black mt-1.5 h-[12px] flex items-center">ともだち</span>
             </div>
           )}
 
           {/* もらったいいね */}
-          <div className="flex flex-col items-center justify-center relative -top-1">
-            <div className="flex items-center gap-1">
-              <ThumbsUp size={14} className="text-pink-400 fill-pink-400" />
-              <span className="text-[17px] font-black text-gray-900 leading-none">{totalLikesReceived}</span>
+          <div className="flex flex-col items-center justify-end h-[42px] relative -top-1">
+            <div className="flex-1 flex flex-col justify-end items-center">
+              <div className="flex items-center gap-1">
+                <ThumbsUp size={14} className="text-pink-400 fill-pink-400" />
+                <span className="text-[17px] font-black text-gray-900 leading-none">{totalLikesReceived}</span>
+              </div>
             </div>
-            <span className="text-[10px] text-gray-400 font-black mt-1.5 whitespace-nowrap -ml-1 -mr-1 text-center scale-90">もらったいいね</span>
+            <span className="text-[10px] text-gray-400 font-black mt-1.5 whitespace-nowrap -ml-1 -mr-1 text-center scale-90 h-[12px] flex items-center">もらったいいね</span>
           </div>
         </div>
       </div>
@@ -418,6 +420,17 @@ export default function MyPage() {
               )}
             </Link>
           ))}
+        </div>
+      )}
+
+      {/* Infinite Scroll Observer & Loading Indicator */}
+      {(isLoadingMore || !isReachingEnd) && (
+        <div ref={observerRef} className="py-8 flex justify-center items-center">
+          {isLoadingMore ? (
+            <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin"></div>
+          ) : (
+            <div className="h-8"></div>
+          )}
         </div>
       )}
 

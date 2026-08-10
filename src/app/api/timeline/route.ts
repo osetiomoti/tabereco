@@ -140,11 +140,13 @@ export async function GET(request: NextRequest) {
           ? [
               { rating: sortOrder as any },
               { visited_at: 'desc' },
-              { created_at: 'desc' }
+              { created_at: 'desc' },
+              { id: 'desc' }
             ]
           : [
               { visited_at: sortOrder as any },
-              { created_at: sortOrder as any }
+              { created_at: sortOrder as any },
+              { id: 'desc' }
             ],
         include: {
           user: { select: { id: true, name: true, avatar_url: true } },
