@@ -378,16 +378,6 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
           {isMine && (
             <div className="absolute top-3 right-3 flex flex-col gap-2 z-10">
               <button 
-                onClick={toggleFavorite}
-                className={`w-9 h-9 rounded-full backdrop-blur-md flex items-center justify-center shadow-lg transition-all ${
-                  isFavorite 
-                  ? 'bg-pink-500 text-white' 
-                  : 'bg-white/80 text-gray-400 hover:text-pink-500'
-                }`}
-              >
-                <Heart size={18} className={isFavorite ? 'fill-white' : ''} />
-              </button>
-              <button 
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsMenuOpen(!isMenuOpen); }}
                 className="w-9 h-9 bg-white/80 backdrop-blur-md text-gray-600 rounded-full flex items-center justify-center shadow-lg hover:bg-white"
               >
@@ -467,18 +457,6 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
       {/* ▽ Action Bar ▽ */}
       <div className="px-4 py-2 flex items-center justify-between border-t border-gray-50">
         <div className="flex items-center gap-5">
-          {/* いいね */}
-          <button 
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLike?.(post.id); }}
-            className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
-          >
-            <ThumbsUp
-              size={22}
-              className={`transition-colors ${likedByMe ? 'fill-pink-500 text-pink-500' : 'text-gray-300'}`}
-            />
-            <span className={`text-[9px] font-bold leading-none ${likedByMe ? 'text-pink-400' : 'text-gray-300'}`}>いいね</span>
-          </button>
-
           {/* コメント */}
           <button 
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePanel('comment'); }}
@@ -491,48 +469,76 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
             <span className={`text-[9px] font-bold leading-none ${activePanel === 'comment' ? 'text-blue-400' : 'text-gray-300'}`}>コメント</span>
           </button>
 
-          {/* 行った */}
-          <button 
-            onClick={toggleVisited}
-            className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
-          >
-            <BookmarkCheck
-              size={22}
-              className={`transition-colors ${isVisited ? 'text-orange-500' : 'text-gray-300'}`}
-              strokeWidth={isVisited ? 2.5 : 1.5}
-            />
-            <span className={`text-[9px] font-bold leading-none ${isVisited ? 'text-orange-500' : 'text-gray-300'}`}>行った</span>
-          </button>
+          {isMine ? (
+            /* お気に入り (自分の投稿のみ) */
+            <button 
+              onClick={toggleFavorite}
+              className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
+            >
+              <Heart
+                size={22}
+                className={`transition-colors ${isFavorite ? 'fill-pink-500 text-pink-500' : 'text-gray-300'}`}
+              />
+              <span className={`text-[9px] font-bold leading-none ${isFavorite ? 'text-pink-400' : 'text-gray-300'}`}>お気に入り</span>
+            </button>
+          ) : (
+            <>
+              {/* いいね */}
+              <button 
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLike?.(post.id); }}
+                className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
+              >
+                <ThumbsUp
+                  size={22}
+                  className={`transition-colors ${likedByMe ? 'fill-pink-500 text-pink-500' : 'text-gray-300'}`}
+                />
+                <span className={`text-[9px] font-bold leading-none ${likedByMe ? 'text-pink-400' : 'text-gray-300'}`}>いいね</span>
+              </button>
 
-          {/* 評価 */}
-          <button 
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePanel('rating'); }}
-            className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
-          >
-            <Star
-              size={22}
-              className={`transition-colors ${
-                (myRating != null && myRating > 0) || activePanel === 'rating'
-                  ? 'fill-yellow-400 text-yellow-400'
-                  : 'text-gray-300'
-              }`}
-            />
-            <span className={`text-[9px] font-bold leading-none ${
-              (myRating != null && myRating > 0) || activePanel === 'rating' ? 'text-yellow-400' : 'text-gray-300'
-            }`}>評価</span>
-          </button>
+              {/* 行った */}
+              <button 
+                onClick={toggleVisited}
+                className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
+              >
+                <BookmarkCheck
+                  size={22}
+                  className={`transition-colors ${isVisited ? 'text-green-500' : 'text-gray-300'}`}
+                  strokeWidth={isVisited ? 2.5 : 1.5}
+                />
+                <span className={`text-[9px] font-bold leading-none ${isVisited ? 'text-green-500' : 'text-gray-300'}`}>行った</span>
+              </button>
 
-          {/* 行きたい */}
-          <button 
-            onClick={toggleWantToGo}
-            className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
-          >
-            <Bookmark
-              size={22}
-              className={`transition-colors ${isWantToGo ? 'fill-orange-400 text-orange-400' : 'text-gray-300'}`}
-            />
-            <span className={`text-[9px] font-bold leading-none ${isWantToGo ? 'text-orange-400' : 'text-gray-300'}`}>行きたい</span>
-          </button>
+              {/* 行きたい */}
+              <button 
+                onClick={toggleWantToGo}
+                className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
+              >
+                <Bookmark
+                  size={22}
+                  className={`transition-colors ${isWantToGo ? 'fill-orange-400 text-orange-400' : 'text-gray-300'}`}
+                />
+                <span className={`text-[9px] font-bold leading-none ${isWantToGo ? 'text-orange-400' : 'text-gray-300'}`}>行きたい</span>
+              </button>
+
+              {/* 評価 */}
+              <button 
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePanel('rating'); }}
+                className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
+              >
+                <Star
+                  size={22}
+                  className={`transition-colors ${
+                    (myRating != null && myRating > 0) || activePanel === 'rating'
+                      ? 'fill-yellow-400 text-yellow-400'
+                      : 'text-gray-300'
+                  }`}
+                />
+                <span className={`text-[9px] font-bold leading-none ${
+                  (myRating != null && myRating > 0) || activePanel === 'rating' ? 'text-yellow-400' : 'text-gray-300'
+                }`}>評価</span>
+              </button>
+            </>
+          )}
         </div>
 
         {/* マップ - 右端 */}
@@ -551,17 +557,6 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
           <div className="w-10" />
         )}
       </div>
-
-      {/* いいね数テキスト */}
-      {(likesCount || commentCount) ? (
-        <div className="px-4 mt-0.5">
-          <p className="text-[12px] font-bold text-gray-800">
-            {likesCount ? `「いいね！」${likesCount}件` : ''}
-            {likesCount && commentCount ? ' • ' : ''}
-            {commentCount ? `コメント${commentCount}件` : ''}
-          </p>
-        </div>
-      ) : null}
 
       {/* 詳細を見るボタン */}
       <div className="px-4 mt-1 mb-1">
@@ -794,7 +789,7 @@ function InlineDetailPanel({ post }: { post: Post }) {
         </div>
       )}
       <UserList users={data.likedUsers} label="いいね" LIcon={ThumbsUp} iconClass="text-pink-500 fill-pink-500" />
-      <UserList users={data.visitedUsers} label="行った" LIcon={BookmarkCheck} iconClass="text-orange-500" />
+      <UserList users={data.visitedUsers} label="行った" LIcon={BookmarkCheck} iconClass="text-green-500" />
       <UserList users={data.ratedUsers} label="評価した人" LIcon={Star} iconClass="text-yellow-400 fill-yellow-400" />
       <UserList users={data.wantToGoUsers} label="行きたい" LIcon={Bookmark} iconClass="text-orange-400 fill-orange-400" />
     </div>

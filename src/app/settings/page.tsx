@@ -49,6 +49,7 @@ export default function SettingsPage() {
       setUser(json.data);
       setEditingName(false);
       mutate('/api/profiles/me');
+      router.refresh();
     }
     setSaving(false);
   };
@@ -67,6 +68,7 @@ export default function SettingsPage() {
       if (json.success) {
         setUser(json.data);
         mutate('/api/profiles/me');
+        router.refresh();
       }
     }
   };
