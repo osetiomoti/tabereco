@@ -111,7 +111,7 @@ export async function GET(request: NextRequest) {
             },
           },
           want_to_gos: true,
-          visiteds: true,
+          visiteds: { select: { user_id: true, rating: true } },
           likes: true,
           _count: {
             select: { comments: true, likes: true }
@@ -134,6 +134,7 @@ export async function GET(request: NextRequest) {
           ...post,
           tags: post.tags.map((pt: any) => pt.tag),
           _isMarkedWantToGo: post.want_to_gos?.some((w: any) => w.user_id === auth.userId),
+          _isMarkedVisited: post.visiteds?.some((v: any) => v.user_id === auth.userId),
           _isLikedByMe: post.likes?.some((l: any) => l.user_id === auth.userId),
           _comment_count: post._count?.comments ?? 0,
           _like_count: post._count?.likes ?? 0,

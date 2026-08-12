@@ -29,13 +29,23 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
     ? `https://maps.googleapis.com/maps/api/staticmap?center=${post.latitude},${post.longitude}&zoom=16&size=600x400&markers=color:0xf43f5e%7C${post.latitude},${post.longitude}&key=${apiKey}`
     : null;
 
+  // 自分の投稿かどうか（フィードレイアウトでも先に計算）
+  const _isMine = (post as any).__is_mine !== false;
+
   // 楽観的UIのためのローカルステート
   const [isFavorite, setIsFavorite] = useState(post.is_favorite);
   const [isWantToGo, setIsWantToGo] = useState((post as any)._isMarkedWantToGo);
-  const [isVisited, setIsVisited] = useState(post.status === 'visited');
+  // isVisited: 自分の投稿→status=='visited', 他人の投稿→_isMarkedVisited
+  const [isVisited, setIsVisited] = useState(
+    _isMine ? post.status === 'visited' : !!((post as any)._isMarkedVisited)
+  );
   const [myRating, setMyRating] = useState<number | null>(null);
   const [pendingRating, setPendingRating] = useState<number>(3.0);
   const [ratingSaving, setRatingSaving] = useState(false);
+  // 詳細パネルをアクション後に再フェッチするためのキー
+  const [detailRefreshKey, setDetailRefreshKey] = useState(0);
+
+  const bumpDetail = () => setDetailRefreshKey(k => k + 1);
 
   useEffect(() => {
     setIsFavorite(post.is_favorite);
@@ -44,6 +54,11 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
   useEffect(() => {
     setIsWantToGo((post as any)._isMarkedWantToGo);
   }, [(post as any)._isMarkedWantToGo]);
+
+  useEffect(() => {
+    setIsVisited(_isMine ? post.status === 'visited' : !!((post as any)._isMarkedVisited));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [(post as any)._isMarkedVisited, post.status]);
 
   // パネル表示状態
   const [activePanel, setActivePanel] = useState<null | 'rating' | 'comment' | 'detail'>(null);
@@ -230,8 +245,8 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
     }
   }
 
-  // 自分自身の投稿かどうか
-  const isMine = (post as any).__is_mine !== false;
+  // 自分自身の投稿かどうか（feedレイアウト用・_isMineと同値）
+  const isMine = _isMine;
 
   const toggleFavorite = async (e: React.MouseEvent) => {
     e.preventDefault();
@@ -261,6 +276,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
     try {
       const res = await fetch(`/api/posts/${post.id}/want-to-go`, { method: 'POST' });
       if (!res.ok) setIsWantToGo(!newVal);
+      else bumpDetail();
     } catch (e) {
       console.error(e);
       setIsWantToGo(!newVal);
@@ -275,6 +291,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
     try {
       const res = await fetch(`/api/posts/${post.id}/visited`, { method: 'POST' });
       if (!res.ok) setIsVisited(!newVal);
+      else bumpDetail();
     } catch (e) {
       console.error(e);
       setIsVisited(!newVal);
@@ -291,6 +308,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
       });
       setMyRating(pendingRating);
       setActivePanel(null);
+      bumpDetail();
     } catch (e) {
       console.error(e);
     } finally {
@@ -459,7 +477,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
         <div className="flex items-center gap-5">
           {/* コメント */}
           <button 
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePanel('comment'); }}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePanel('comment'); bumpDetail(); }}
             className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
           >
             <MessageCircle
@@ -485,7 +503,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
             <>
               {/* いいね */}
               <button 
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLike?.(post.id); }}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLike?.(post.id); bumpDetail(); }}
                 className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
               >
                 <ThumbsUp
@@ -600,7 +618,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
       {/* ── Inline Detail Panel ── */}
       {activePanel === 'detail' && (
         <div className="mx-4 mb-3 bg-gray-50 border border-gray-100 rounded-2xl overflow-hidden animate-in slide-in-from-top-2 duration-200">
-          <InlineDetailPanel post={post} />
+          <InlineDetailPanel key={`${post.id}-${detailRefreshKey}`} post={post} refreshTrigger={detailRefreshKey} />
         </div>
       )}
 
@@ -720,7 +738,7 @@ function InlineCommentPanel({ postId, onClose }: { postId: string; onClose: () =
 
 
 // ── Inline Detail Panel ──────────────────────────────────────────
-function InlineDetailPanel({ post }: { post: Post }) {
+function InlineDetailPanel({ post, refreshTrigger }: { post: Post; refreshTrigger?: number }) {
   const [data, setData] = useState<{
     likedUsers: any[];
     visitedUsers: any[];
@@ -730,6 +748,7 @@ function InlineDetailPanel({ post }: { post: Post }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    setLoading(true);
     // Fetch visited, want-to-go, like, and social data
     Promise.all([
       fetch(`/api/posts/${post.id}/visited`).then(r => r.json()),
@@ -744,7 +763,8 @@ function InlineDetailPanel({ post }: { post: Post }) {
       });
     }).catch(() => setData({ likedUsers: [], visitedUsers: [], wantToGoUsers: [], ratedUsers: [] }))
       .finally(() => setLoading(false));
-  }, [post.id]);
+  // refreshTrigger が変わるたびに再フェッチ
+  }, [post.id, refreshTrigger]);
 
   if (loading) return <div className="py-6 flex justify-center"><div className="w-5 h-5 border-2 border-orange-200 border-t-orange-500 rounded-full animate-spin" /></div>;
   if (!data) return null;
