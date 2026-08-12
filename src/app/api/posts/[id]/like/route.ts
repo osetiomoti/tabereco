@@ -14,13 +14,22 @@ export async function GET(
   const { id } = await params;
   return withAuth(request, async (auth) => {
     try {
-      const [count, myLike] = await Promise.all([
-        prisma.postLike.count({ where: { post_id: id } }),
-        prisma.postLike.findUnique({
-          where: { post_id_user_id: { post_id: id, user_id: auth.userId } },
-        }),
-      ]);
-      return NextResponse.json({ success: true, data: { count, isLiked: !!myLike } });
+      const likes = await prisma.postLike.findMany({
+        where: { post_id: id },
+        include: {
+          user: { select: { id: true, name: true, avatar_url: true } },
+        },
+        orderBy: { created_at: 'asc' },
+      });
+      const isLiked = likes.some((l) => l.user_id === auth.userId);
+      return NextResponse.json({
+        success: true,
+        data: {
+          count: likes.length,
+          isLiked,
+          users: likes.map((l) => l.user),
+        },
+      });
     } catch (e: any) {
       return NextResponse.json({ success: false, error: e.message }, { status: 500 });
     }
