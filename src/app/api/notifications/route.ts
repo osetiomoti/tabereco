@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
+import { subDays } from 'date-fns';
 
 /**
  * GET /api/notifications
@@ -9,6 +10,14 @@ import { withAuth } from '@/lib/auth';
 export async function GET(request: NextRequest) {
   return withAuth(request, async (auth) => {
     try {
+      // 30日以上前の通知を削除
+      await prisma.notification.deleteMany({
+        where: {
+          user_id: auth.userId,
+          created_at: { lt: subDays(new Date(), 30) }
+        }
+      });
+
       const notifications = await prisma.notification.findMany({
         where: { user_id: auth.userId },
         include: {

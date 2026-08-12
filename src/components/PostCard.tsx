@@ -4,10 +4,11 @@ import type { Post } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, CheckCircle2, Calendar, Hash, User, MoreHorizontal, Star, MapPin, X, Bookmark, Utensils, MessageCircle, ThumbsUp } from 'lucide-react';
+import { Heart, CheckCircle2, Calendar, Hash, User, MoreHorizontal, Star, MapPin, X, Bookmark, Utensils, MessageCircle, ThumbsUp, Map, BookmarkCheck } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { VisitedModal } from '@/components/VisitedModal';
+import { PostDetailSheet } from '@/components/PostDetailSheet';
 
 type Props = { 
   post: Post;
@@ -196,6 +197,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isVisitedModalOpen, setIsVisitedModalOpen] = useState(false);
+  const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const handleScroll = () => {
@@ -444,28 +446,77 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
             </div>
           )}
 
-          {/* いいね・コメント数バッジ */}
-          {(likesCount !== undefined || commentCount !== undefined) && (
-            <div className="flex items-center gap-1 mt-1 -ml-2">
-              {likesCount !== undefined && (
-                <button
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLike?.(post.id); }}
-                  className={`flex items-center gap-1.5 p-2 text-[12px] font-black transition-all active:scale-95 rounded-full ${
-                    likedByMe ? 'text-pink-500 hover:bg-pink-50' : 'text-gray-300 hover:text-pink-400 hover:bg-pink-50/50'
-                  }`}
-                >
-                  <ThumbsUp size={15} className={likedByMe ? 'fill-pink-500 text-pink-500' : ''} />
-                  <span>{likesCount}</span>
-                </button>
-              )}
-              {commentCount !== undefined && (
-                <div className="flex items-center gap-1.5 p-2 text-[12px] font-black text-gray-300">
-                  <MessageCircle size={15} />
-                  <span>{commentCount}</span>
-                </div>
-              )}
-            </div>
-          )}
+          {/* いいね・コメント数バッジ (削除してAction Barへ移行) */}
+        </div>
+
+        {/* ▽ Instagram-like Action Bar ▽ */}
+        <div className="px-4 py-2 flex items-center justify-between border-t border-gray-100/50 mt-1">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLike?.(post.id); }}
+              className="text-gray-900 hover:text-pink-500 transition-colors active:scale-95"
+            >
+              <ThumbsUp size={24} className={likedByMe ? 'fill-pink-500 text-pink-500' : ''} />
+            </button>
+            <button 
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsDetailSheetOpen(true); }}
+              className="text-gray-900 hover:text-blue-500 transition-colors active:scale-95"
+            >
+              <MessageCircle size={24} />
+            </button>
+            {hasCoords && (
+              <a 
+                href={`https://www.google.com/maps/search/?api=1&query=${post.latitude},${post.longitude}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={e => e.stopPropagation()}
+                className="text-gray-900 hover:text-green-600 transition-colors active:scale-95"
+              >
+                <Map size={24} />
+              </a>
+            )}
+            <button 
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsDetailSheetOpen(true); }}
+              className="text-gray-900 hover:text-orange-500 transition-colors active:scale-95"
+            >
+              <BookmarkCheck size={24} className={post.status === 'visited' ? 'text-orange-500' : ''} />
+            </button>
+            <button 
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsDetailSheetOpen(true); }}
+              className="text-gray-900 hover:text-yellow-500 transition-colors active:scale-95"
+            >
+              <Star size={24} className={post.rating ? 'fill-yellow-400 text-yellow-400' : ''} />
+            </button>
+          </div>
+          <div className="flex items-center">
+            <button 
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsDetailSheetOpen(true); }}
+              className="text-gray-900 hover:text-orange-500 transition-colors active:scale-95"
+            >
+              <Bookmark size={24} className={(post as any)._isMarkedWantToGo ? 'fill-gray-900 text-gray-900' : ''} />
+            </button>
+          </div>
+        </div>
+        
+        {/* いいね数などの概要テキスト */}
+        {(likesCount || commentCount) ? (
+          <div className="px-4 mt-1 mb-2">
+            <p className="text-[12px] font-bold text-gray-800">
+              {likesCount ? `「いいね！」${likesCount}件` : ''} 
+              {likesCount && commentCount ? ' • ' : ''}
+              {commentCount ? `コメント${commentCount}件` : ''}
+            </p>
+          </div>
+        ) : null}
+
+        {/* 詳細を見るリンク */}
+        <div className="px-4 mt-1 mb-2">
+          <button 
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsDetailSheetOpen(true); }}
+            className="text-[12px] font-bold text-gray-400 hover:text-gray-600 transition-colors"
+          >
+            詳細を見る...
+          </button>
         </div>
       </Link>
 
@@ -490,6 +541,14 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
           onSuccess={() => window.location.reload()}
         />
       )}
+
+      {/* ボトムシート */}
+      <PostDetailSheet
+        post={post}
+        isOpen={isDetailSheetOpen}
+        onClose={() => setIsDetailSheetOpen(false)}
+        isOwner={isMine}
+      />
     </div>
   );
 }

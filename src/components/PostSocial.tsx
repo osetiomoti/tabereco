@@ -249,26 +249,24 @@ export function RatingAndActions({ postId, isOwner, ownerRating, ownerVisitCount
                 {isLiked ? `グッド！ (${likeCount})` : `グッド (${likeCount})`}
               </button>
 
-              {/* Rating toggle button - only visible when visited */}
-              {visMarked && (
-                <button
-                  onClick={() => setShowRatingInput(v => !v)}
-                  className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-black text-[13px] transition-all active:scale-95 ${
-                    showRatingInput
-                      ? 'bg-yellow-400 text-white shadow-sm'
-                      : myRating != null
-                        ? 'bg-yellow-50 text-yellow-600 border border-yellow-200'
-                        : 'bg-gray-100 text-gray-600 hover:bg-yellow-50 hover:text-yellow-600'
-                  }`}
-                >
-                  <Star size={16} className={showRatingInput || myRating != null ? 'fill-current' : ''} />
-                  {myRating != null ? `評価: ${myRating.toFixed(1)}` : '評価する'}
-                </button>
-              )}
+              {/* Rating toggle button - always visible */}
+              <button
+                onClick={() => setShowRatingInput(v => !v)}
+                className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-black text-[13px] transition-all active:scale-95 ${
+                  showRatingInput
+                    ? 'bg-yellow-400 text-white shadow-sm'
+                    : myRating != null
+                      ? 'bg-yellow-50 text-yellow-600 border border-yellow-200'
+                      : 'bg-gray-100 text-gray-600 hover:bg-yellow-50 hover:text-yellow-600'
+                }`}
+              >
+                <Star size={16} className={showRatingInput || myRating != null ? 'fill-current' : ''} />
+                {myRating != null ? `評価: ${myRating.toFixed(1)}` : '評価する'}
+              </button>
             </div>
 
             {/* Rating Input - shown only when user toggles it */}
-            {visMarked && showRatingInput && (
+            {showRatingInput && (
               <div className="bg-orange-50/50 border border-orange-100 rounded-2xl p-4 animate-in slide-in-from-top-2 duration-300">
                 <div className="flex items-center justify-between mb-3">
                   <label className="text-[12px] font-bold text-orange-800">あなたの評価</label>

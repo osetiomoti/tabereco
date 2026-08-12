@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
 import { deleteS3Objects } from '@/lib/s3';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * GET /api/profiles/me
  */

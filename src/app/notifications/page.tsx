@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import Link from 'next/link';
-import { Heart, MessageCircle, BookmarkCheck, Bookmark, Bell } from 'lucide-react';
+import { Heart, MessageCircle, BookmarkCheck, Bookmark, Bell, X, Settings } from 'lucide-react';
 import { useUnreadNotifications } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -16,6 +16,8 @@ export default function NotificationsPage() {
   const { data, error, isLoading, mutate } = useSWR('/api/notifications', fetcher);
   const { mutate: mutateUnread } = useUnreadNotifications();
 
+  const [showPushBanner, setShowPushBanner] = useState(false);
+
   useEffect(() => {
     // Mark as read when entering the page
     if (data?.data?.some((n: any) => !n.is_read)) {
@@ -23,6 +25,13 @@ export default function NotificationsPage() {
         mutate(); // update local state to all read
         mutateUnread(); // update badge
       });
+    }
+
+    // Check push permission
+    if ('Notification' in window && Notification.permission === 'default') {
+      if (!localStorage.getItem('push_banner_dismissed')) {
+        setShowPushBanner(true);
+      }
     }
   }, [data, mutate, mutateUnread]);
 
@@ -42,6 +51,36 @@ export default function NotificationsPage() {
   return (
     <main className="w-full max-w-md mx-auto bg-gray-50 min-h-screen pb-24 shadow-sm border-x border-gray-100">
       <Header title="お知らせ" showBackButton hideSettings />
+
+      {showPushBanner && (
+        <div className="bg-orange-50 px-4 py-3 border-b border-orange-100 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+          <div className="flex-1">
+            <p className="text-[13px] font-bold text-orange-800 flex items-center gap-1.5">
+              <Bell size={14} className="fill-orange-800" />
+              プッシュ通知をオンにしませんか？
+            </p>
+            <p className="text-[11px] text-orange-600/80 mt-0.5 font-medium leading-tight">いいねやコメントをすぐにお知らせします</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Link 
+              href="/settings" 
+              className="bg-orange-500 text-white px-3.5 py-1.5 rounded-full text-[11px] font-bold shadow-sm shadow-orange-200 active:scale-95 transition-transform"
+              onClick={() => localStorage.setItem('push_banner_dismissed', 'true')}
+            >
+              設定へ
+            </Link>
+            <button 
+              onClick={() => { 
+                localStorage.setItem('push_banner_dismissed', 'true'); 
+                setShowPushBanner(false); 
+              }} 
+              className="text-orange-400 p-1 hover:bg-orange-100 rounded-full transition-colors"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white">
         {isLoading && (

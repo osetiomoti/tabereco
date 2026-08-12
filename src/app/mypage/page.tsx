@@ -167,32 +167,41 @@ export default function MyPage() {
     filteredPosts = [...likedPosts];
   }
 
-  if (keyword) {
-    const lower = keyword.toLowerCase();
-    filteredPosts = filteredPosts.filter(p =>
-      p.title?.toLowerCase().includes(lower) ||
-      p.store_name?.toLowerCase().includes(lower) ||
-      p.comment?.toLowerCase().includes(lower)
-    );
-  }
-
-  if (selectedTags.length > 0) {
-    filteredPosts = filteredPosts.filter(p =>
-      selectedTags.every(tag => p.tags?.some((t: any) => t.name === tag))
-    );
-  }
-
-  filteredPosts.sort((a, b) => {
-    if (sortField === 'date') {
-      const tA = new Date(a.visited_at || a.created_at).getTime();
-      const tB = new Date(b.visited_at || b.created_at).getTime();
-      return sortOrder === 'desc' ? tB - tA : tA - tB;
-    } else {
-      const rA = a.rating || 0;
-      const rB = b.rating || 0;
-      return sortOrder === 'desc' ? rB - rA : rA - rB;
+  const applyFilters = (postArray: Post[]) => {
+    let result = [...postArray];
+    if (keyword) {
+      const lower = keyword.toLowerCase();
+      result = result.filter(p =>
+        p.title?.toLowerCase().includes(lower) ||
+        p.store_name?.toLowerCase().includes(lower) ||
+        p.comment?.toLowerCase().includes(lower) ||
+        p.address?.toLowerCase().includes(lower)
+      );
     }
-  });
+    if (selectedTags.length > 0) {
+      result = result.filter(p =>
+        selectedTags.every(tag => p.tags?.some((t: any) => t.name === tag))
+      );
+    }
+    result.sort((a, b) => {
+      if (sortField === 'date') {
+        const tA = new Date(a.visited_at || a.created_at).getTime();
+        const tB = new Date(b.visited_at || b.created_at).getTime();
+        return sortOrder === 'desc' ? tB - tA : tA - tB;
+      } else {
+        const rA = a.rating || 0;
+        const rB = b.rating || 0;
+        return sortOrder === 'desc' ? rB - rA : rA - rB;
+      }
+    });
+    return result;
+  };
+
+  const filteredOwnVisited = applyFilters(ownVisitedPosts);
+  const filteredMarkedVisited = applyFilters(markedVisitedPosts);
+  const filteredOwnWant = applyFilters(ownWantToGoPosts);
+  const filteredMarkedWant = applyFilters(markedWantToGoPosts);
+  filteredPosts = applyFilters(filteredPosts);
 
   const goToMap = async () => {
     if (targetUserId) {
@@ -419,17 +428,17 @@ export default function MyPage() {
           <div className="mb-2">
             <div className="px-4 py-2 flex items-center gap-2">
               <span className="text-[11px] font-black text-gray-400 tracking-wider uppercase">自分の「行きたい」</span>
-              <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">{ownWantCount}</span>
+              <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">{filteredOwnWant.length}</span>
             </div>
             {loading ? (
               <div className="px-0.5 grid grid-cols-3 gap-0.5">
                 {[1,2,3].map(i => <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />)}
               </div>
-            ) : ownWantToGoPosts.length === 0 ? (
+            ) : filteredOwnWant.length === 0 ? (
               <div className="py-3 text-center text-gray-300 text-[12px] font-bold">まだ登録がありません</div>
             ) : (
               <div className="px-0.5 grid grid-cols-3 gap-0.5">
-                {ownWantToGoPosts.map(post => (
+                {filteredOwnWant.map(post => (
                   <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
                     {post.image_url ? (
                       <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
@@ -459,17 +468,17 @@ export default function MyPage() {
             <div className="px-4 py-2 flex items-center gap-2">
               <Bookmark size={12} className="text-orange-400" />
               <span className="text-[11px] font-black text-gray-400 tracking-wider uppercase">みんなの投稿の「行きたい」</span>
-              <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">{markedWtgCount}</span>
+              <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">{filteredMarkedWant.length}</span>
             </div>
             {markedWtgLoading ? (
               <div className="px-0.5 grid grid-cols-3 gap-0.5">
                 {[1,2,3].map(i => <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />)}
               </div>
-            ) : markedWantToGoPosts.length === 0 ? (
+            ) : filteredMarkedWant.length === 0 ? (
               <div className="py-8 text-center text-gray-300 text-[12px] font-bold">他の人の投稿で「行きたい」を押してみよう</div>
             ) : (
               <div className="px-0.5 grid grid-cols-3 gap-0.5 pb-4">
-                {markedWantToGoPosts.map(post => (
+                {filteredMarkedWant.map(post => (
                   <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
                     {post.image_url ? (
                       <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
@@ -496,17 +505,17 @@ export default function MyPage() {
           <div className="mb-2">
             <div className="px-4 py-2 flex items-center gap-2">
               <span className="text-[11px] font-black text-gray-400 tracking-wider uppercase">自分の「行った」</span>
-              <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">{ownVisitedCount}</span>
+              <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">{filteredOwnVisited.length}</span>
             </div>
             {loading ? (
               <div className="px-0.5 grid grid-cols-3 gap-0.5">
                 {[1,2,3].map(i => <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />)}
               </div>
-            ) : ownVisitedPosts.length === 0 ? (
+            ) : filteredOwnVisited.length === 0 ? (
               <div className="py-8 text-center text-gray-300 text-[12px] font-bold">まだ記録がありません</div>
             ) : (
               <div className="px-0.5 grid grid-cols-3 gap-0.5">
-                {ownVisitedPosts.map(post => (
+                {filteredOwnVisited.map(post => (
                   <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
                     {post.image_url ? (
                       <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
@@ -549,17 +558,17 @@ export default function MyPage() {
             <div className="px-4 py-2 flex items-center gap-2">
               <Bookmark size={12} className="text-orange-400" />
               <span className="text-[11px] font-black text-gray-400 tracking-wider uppercase">みんなの投稿の「行った」</span>
-              <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">{markedVisCount}</span>
+              <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">{filteredMarkedVisited.length}</span>
             </div>
             {markedVisLoading ? (
               <div className="px-0.5 grid grid-cols-3 gap-0.5">
                 {[1,2,3].map(i => <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />)}
               </div>
-            ) : markedVisitedPosts.length === 0 ? (
+            ) : filteredMarkedVisited.length === 0 ? (
               <div className="py-8 text-center text-gray-300 text-[12px] font-bold">他の人の投稿で「行った」を押してみよう</div>
             ) : (
               <div className="px-0.5 grid grid-cols-3 gap-0.5 pb-4">
-                {markedVisitedPosts.map(post => (
+                {filteredMarkedVisited.map(post => (
                   <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
                     {post.image_url ? (
                       <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
