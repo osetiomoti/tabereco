@@ -79,6 +79,11 @@ export async function POST(
           data: { post_id: postId, user_id: auth.userId },
         });
 
+        // 互いに排他にする: 行ったを追加した場合は行きたいを削除
+        await prisma.postWantToGo.deleteMany({
+          where: { post_id: postId, user_id: auth.userId }
+        });
+
         // Notify post owner
         const post = await prisma.post.findUnique({ where: { id: postId } });
         if (post && post.user_id !== auth.userId) {

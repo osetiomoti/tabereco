@@ -15,7 +15,7 @@ import { ja } from 'date-fns/locale';
 type Props = { 
   post: Post;
   layout?: 'vertical' | 'horizontal' | 'compact';
-  onLike?: (postId: string) => void;
+  onLike?: (postId: string) => void | Promise<any>;
   likedByMe?: boolean;
   likesCount?: number;
   commentCount?: number;
@@ -273,6 +273,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
     e.stopPropagation();
     const newVal = !isWantToGo;
     setIsWantToGo(newVal);
+    if (newVal) setIsVisited(false);
     try {
       const res = await fetch(`/api/posts/${post.id}/want-to-go`, { method: 'POST' });
       if (!res.ok) setIsWantToGo(!newVal);
@@ -288,6 +289,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
     e.stopPropagation();
     const newVal = !isVisited;
     setIsVisited(newVal);
+    if (newVal) setIsWantToGo(false);
     try {
       const res = await fetch(`/api/posts/${post.id}/visited`, { method: 'POST' });
       if (!res.ok) setIsVisited(!newVal);
@@ -503,7 +505,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
             <>
               {/* いいね */}
               <button 
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLike?.(post.id); bumpDetail(); }}
+                onClick={async (e) => { e.preventDefault(); e.stopPropagation(); if (onLike) await onLike(post.id); bumpDetail(); }}
                 className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
               >
                 <ThumbsUp

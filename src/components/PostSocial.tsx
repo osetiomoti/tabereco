@@ -112,6 +112,8 @@ export function RatingAndActions({ postId, isOwner, ownerRating, ownerVisitCount
         // revert
         setIsLiked(wasLiked);
         setLikeCount(c => wasLiked ? c + 1 : c - 1);
+      } else {
+        fetchData();
       }
     } catch {
       setIsLiked(wasLiked);

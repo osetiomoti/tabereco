@@ -176,7 +176,7 @@ export default function PostsPage() {
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
   const [likesCount, setLikesCount] = useState<Record<string, number>>({});
 
-  const toggleLike = (postId: string) => {
+  const toggleLike = async (postId: string) => {
     setLikedPosts(prev => {
       const isLiked = !prev[postId];
       setLikesCount(cPrev => {
@@ -185,7 +185,7 @@ export default function PostsPage() {
       });
       return { ...prev, [postId]: isLiked };
     });
-    fetch(`/api/posts/${postId}/like`, { method: 'POST' }).catch(console.error);
+    return fetch(`/api/posts/${postId}/like`, { method: 'POST' }).catch(console.error);
   };
 
   const handleRefresh = async () => {
