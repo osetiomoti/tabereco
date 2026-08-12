@@ -4,11 +4,13 @@ import type { Post } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, CheckCircle2, Calendar, Hash, User, MoreHorizontal, Star, MapPin, X, Bookmark, Utensils, MessageCircle, ThumbsUp, Map, BookmarkCheck } from 'lucide-react';
+import { Heart, CheckCircle2, User, MoreHorizontal, Star, MapPin, X, Bookmark, Utensils, MessageCircle, ThumbsUp, Map, BookmarkCheck, Send, ChevronDown, Trash2 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { VisitedModal } from '@/components/VisitedModal';
-import { PostDetailSheet } from '@/components/PostDetailSheet';
+import { StarInput, StarDisplay } from '@/components/StarRating';
+import { formatDistanceToNow } from 'date-fns';
+import { ja } from 'date-fns/locale';
 
 type Props = { 
   post: Post;
@@ -30,6 +32,10 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
   // 楽観的UIのためのローカルステート
   const [isFavorite, setIsFavorite] = useState(post.is_favorite);
   const [isWantToGo, setIsWantToGo] = useState((post as any)._isMarkedWantToGo);
+  const [isVisited, setIsVisited] = useState(post.status === 'visited');
+  const [myRating, setMyRating] = useState<number | null>(null);
+  const [pendingRating, setPendingRating] = useState<number>(3.0);
+  const [ratingSaving, setRatingSaving] = useState(false);
 
   useEffect(() => {
     setIsFavorite(post.is_favorite);
@@ -38,6 +44,12 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
   useEffect(() => {
     setIsWantToGo((post as any)._isMarkedWantToGo);
   }, [(post as any)._isMarkedWantToGo]);
+
+  // パネル表示状態
+  const [activePanel, setActivePanel] = useState<null | 'rating' | 'comment' | 'detail'>(null);
+  const togglePanel = (panel: 'rating' | 'comment' | 'detail') => {
+    setActivePanel(p => p === panel ? null : panel);
+  };
 
   if (layout === 'horizontal') {
     return (
@@ -192,12 +204,11 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
     );
   }
 
-  // フィード型レイアウト (リニューアル版)
+  // フィード型レイアウト
   const images = post.image_urls && post.image_urls.length > 0 ? post.image_urls : (post.image_url ? [post.image_url] : []);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isVisitedModalOpen, setIsVisitedModalOpen] = useState(false);
-  const [isDetailSheetOpen, setIsDetailSheetOpen] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const handleScroll = () => {
@@ -206,27 +217,6 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
       const width = scrollContainerRef.current.clientWidth;
       const newIndex = Math.round(scrollLeft / width);
       setCurrentImageIndex(newIndex);
-    }
-  };
-
-  const handleFavorite = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    console.log('Favorite clicked');
-  };
-
-  const handleDelete = async () => {
-    setIsMenuOpen(false);
-    if (!window.confirm('この記録を削除してもよろしいですか？（この操作は取り消せません）')) return;
-    try {
-      const res = await fetch(`/api/posts/${post.id}`, { method: 'DELETE' });
-      if (res.ok) {
-        window.location.reload();
-      } else {
-        alert('削除に失敗しました。');
-      }
-    } catch (e) {
-      console.error(e);
-      alert('エラーが発生しました。');
     }
   };
 
@@ -240,7 +230,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
     }
   }
 
-  // 自分自身の投稿かどうか（グループ投稿等で__is_mineがfalseになっている場合を除く）
+  // 自分自身の投稿かどうか
   const isMine = (post as any).__is_mine !== false;
 
   const toggleFavorite = async (e: React.MouseEvent) => {
@@ -255,34 +245,61 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
         body: JSON.stringify({ is_favorite: newFavoriteStatus }),
       });
       if (!res.ok) {
-        setIsFavorite(!newFavoriteStatus); // revert on failure
+        setIsFavorite(!newFavoriteStatus);
       }
     } catch (e) {
       console.error(e);
-      setIsFavorite(!newFavoriteStatus); // revert on failure
+      setIsFavorite(!newFavoriteStatus);
     }
   };
 
   const toggleWantToGo = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const newWantToGoStatus = !isWantToGo;
-    setIsWantToGo(newWantToGoStatus);
+    const newVal = !isWantToGo;
+    setIsWantToGo(newVal);
     try {
-      const res = await fetch(`/api/posts/${post.id}/want-to-go`, {
-        method: 'POST',
-      });
-      if (!res.ok) {
-        setIsWantToGo(!newWantToGoStatus); // revert on failure
-      }
+      const res = await fetch(`/api/posts/${post.id}/want-to-go`, { method: 'POST' });
+      if (!res.ok) setIsWantToGo(!newVal);
     } catch (e) {
       console.error(e);
-      setIsWantToGo(!newWantToGoStatus); // revert on failure
+      setIsWantToGo(!newVal);
+    }
+  };
+
+  const toggleVisited = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const newVal = !isVisited;
+    setIsVisited(newVal);
+    try {
+      const res = await fetch(`/api/posts/${post.id}/visited`, { method: 'POST' });
+      if (!res.ok) setIsVisited(!newVal);
+    } catch (e) {
+      console.error(e);
+      setIsVisited(!newVal);
+    }
+  };
+
+  const saveRating = async () => {
+    setRatingSaving(true);
+    try {
+      await fetch(`/api/posts/${post.id}/visited`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating: pendingRating }),
+      });
+      setMyRating(pendingRating);
+      setActivePanel(null);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRatingSaving(false);
     }
   };
 
   return (
-    <div className="bg-white mb-2 pb-4 border-b border-gray-100">
+    <div className="bg-white mb-2 pb-2 border-b border-gray-100">
       <Link href={`/posts/${post.id}`} className="block group">
         {/* Header: User Info */}
         <div className="px-4 flex items-center justify-between mb-3 mt-3">
@@ -310,7 +327,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
           </div>
         </div>
 
-        {/* Image Area (Compact Aspect) */}
+        {/* Image Area */}
         <div className="relative aspect-[16/10] w-full overflow-hidden bg-gray-50">
           {images.length > 0 ? (
             <div 
@@ -331,7 +348,6 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
               ))}
             </div>
           ) : post.status === 'want_to_go' ? (
-            /* 行きたい・画像なしの場合はマップを表示 */
             <div className="w-full h-full relative bg-gray-100 flex items-center justify-center">
               {staticMapUrl ? (
                 <>
@@ -358,7 +374,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
             </div>
           )}
           
-          {/* Quick Stats Overlay - only show for own posts */}
+          {/* Overlay buttons for own posts */}
           {isMine && (
             <div className="absolute top-3 right-3 flex flex-col gap-2 z-10">
               <button 
@@ -436,7 +452,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
             )}
           </div>
           
-          {/* Tags (Small) */}
+          {/* Tags */}
           {post.tags && post.tags.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-2">
               {post.tags.slice(0, 3).map(tag => (
@@ -445,84 +461,142 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
               {post.tags.length > 3 && <span className="text-[10px] text-gray-300">...</span>}
             </div>
           )}
-
-          {/* いいね・コメント数バッジ (削除してAction Barへ移行) */}
-        </div>
-
-        {/* ▽ Instagram-like Action Bar ▽ */}
-        <div className="px-4 py-2 flex items-center justify-between border-t border-gray-100/50 mt-1">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLike?.(post.id); }}
-              className="text-gray-900 hover:text-pink-500 transition-colors active:scale-95"
-            >
-              <ThumbsUp size={24} className={likedByMe ? 'fill-pink-500 text-pink-500' : ''} />
-            </button>
-            <button 
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsDetailSheetOpen(true); }}
-              className="text-gray-900 hover:text-blue-500 transition-colors active:scale-95"
-            >
-              <MessageCircle size={24} />
-            </button>
-            {hasCoords && (
-              <a 
-                href={`https://www.google.com/maps/search/?api=1&query=${post.latitude},${post.longitude}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={e => e.stopPropagation()}
-                className="text-gray-900 hover:text-green-600 transition-colors active:scale-95"
-              >
-                <Map size={24} />
-              </a>
-            )}
-            <button 
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsDetailSheetOpen(true); }}
-              className="text-gray-900 hover:text-orange-500 transition-colors active:scale-95"
-            >
-              <BookmarkCheck size={24} className={post.status === 'visited' ? 'text-orange-500' : ''} />
-            </button>
-            <button 
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsDetailSheetOpen(true); }}
-              className="text-gray-900 hover:text-yellow-500 transition-colors active:scale-95"
-            >
-              <Star size={24} className={post.rating ? 'fill-yellow-400 text-yellow-400' : ''} />
-            </button>
-          </div>
-          <div className="flex items-center">
-            <button 
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsDetailSheetOpen(true); }}
-              className="text-gray-900 hover:text-orange-500 transition-colors active:scale-95"
-            >
-              <Bookmark size={24} className={(post as any)._isMarkedWantToGo ? 'fill-gray-900 text-gray-900' : ''} />
-            </button>
-          </div>
-        </div>
-        
-        {/* いいね数などの概要テキスト */}
-        {(likesCount || commentCount) ? (
-          <div className="px-4 mt-1 mb-2">
-            <p className="text-[12px] font-bold text-gray-800">
-              {likesCount ? `「いいね！」${likesCount}件` : ''} 
-              {likesCount && commentCount ? ' • ' : ''}
-              {commentCount ? `コメント${commentCount}件` : ''}
-            </p>
-          </div>
-        ) : null}
-
-        {/* 詳細を見るリンク */}
-        <div className="px-4 mt-1 mb-2">
-          <button 
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsDetailSheetOpen(true); }}
-            className="text-[12px] font-bold text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            詳細を見る...
-          </button>
         </div>
       </Link>
 
+      {/* ▽ Action Bar ▽ */}
+      <div className="px-4 py-1 flex items-center justify-between">
+        <div className="flex items-center gap-5">
+          {/* いいね */}
+          <button 
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); onLike?.(post.id); }}
+            className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
+          >
+            <ThumbsUp
+              size={24}
+              className={`transition-colors ${likedByMe ? 'fill-pink-500 text-pink-500' : 'text-gray-300'}`}
+            />
+          </button>
+
+          {/* コメント */}
+          <button 
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePanel('comment'); }}
+            className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
+          >
+            <MessageCircle
+              size={24}
+              className={`transition-colors ${activePanel === 'comment' ? 'text-blue-500' : 'text-gray-300'}`}
+            />
+          </button>
+
+          {/* マップ */}
+          {hasCoords && (
+            <a 
+              href={`https://www.google.com/maps/search/?api=1&query=${post.latitude},${post.longitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="transition-all active:scale-90"
+            >
+              <Map size={24} className="text-gray-300 hover:text-green-500 transition-colors" />
+            </a>
+          )}
+
+          {/* 行った */}
+          <button 
+            onClick={toggleVisited}
+            className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
+          >
+            <BookmarkCheck
+              size={24}
+              className={`transition-colors ${isVisited ? 'fill-orange-500 text-orange-500' : 'text-gray-300'}`}
+            />
+          </button>
+
+          {/* 評価 */}
+          <button 
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePanel('rating'); }}
+            className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
+          >
+            <Star
+              size={24}
+              className={`transition-colors ${(myRating != null || (post.rating && post.rating > 0)) ? 'fill-yellow-400 text-yellow-400' : activePanel === 'rating' ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+            />
+          </button>
+        </div>
+
+        {/* 行きたい */}
+        <button 
+          onClick={toggleWantToGo}
+          className="transition-all active:scale-90"
+        >
+          <Bookmark
+            size={24}
+            className={`transition-colors ${isWantToGo ? 'fill-gray-800 text-gray-800' : 'text-gray-300'}`}
+          />
+        </button>
+      </div>
+
+      {/* いいね数テキスト */}
+      {(likesCount || commentCount) ? (
+        <div className="px-4 mt-0.5">
+          <p className="text-[12px] font-bold text-gray-800">
+            {likesCount ? `「いいね！」${likesCount}件` : ''}
+            {likesCount && commentCount ? ' • ' : ''}
+            {commentCount ? `コメント${commentCount}件` : ''}
+          </p>
+        </div>
+      ) : null}
+
+      {/* 詳細を見るボタン */}
+      <div className="px-4 mt-1 mb-1">
+        <button 
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePanel('detail'); }}
+          className="text-[12px] font-bold text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1"
+        >
+          詳細を見る
+          <ChevronDown size={12} className={`transition-transform ${activePanel === 'detail' ? 'rotate-180' : ''}`} />
+        </button>
+      </div>
+
+      {/* ── Inline Rating Panel ── */}
+      {activePanel === 'rating' && (
+        <div className="mx-4 mb-3 bg-orange-50 border border-orange-100 rounded-2xl p-4 animate-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center justify-between mb-3">
+            <label className="text-[12px] font-bold text-orange-800">あなたの評価</label>
+            <button onClick={() => setActivePanel(null)} className="text-gray-400 hover:text-gray-600">
+              <X size={16} />
+            </button>
+          </div>
+          <StarInput value={pendingRating} onChange={setPendingRating} />
+          <button
+            onClick={saveRating}
+            disabled={ratingSaving}
+            className="mt-3 w-full py-2.5 rounded-xl font-black text-[13px] flex items-center justify-center gap-2 bg-orange-500 text-white shadow-sm shadow-orange-200 active:scale-95 transition-all disabled:opacity-60"
+          >
+            <Star size={14} />
+            {ratingSaving ? '保存中...' : '評価を保存'}
+          </button>
+        </div>
+      )}
+
+      {/* ── Inline Comment Panel ── */}
+      {activePanel === 'comment' && (
+        <div className="mx-4 mb-3 animate-in slide-in-from-top-2 duration-200">
+          <InlineCommentPanel postId={post.id} onClose={() => setActivePanel(null)} />
+        </div>
+      )}
+
+      {/* ── Inline Detail Panel ── */}
+      {activePanel === 'detail' && (
+        <div className="mx-4 mb-3 bg-gray-50 border border-gray-100 rounded-2xl overflow-hidden animate-in slide-in-from-top-2 duration-200">
+          <InlineDetailPanel post={post} />
+        </div>
+      )}
+
       {/* 行ってきた！ボタン（自分の行きたい投稿のみ） */}
       {isMine && post.status === 'want_to_go' && (
-        <div className="px-4 pb-4">
+        <div className="px-4 pb-2">
           <button
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsVisitedModalOpen(true); }}
             className="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-black text-[13px] rounded-2xl flex items-center justify-center gap-2 shadow-sm shadow-orange-200 active:scale-[0.98] transition-all"
@@ -541,14 +615,173 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
           onSuccess={() => window.location.reload()}
         />
       )}
+    </div>
+  );
+}
 
-      {/* ボトムシート */}
-      <PostDetailSheet
-        post={post}
-        isOpen={isDetailSheetOpen}
-        onClose={() => setIsDetailSheetOpen(false)}
-        isOwner={isMine}
-      />
+
+// ── Inline Comment Panel ──────────────────────────────────────────
+function InlineCommentPanel({ postId, onClose }: { postId: string; onClose: () => void }) {
+  const [comments, setComments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [content, setContent] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/posts/${postId}/comments`)
+      .then(r => r.json())
+      .then(j => { if (j.success) setComments(j.data); setLoading(false); })
+      .catch(() => setLoading(false));
+  }, [postId]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!content.trim() || submitting) return;
+    setSubmitting(true);
+    try {
+      const res = await fetch(`/api/posts/${postId}/comments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content }),
+      });
+      const j = await res.json();
+      if (j.success) {
+        setComments(prev => [j.data, ...prev]);
+        setContent('');
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+        <span className="text-[13px] font-black text-gray-700">コメント</span>
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-600"><X size={16} /></button>
+      </div>
+
+      {/* Comment list */}
+      <div className="max-h-48 overflow-y-auto divide-y divide-gray-50">
+        {loading && <p className="text-center py-4 text-[12px] text-gray-400">読み込み中...</p>}
+        {!loading && comments.length === 0 && (
+          <p className="text-center py-4 text-[12px] text-gray-400">まだコメントはありません</p>
+        )}
+        {comments.map(c => (
+          <div key={c.id} className="px-4 py-2.5 flex gap-2">
+            <div className="w-6 h-6 rounded-full bg-gray-100 flex-shrink-0 overflow-hidden flex items-center justify-center">
+              {c.user?.avatar_url ? (
+                <Image src={c.user.avatar_url} alt={c.user.name} width={24} height={24} className="object-cover" unoptimized />
+              ) : (
+                <User size={12} className="text-gray-400" />
+              )}
+            </div>
+            <div className="flex-1 min-w-0">
+              <span className="text-[11px] font-black text-gray-700 mr-1.5">{c.user?.name}</span>
+              <span className="text-[12px] text-gray-600">{c.content}</span>
+              <p className="text-[10px] text-gray-400 mt-0.5">
+                {formatDistanceToNow(new Date(c.created_at), { addSuffix: true, locale: ja })}
+              </p>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Comment input */}
+      <form onSubmit={handleSubmit} className="flex items-center gap-2 px-4 py-3 border-t border-gray-100 bg-gray-50">
+        <input
+          value={content}
+          onChange={e => setContent(e.target.value)}
+          placeholder="コメントを追加..."
+          className="flex-1 bg-white rounded-full px-4 py-2 text-[13px] border border-gray-200 outline-none focus:border-orange-400 transition-colors"
+        />
+        <button
+          type="submit"
+          disabled={!content.trim() || submitting}
+          className="w-9 h-9 rounded-full bg-orange-500 text-white flex items-center justify-center disabled:opacity-40 active:scale-95 transition-all"
+        >
+          <Send size={16} />
+        </button>
+      </form>
+    </div>
+  );
+}
+
+
+// ── Inline Detail Panel ──────────────────────────────────────────
+function InlineDetailPanel({ post }: { post: Post }) {
+  const [data, setData] = useState<{
+    likedUsers: any[];
+    visitedUsers: any[];
+    wantToGoUsers: any[];
+    ratedUsers: any[];
+  } | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Fetch visited, want-to-go, like, and social data
+    Promise.all([
+      fetch(`/api/posts/${post.id}/visited`).then(r => r.json()),
+      fetch(`/api/posts/${post.id}/want-to-go`).then(r => r.json()),
+      fetch(`/api/posts/${post.id}/like`).then(r => r.json()),
+    ]).then(([visRes, wtgRes, likeRes]) => {
+      setData({
+        visitedUsers: visRes.success ? (visRes.data.users || []) : [],
+        wantToGoUsers: wtgRes.success ? (wtgRes.data.users || []) : [],
+        likedUsers: likeRes.success ? (likeRes.data.users || []) : [],
+        ratedUsers: visRes.success ? (visRes.data.users || []).filter((u: any) => u.rating != null) : [],
+      });
+    }).catch(() => setData({ likedUsers: [], visitedUsers: [], wantToGoUsers: [], ratedUsers: [] }))
+      .finally(() => setLoading(false));
+  }, [post.id]);
+
+  if (loading) return <div className="py-6 flex justify-center"><div className="w-5 h-5 border-2 border-orange-200 border-t-orange-500 rounded-full animate-spin" /></div>;
+  if (!data) return null;
+
+  const UserList = ({ users, label, icon }: { users: any[]; label: string; icon: string }) => (
+    <div className="p-4 border-b border-gray-100 last:border-0">
+      <p className="text-[11px] font-black text-gray-400 mb-2 tracking-wider flex items-center gap-1">
+        <span>{icon}</span> {label}
+        <span className="ml-1 bg-gray-100 text-gray-500 rounded-full px-1.5 text-[10px]">{users.length}</span>
+      </p>
+      {users.length === 0 ? (
+        <p className="text-[12px] text-gray-300 font-medium">まだいません</p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {users.map(u => (
+            <div key={u.id} className="flex items-center gap-1.5 bg-white rounded-full px-2.5 py-1 border border-gray-100 shadow-sm">
+              <div className="w-5 h-5 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center flex-shrink-0">
+                {u.avatar_url ? (
+                  <Image src={u.avatar_url} alt={u.name} width={20} height={20} className="object-cover" unoptimized />
+                ) : (
+                  <User size={10} className="text-gray-400" />
+                )}
+              </div>
+              <span className="text-[11px] font-bold text-gray-700">{u.name}</span>
+              {u.rating != null && (
+                <span className="text-[10px] text-yellow-500 font-black">★{u.rating.toFixed(1)}</span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+
+  return (
+    <div className="bg-white rounded-2xl">
+      {/* メモ */}
+      {post.comment && (
+        <div className="p-4 border-b border-gray-100">
+          <p className="text-[11px] font-black text-gray-400 mb-1.5 tracking-wider">📝 メモ</p>
+          <p className="text-[13px] text-gray-700 whitespace-pre-wrap leading-relaxed">{post.comment}</p>
+        </div>
+      )}
+      <UserList users={data.likedUsers} label="いいね" icon="👍" />
+      <UserList users={data.visitedUsers} label="行った" icon="✅" />
+      <UserList users={data.ratedUsers} label="評価した人" icon="⭐" />
+      <UserList users={data.wantToGoUsers} label="行きたい" icon="🔖" />
     </div>
   );
 }
@@ -574,11 +807,9 @@ export function FilterChips({
   
   const mode = filters.filterMode || 'group';
 
-  // 1段目: グループ or 投稿者（全選択でも1つずつチップ）
   if (mode === 'group') {
     const allGroups = !filters.activeGroups || filters.activeGroups.length === 0 || filters.activeGroups.includes('all');
     if (allGroups) {
-      // 全グループ → groups リストから1つずつチップ
       if (groups && groups.length > 0) {
         groups.forEach(group => {
           primaryChips.push({
@@ -590,7 +821,6 @@ export function FilterChips({
           });
         });
       } else {
-        // グループ情報がまだ読み込まれていない場合
         primaryChips.push({ key: 'group-all', label: '👥 すべてのグループ', color: 'bg-indigo-50 text-indigo-500 border-indigo-100' });
       }
     } else {
@@ -609,7 +839,6 @@ export function FilterChips({
   } else {
     const allSelected = !filters.registrantUserIds || filters.registrantUserIds.length === 0;
     if (allSelected) {
-      // 全員 → users リストから1つずつチップ
       if (users && users.length > 0) {
         users.forEach(user => {
           primaryChips.push({
@@ -638,7 +867,6 @@ export function FilterChips({
     }
   }
 
-  // 2段目: そのほか
   if (filters.tags && filters.tags.length > 0) {
     filters.tags.forEach((t: string) => {
       secondaryChips.push({ key: `tag-${t}`, label: `#${t}`, color: 'bg-pink-50 text-pink-500 border-pink-100', isTag: true, tagValue: t });
