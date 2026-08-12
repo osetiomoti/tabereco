@@ -8,6 +8,7 @@ import Image from 'next/image';
 import { Header } from '@/components/Header';
 import { useUpload } from '@/hooks/useUpload';
 import { PushNotificationToggle } from '@/components/PushNotificationToggle';
+import { mutate } from 'swr';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -47,6 +48,7 @@ export default function SettingsPage() {
     if (json.success) {
       setUser(json.data);
       setEditingName(false);
+      mutate('/api/profiles/me');
     }
     setSaving(false);
   };
@@ -62,7 +64,10 @@ export default function SettingsPage() {
         body: JSON.stringify({ avatar_url: url }),
       });
       const json = await res.json();
-      if (json.success) setUser(json.data);
+      if (json.success) {
+        setUser(json.data);
+        mutate('/api/profiles/me');
+      }
     }
   };
 

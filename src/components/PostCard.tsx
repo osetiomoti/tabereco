@@ -4,7 +4,7 @@ import type { Post } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Heart, CheckCircle2, User, MoreHorizontal, Star, MapPin, X, Bookmark, Utensils, MessageCircle, ThumbsUp, Map, BookmarkCheck, Send, ChevronDown, Trash2 } from 'lucide-react';
+import { Heart, CheckCircle2, User, MoreHorizontal, Star, MapPin, X, Bookmark, Utensils, MessageCircle, ThumbsUp, Map, BookmarkCheck, Send, ChevronDown } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { VisitedModal } from '@/components/VisitedModal';
@@ -465,7 +465,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
       </Link>
 
       {/* ▽ Action Bar ▽ */}
-      <div className="px-4 py-1 flex items-center justify-between">
+      <div className="px-4 py-2 flex items-center justify-between border-t border-gray-50">
         <div className="flex items-center gap-5">
           {/* いいね */}
           <button 
@@ -473,9 +473,10 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
             className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
           >
             <ThumbsUp
-              size={24}
+              size={22}
               className={`transition-colors ${likedByMe ? 'fill-pink-500 text-pink-500' : 'text-gray-300'}`}
             />
+            <span className={`text-[9px] font-bold leading-none ${likedByMe ? 'text-pink-400' : 'text-gray-300'}`}>いいね</span>
           </button>
 
           {/* コメント */}
@@ -484,23 +485,11 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
             className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
           >
             <MessageCircle
-              size={24}
-              className={`transition-colors ${activePanel === 'comment' ? 'text-blue-500' : 'text-gray-300'}`}
+              size={22}
+              className={`transition-colors ${activePanel === 'comment' ? 'fill-blue-400 text-blue-400' : 'text-gray-300'}`}
             />
+            <span className={`text-[9px] font-bold leading-none ${activePanel === 'comment' ? 'text-blue-400' : 'text-gray-300'}`}>コメント</span>
           </button>
-
-          {/* マップ */}
-          {hasCoords && (
-            <a 
-              href={`https://www.google.com/maps/search/?api=1&query=${post.latitude},${post.longitude}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={e => e.stopPropagation()}
-              className="transition-all active:scale-90"
-            >
-              <Map size={24} className="text-gray-300 hover:text-green-500 transition-colors" />
-            </a>
-          )}
 
           {/* 行った */}
           <button 
@@ -508,9 +497,11 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
             className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
           >
             <BookmarkCheck
-              size={24}
-              className={`transition-colors ${isVisited ? 'fill-orange-500 text-orange-500' : 'text-gray-300'}`}
+              size={22}
+              className={`transition-colors ${isVisited ? 'text-orange-500' : 'text-gray-300'}`}
+              strokeWidth={isVisited ? 2.5 : 1.5}
             />
+            <span className={`text-[9px] font-bold leading-none ${isVisited ? 'text-orange-500' : 'text-gray-300'}`}>行った</span>
           </button>
 
           {/* 評価 */}
@@ -519,22 +510,46 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
             className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
           >
             <Star
-              size={24}
-              className={`transition-colors ${(myRating != null || (post.rating && post.rating > 0)) ? 'fill-yellow-400 text-yellow-400' : activePanel === 'rating' ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+              size={22}
+              className={`transition-colors ${
+                (myRating != null && myRating > 0) || activePanel === 'rating'
+                  ? 'fill-yellow-400 text-yellow-400'
+                  : 'text-gray-300'
+              }`}
             />
+            <span className={`text-[9px] font-bold leading-none ${
+              (myRating != null && myRating > 0) || activePanel === 'rating' ? 'text-yellow-400' : 'text-gray-300'
+            }`}>評価</span>
+          </button>
+
+          {/* 行きたい */}
+          <button 
+            onClick={toggleWantToGo}
+            className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
+          >
+            <Bookmark
+              size={22}
+              className={`transition-colors ${isWantToGo ? 'fill-orange-400 text-orange-400' : 'text-gray-300'}`}
+            />
+            <span className={`text-[9px] font-bold leading-none ${isWantToGo ? 'text-orange-400' : 'text-gray-300'}`}>行きたい</span>
           </button>
         </div>
 
-        {/* 行きたい */}
-        <button 
-          onClick={toggleWantToGo}
-          className="transition-all active:scale-90"
-        >
-          <Bookmark
-            size={24}
-            className={`transition-colors ${isWantToGo ? 'fill-gray-800 text-gray-800' : 'text-gray-300'}`}
-          />
-        </button>
+        {/* マップ - 右端 */}
+        {hasCoords ? (
+          <a 
+            href={`https://www.google.com/maps/search/?api=1&query=${post.latitude},${post.longitude}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
+          >
+            <Map size={22} className="text-gray-300 hover:text-green-500 transition-colors" />
+            <span className="text-[9px] font-bold leading-none text-gray-300">マップ</span>
+          </a>
+        ) : (
+          <div className="w-10" />
+        )}
       </div>
 
       {/* いいね数テキスト */}
@@ -739,10 +754,10 @@ function InlineDetailPanel({ post }: { post: Post }) {
   if (loading) return <div className="py-6 flex justify-center"><div className="w-5 h-5 border-2 border-orange-200 border-t-orange-500 rounded-full animate-spin" /></div>;
   if (!data) return null;
 
-  const UserList = ({ users, label, icon }: { users: any[]; label: string; icon: string }) => (
+  const UserList = ({ users, label, LIcon, iconClass }: { users: any[]; label: string; LIcon: any; iconClass: string }) => (
     <div className="p-4 border-b border-gray-100 last:border-0">
       <p className="text-[11px] font-black text-gray-400 mb-2 tracking-wider flex items-center gap-1">
-        <span>{icon}</span> {label}
+        <LIcon size={14} className={iconClass} /> {label}
         <span className="ml-1 bg-gray-100 text-gray-500 rounded-full px-1.5 text-[10px]">{users.length}</span>
       </p>
       {users.length === 0 ? (
@@ -778,10 +793,10 @@ function InlineDetailPanel({ post }: { post: Post }) {
           <p className="text-[13px] text-gray-700 whitespace-pre-wrap leading-relaxed">{post.comment}</p>
         </div>
       )}
-      <UserList users={data.likedUsers} label="いいね" icon="👍" />
-      <UserList users={data.visitedUsers} label="行った" icon="✅" />
-      <UserList users={data.ratedUsers} label="評価した人" icon="⭐" />
-      <UserList users={data.wantToGoUsers} label="行きたい" icon="🔖" />
+      <UserList users={data.likedUsers} label="いいね" LIcon={ThumbsUp} iconClass="text-pink-500 fill-pink-500" />
+      <UserList users={data.visitedUsers} label="行った" LIcon={BookmarkCheck} iconClass="text-orange-500" />
+      <UserList users={data.ratedUsers} label="評価した人" LIcon={Star} iconClass="text-yellow-400 fill-yellow-400" />
+      <UserList users={data.wantToGoUsers} label="行きたい" LIcon={Bookmark} iconClass="text-orange-400 fill-orange-400" />
     </div>
   );
 }
