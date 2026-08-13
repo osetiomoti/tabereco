@@ -102,9 +102,10 @@ model Tag {
   name       String
   sort_order Int       @default(0) 
   user       User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  app_type   String    @default("tabereco") @db.VarChar(20)
   posts      PostTag[]
 
-  @@unique([user_id, name])
+  @@unique([user_id, name, app_type])
   @@map("tags")
 }
 

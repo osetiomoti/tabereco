@@ -19,8 +19,10 @@ import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
 import { useMyProfile, useMyPosts, useGroupActivities, useTopRankings } from '@/hooks/useAppData';
+import { useAppType } from '@/contexts/AppTypeContext';
 
 export default function HomePage() {
+  const { appType } = useAppType();
   const router = useRouter();
 
   // ── SWRキャッシュを利用したデータ取得 ──
@@ -153,13 +155,13 @@ export default function HomePage() {
           <div className="flex justify-between items-center mb-6 relative z-10">
             <div>
               <h2 className="text-lg font-black text-gray-800 tracking-tight flex items-center gap-2">
-                マイダッシュボード <TrendingUp size={18} className="text-orange-500" />
+                マイダッシュボード <TrendingUp size={18} className="text-orange-500" style={{ color: 'var(--color-primary)' }} />
               </h2>
-              <p className="text-[11px] text-gray-400 font-bold mt-0.5">あなたの毎日の食体験の記録</p>
+              <p className="text-[11px] text-gray-400 font-bold mt-0.5">あなたの毎日の{appType === 'tabereco' ? '食体験' : '旅の思い出'}の記録</p>
             </div>
-            <div className="flex items-baseline gap-1 bg-white px-3 py-1.5 rounded-2xl border border-orange-100/50 shadow-sm">
-              <span className="text-xl font-black text-orange-500">{stats.total}</span>
-              <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest">件</span>
+            <div className="flex items-baseline gap-1 bg-white px-3 py-1.5 rounded-2xl border shadow-sm" style={{ borderColor: 'var(--color-primary-50)' }}>
+              <span className="text-xl font-black" style={{ color: 'var(--color-primary)' }}>{stats.total}</span>
+              <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: 'var(--color-primary)' }}>件</span>
             </div>
           </div>
 
@@ -168,17 +170,17 @@ export default function HomePage() {
             return (
               <div className="relative w-full bg-gray-100/80 h-3.5 rounded-full mb-6 flex shadow-inner pr-3 overflow-visible">
                 <div
-                  style={{ width: `${progress}%` }}
-                  className="bg-gradient-to-r from-orange-400 to-orange-500 h-full rounded-l-full transition-all duration-1000"
+                  style={{ width: `${progress}%`, background: 'var(--color-primary)' }}
+                  className="h-full rounded-l-full transition-all duration-1000"
                 />
                 <div
                   style={{ left: `calc(${progress}% - 14px)` }}
                   className="absolute top-1/2 -translate-y-1/2 text-lg z-10 transition-all duration-1000 ease-out select-none"
                 >
-                  😋
+                  {appType === 'tabereco' ? '😋' : '🎒'}
                 </div>
-                <div className="absolute right-[-6px] top-1/2 -translate-y-1/2 w-7 h-7 bg-white border border-orange-100 rounded-full flex items-center justify-center shadow-none z-10 text-[13px] select-none">
-                  🍴
+                <div className="absolute right-[-6px] top-1/2 -translate-y-1/2 w-7 h-7 bg-white border rounded-full flex items-center justify-center shadow-none z-10 text-[13px] select-none" style={{ borderColor: 'var(--color-primary-50)' }}>
+                  {appType === 'tabereco' ? '🍴' : '🚩'}
                 </div>
               </div>
             );
@@ -186,17 +188,17 @@ export default function HomePage() {
 
           <div className="flex justify-around items-center text-center">
             <div>
-              <div className="text-[10px] font-black text-orange-500 uppercase tracking-wider mb-1 flex items-center gap-1 justify-center">
-                <span className="w-1.5 h-1.5 rounded-full bg-orange-500 inline-block" /> 行った
+              <div className="text-[10px] font-black uppercase tracking-wider mb-1 flex items-center gap-1 justify-center" style={{ color: 'var(--color-primary)' }}>
+                <span className="w-1.5 h-1.5 rounded-full inline-block" style={{ backgroundColor: 'var(--color-primary)' }} /> 行った
               </div>
-              <div className="text-base font-black text-gray-800">{stats.visited} <span className="text-[10px] text-gray-400">店</span></div>
+              <div className="text-base font-black text-gray-800">{stats.visited} <span className="text-[10px] text-gray-400">{appType === 'tabereco' ? '店' : '件'}</span></div>
             </div>
             <div className="w-px h-6 bg-gray-100" />
             <div>
               <div className="text-[10px] font-black text-blue-500 uppercase tracking-wider mb-1 flex items-center gap-1 justify-center">
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-500 inline-block" /> 行きたい
               </div>
-              <div className="text-base font-black text-gray-800">{stats.wantToGo} <span className="text-[10px] text-gray-400">店</span></div>
+              <div className="text-base font-black text-gray-800">{stats.wantToGo} <span className="text-[10px] text-gray-400">{appType === 'tabereco' ? '店' : '件'}</span></div>
             </div>
           </div>
         </div>
@@ -339,7 +341,7 @@ export default function HomePage() {
                         『{post.store_name || post.title}』
                       </h4>
                       <p className="text-[11px] text-gray-400 font-bold mt-1 line-clamp-2 leading-relaxed">
-                        {post.comment || '次のグルメ旅の目的地に登録されました！'}
+                        {post.comment || `次の${appType === 'tabereco' ? 'グルメ旅' : '旅'}の目的地に登録されました！`}
                       </p>
                     </div>
                   </div>
@@ -361,7 +363,7 @@ export default function HomePage() {
         <div className="text-left">
           <div className="flex items-center gap-2 mb-3 pl-2">
             <span className="text-lg">📷</span>
-            <h3 className="text-[15px] font-black text-gray-800">みんなのごちそうフィード</h3>
+            <h3 className="text-[15px] font-black text-gray-800">みんなの{appType === 'tabereco' ? 'ごちそう' : '旅'}フィード</h3>
           </div>
 
           {loadingActivities ? (

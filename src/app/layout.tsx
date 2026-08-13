@@ -6,7 +6,8 @@ import { SWRProvider } from '@/components/SWRProvider';
 import { SessionKeepAlive } from '@/components/SessionKeepAlive';
 import { ToastProvider } from '@/components/Toast';
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
-import { AppTypeProvider } from '@/contexts/AppTypeContext';
+import { AppTypeProvider, type AppType } from '@/contexts/AppTypeContext';
+import { cookies } from 'next/headers';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -46,20 +47,24 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const cookieStore = await cookies();
+  const storedAppType = cookieStore.get('app_type')?.value;
+  const initialAppType: AppType = storedAppType === 'tabireco' ? 'tabireco' : 'tabereco';
+
   return (
-    <html lang="ja" className="overflow-x-hidden">
+    <html lang="ja" data-app-type={initialAppType} className="overflow-x-hidden">
       <head>
         {/* iOS Safari でのズーム・縮小を確実に防ぐ */}
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover" />
       </head>
       <body className={`${outfit.variable} ${notoSansJP.variable} font-sans bg-[#fcfcfc] text-gray-900 antialiased overflow-x-hidden min-h-[100dvh] flex flex-col`}>
         <SWRProvider>
-          <AppTypeProvider>
+          <AppTypeProvider initialAppType={initialAppType}>
             <ToastProvider>
               <SessionKeepAlive />
               <ServiceWorkerRegister />

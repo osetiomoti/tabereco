@@ -35,10 +35,12 @@ export async function GET(
     const memberIds = members.map((m: { user_id: string }) => m.user_id);
 
     // 3. Fetch shared posts from these members (excluding private posts)
+    const appType = request.cookies.get('app_type')?.value === 'tabireco' ? 'tabireco' : 'tabereco';
     const postsResult = await prisma.post.findMany({
       where: { 
         user_id: { in: memberIds },
-        is_mine_only: false
+        is_mine_only: false,
+        app_type: appType
       },
       include: {
         user: {

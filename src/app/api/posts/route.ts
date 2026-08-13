@@ -247,12 +247,13 @@ export async function POST(request: NextRequest) {
           orderBy: { sort_order: 'desc' },
         });
         let nextOrder = lastTag ? lastTag.sort_order + 1 : 0;
+        const postAppType = appType;
 
         // Sync tags
         const tags = await Promise.all(
           tagNames.map(async (name: string) => {
             const existing = await prisma.tag.findUnique({
-              where: { user_id_name: { user_id: auth.userId, name: name.trim() } }
+              where: { user_id_name_app_type: { user_id: auth.userId, name: name.trim(), app_type: postAppType } }
             });
             if (existing) return existing;
 
@@ -260,6 +261,7 @@ export async function POST(request: NextRequest) {
               data: {
                 user_id: auth.userId,
                 name: name.trim(),
+                app_type: postAppType,
                 sort_order: nextOrder++,
               },
             });

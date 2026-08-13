@@ -20,9 +20,11 @@ export async function GET(request: NextRequest) {
       });
       const groupIds = memberships.map(m => m.group_id);
 
+      const appType = request.cookies.get('app_type')?.value === 'tabireco' ? 'tabireco' : 'tabereco';
+
       if (groupIds.length === 0) {
         // グループ未参加なら自分のタグのみ
-        const myTags = await prisma.tag.findMany({ where: { user_id: auth.userId }, orderBy: [{ sort_order: 'asc' }, { name: 'asc' }] });
+        const myTags = await prisma.tag.findMany({ where: { user_id: auth.userId, app_type: appType }, orderBy: [{ sort_order: 'asc' }, { name: 'asc' }] });
         return NextResponse.json({ success: true, data: myTags });
       }
 
@@ -35,7 +37,7 @@ export async function GET(request: NextRequest) {
 
       // 全員のタグを取得して重複排除（名前ベース）
       const allTags = await prisma.tag.findMany({
-        where: { user_id: { in: allUserIds } },
+        where: { user_id: { in: allUserIds }, app_type: appType },
         orderBy: [{ name: 'asc' }],
       });
       const seen = new Set<string>();
@@ -65,9 +67,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const appType = request.cookies.get('app_type')?.value === 'tabireco' ? 'tabireco' : 'tabereco';
     const tags = await prisma.tag.findMany({
       where: {
         user_id: targetUserId,
+        app_type: appType,
       },
       orderBy: [
         { sort_order: 'asc' },
@@ -89,24 +93,28 @@ export async function POST(request: NextRequest) {
       const { name } = await request.json();
       if (!name) return NextResponse.json({ error: 'Name is required' }, { status: 400 });
 
+      const appType = request.cookies.get('app_type')?.value === 'tabireco' ? 'tabireco' : 'tabereco';
+
       // Get next sort_order
       const lastTag = await prisma.tag.findFirst({
-        where: { user_id: auth.userId },
+        where: { user_id: auth.userId, app_type: appType },
         orderBy: { sort_order: 'desc' },
       });
       const nextOrder = lastTag ? lastTag.sort_order + 1 : 0;
 
       const tag = await prisma.tag.upsert({
         where: {
-          user_id_name: {
+          user_id_name_app_type: {
             user_id: auth.userId,
             name: name.trim(),
+            app_type: appType,
           },
         },
         update: {},
         create: {
           user_id: auth.userId,
           name: name.trim(),
+          app_type: appType,
           sort_order: nextOrder,
         },
       });

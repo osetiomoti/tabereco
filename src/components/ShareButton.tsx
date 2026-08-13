@@ -3,18 +3,25 @@
 import { useState } from 'react';
 import { Share2, Check, Copy } from 'lucide-react';
 import type { Post } from '@/lib/types';
+import { useAppType } from '@/contexts/AppTypeContext';
 
 type Props = {
   post: Post;
+  onShare?: () => void;
 };
 
-export function ShareButton({ post }: Props) {
+export function ShareButton({ post, onShare }: Props) {
+  const { appType } = useAppType();
   const [copied, setCopied] = useState(false);
 
   const shareUrl = `${window.location.origin}/share/${post.id}`;
+  const getShareText = () => {
+    return `${post.store_name ? `@${post.store_name}` : ''} で「${post.title}」を${appType === 'tabereco' ? '食べました' : '記録しました'}！評価: ${post.rating} 皿をつぶやいています。 #モグレコ #${appType === 'tabereco' ? 'グルメ' : '旅'}`;
+  };
+
   const shareData = {
     title: `${post.title} | モグレコ`,
-    text: `${post.store_name ? `@${post.store_name}` : ''} で「${post.title}」を食べました！評価: ${post.rating} 皿をつぶやいています。 #モグレコ #グルメ`,
+    text: getShareText(),
     url: shareUrl,
   };
 
@@ -22,6 +29,7 @@ export function ShareButton({ post }: Props) {
     if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
       try {
         await navigator.share(shareData);
+        onShare?.();
       } catch (err) {
         if ((err as Error).name !== 'AbortError') {
           console.error('Share failed:', err);

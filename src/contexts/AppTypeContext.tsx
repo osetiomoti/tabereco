@@ -29,16 +29,17 @@ function writeAppTypeCookie(type: AppType) {
   document.cookie = `app_type=${type}; path=/; max-age=${maxAge}; SameSite=Lax`;
 }
 
-export function AppTypeProvider({ children }: { children: React.ReactNode }) {
-  const [appType, setAppTypeState] = useState<AppType>('tabereco');
+export function AppTypeProvider({ children, initialAppType = 'tabereco' }: { children: React.ReactNode, initialAppType?: AppType }) {
+  const [appType, setAppTypeState] = useState<AppType>(initialAppType);
 
-  // クライアントマウント後に Cookie を読み取る
+  // クライアントマウント後、Cookieを正として同期
   useEffect(() => {
     const stored = readAppTypeCookie();
-    setAppTypeState(stored);
-    // HTML属性をすぐ反映
-    document.documentElement.setAttribute('data-app-type', stored);
-  }, []);
+    if (stored !== initialAppType) {
+      setAppTypeState(stored);
+      document.documentElement.setAttribute('data-app-type', stored);
+    }
+  }, [initialAppType]);
 
   const setAppType = useCallback((type: AppType) => {
     setAppTypeState(type);
