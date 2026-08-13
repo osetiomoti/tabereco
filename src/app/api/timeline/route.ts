@@ -206,12 +206,16 @@ export async function GET(request: NextRequest) {
         const rawAvg = allRatings.length > 0 ? allRatings.reduce((a: number, b: number) => a + b, 0) / allRatings.length : null;
         const avgRating = rawAvg !== null ? Math.round(rawAvg * 10) / 10 : null;
 
+        const myVisitedEntry = post.visiteds?.find((v: any) => v.user_id === auth.userId);
+        const myRatingVal = post.user_id === auth.userId ? post.rating : (myVisitedEntry?.rating ?? null);
+
         return {
           ...post,
           tags: post.tags.map((pt: any) => pt.tag),
           _isMarkedWantToGo: post.want_to_gos?.some((w: any) => w.user_id === auth.userId),
           _isMarkedVisited: post.visiteds?.some((v: any) => v.user_id === auth.userId),
           _isLikedByMe: post.likes?.some((l: any) => l.user_id === auth.userId),
+          _myRating: myRatingVal,
           _comment_count: post._count?.comments ?? 0,
           _like_count: post._count?.likes ?? 0,
           _avgRating: avgRating,

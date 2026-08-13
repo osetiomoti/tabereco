@@ -39,8 +39,9 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
   const [isVisited, setIsVisited] = useState(
     _isMine ? post.status === 'visited' : !!((post as any)._isMarkedVisited)
   );
-  const [myRating, setMyRating] = useState<number | null>(null);
-  const [pendingRating, setPendingRating] = useState<number>(3.0);
+  const initialRatingVal = (post as any)._myRating ?? (_isMine ? post.rating : null);
+  const [myRating, setMyRating] = useState<number | null>(initialRatingVal ?? null);
+  const [pendingRating, setPendingRating] = useState<number>(initialRatingVal ?? 3.0);
   const [ratingSaving, setRatingSaving] = useState(false);
   // 詳細パネルをアクション後に再フェッチするためのキー
   const [detailRefreshKey, setDetailRefreshKey] = useState(0);
@@ -59,6 +60,14 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
     setIsVisited(_isMine ? post.status === 'visited' : !!((post as any)._isMarkedVisited));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [(post as any)._isMarkedVisited, post.status]);
+
+  useEffect(() => {
+    const r = (post as any)._myRating ?? (_isMine ? post.rating : null);
+    if (r != null) {
+      setMyRating(r);
+      setPendingRating(r);
+    }
+  }, [post.rating, (post as any)._myRating, _isMine]);
 
   // パネル表示状態
   const [activePanel, setActivePanel] = useState<null | 'rating' | 'comment' | 'detail'>(null);

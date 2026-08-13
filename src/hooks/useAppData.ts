@@ -14,10 +14,11 @@ const jsonFetcher = (url: string) => fetch(url).then(r => r.json());
 
 /** 自分のプロフィール（キャッシュ共有） */
 export function useMyProfile() {
-  const { data, isLoading } = useSWR('/api/profiles/me', fetcher, {
-    dedupingInterval: 300_000, // 5分間キャッシュ
+  const { data, isLoading, mutate } = useSWR('/api/profiles/me', fetcher, {
+    dedupingInterval: 5_000, // 5秒間キャッシュ
+    revalidateOnFocus: true,
   });
-  return { profile: data ?? null, isLoading };
+  return { profile: data ?? null, isLoading, mutate };
 }
 
 /** 自分のタグ一覧（キャッシュ共有） */
