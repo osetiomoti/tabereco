@@ -821,8 +821,8 @@ function InlineDetailPanel({ post, refreshTrigger }: { post: Post; refreshTrigge
       )}
       <UserList users={data.likedUsers} label="いいね" LIcon={ThumbsUp} iconClass="text-pink-500 fill-pink-500" />
       <UserList users={data.visitedUsers} label="行った" LIcon={BookmarkCheck} iconClass="text-green-500" />
-      <UserList users={data.ratedUsers} label="評価した人" LIcon={Star} iconClass="text-yellow-400 fill-yellow-400" />
       <UserList users={data.wantToGoUsers} label="行きたい" LIcon={Bookmark} iconClass="text-orange-400 fill-orange-400" />
+      <UserList users={data.ratedUsers} label="評価した人" LIcon={Star} iconClass="text-yellow-400 fill-yellow-400" />
     </div>
   );
 }
