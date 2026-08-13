@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
-import { Settings, Hash, ArrowDownUp, Plus, MapPin, Calendar, User, Search, Bookmark, Star, Heart, ThumbsUp } from 'lucide-react';
+import { Settings, Hash, ArrowDownUp, Plus, MapPin, Calendar, User, Search, Bookmark, Star, Heart, ThumbsUp, Filter } from 'lucide-react';
+import { FilterModal } from '@/components/FilterModal';
 import { Header } from '@/components/Header';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -79,7 +80,7 @@ export default function MyPage() {
   const { data: myUserData, mutate: mutateMyUser } = useSWR<{ success: boolean, data: any }>(
     !targetUserId ? '/api/profiles/me' : null,
     (url: string) => fetch(url, { cache: 'no-store' }).then(r => r.json()),
-    { revalidateOnMount: true }
+    { revalidateOnMount: true, revalidateOnFocus: true, dedupingInterval: 5000 }
   );
   const { data: targetUserData } = useSWR<{ success: boolean, data: any }>(
     targetUserId ? `/api/profiles/${targetUserId}` : null,
@@ -133,6 +134,8 @@ export default function MyPage() {
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [isTagSortModalOpen, setIsTagSortModalOpen] = useState(false);
   const [isTagSelectorOpen, setIsTagSelectorOpen] = useState(false);
+  const [isMyFilterModalOpen, setIsMyFilterModalOpen] = useState(false);
+  const [myPageAdvancedFilters, setMyPageAdvancedFilters] = useState<any>({});
   const [keyword, setKeyword] = useState('');
 
   const markedWantToGoPosts: Post[] = markedWantToGoData?.data || [];
@@ -183,6 +186,21 @@ export default function MyPage() {
       result = result.filter(p =>
         selectedTags.every(tag => p.tags?.some((t: any) => t.name === tag))
       );
+    }
+    // Advanced filters from filter modal
+    if (myPageAdvancedFilters.minRating != null) {
+      result = result.filter(p => (p.rating || 0) >= myPageAdvancedFilters.minRating);
+    }
+    if (myPageAdvancedFilters.dateFrom) {
+      const from = new Date(myPageAdvancedFilters.dateFrom);
+      result = result.filter(p => p.visited_at && new Date(p.visited_at) >= from);
+    }
+    if (myPageAdvancedFilters.dateTo) {
+      const to = new Date(myPageAdvancedFilters.dateTo);
+      result = result.filter(p => p.visited_at && new Date(p.visited_at) <= to);
+    }
+    if (myPageAdvancedFilters.isFavorite) {
+      result = result.filter(p => p.is_favorite);
     }
     result.sort((a, b) => {
       if (sortField === 'visited') {
@@ -283,7 +301,14 @@ export default function MyPage() {
         <div className="relative shrink-0">
           <div className="w-[84px] h-[84px] rounded-full bg-gray-100 flex items-center justify-center border-2 border-white shadow-sm overflow-hidden relative">
             {user?.avatar_url ? (
-              <Image src={user.avatar_url} alt="User" fill className="object-cover" unoptimized />
+              <Image
+                src={user.avatar_url.includes('?') ? user.avatar_url : `${user.avatar_url}?v=${Date.now()}`}
+                alt="User"
+                fill
+                className="object-cover"
+                unoptimized
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
             ) : (
               <UserPlaceholder />
             )}
@@ -368,7 +393,7 @@ export default function MyPage() {
       )}
 
       {/* Action Row */}
-      <div className="px-4 mb-5 grid grid-cols-3 gap-2">
+      <div className="px-4 mb-5 grid grid-cols-4 gap-2">
         <button
           onClick={() => setIsTagSortModalOpen(true)}
           className={`flex flex-col h-[56px] border rounded-2xl items-center justify-center transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)] relative ${
@@ -386,6 +411,21 @@ export default function MyPage() {
             <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center border-2 border-white">
               {selectedTags.length + (sortField !== 'created' ? 1 : 0)}
             </span>
+          )}
+        </button>
+
+        <button
+          onClick={() => setIsMyFilterModalOpen(true)}
+          className={`flex flex-col h-[56px] border rounded-2xl items-center justify-center transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)] relative ${
+            Object.values(myPageAdvancedFilters).some(v => v != null && v !== false && v !== '')
+              ? 'bg-orange-50 text-orange-600 border-orange-200'
+              : 'bg-white text-gray-600 border-gray-100 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200'
+          }`}
+        >
+          <Filter size={18} strokeWidth={2.5} className="mb-0.5" />
+          <span className="text-[9px] font-black tracking-wider">絞り込み</span>
+          {Object.values(myPageAdvancedFilters).some(v => v != null && v !== false && v !== '') && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center border-2 border-white">!</span>
           )}
         </button>
 
@@ -744,6 +784,19 @@ export default function MyPage() {
         onClose={() => setIsTagSelectorOpen(false)}
         selectedTags={selectedTags}
         onSelect={tags => setSelectedTags(tags)}
+      />
+
+      {/* My Page Filter Modal (without group/registrant and status) */}
+      <FilterModal
+        isOpen={isMyFilterModalOpen}
+        onClose={() => setIsMyFilterModalOpen(false)}
+        hideGroupAndRegistrant={true}
+        hideStatus={true}
+        onApply={(f) => {
+          const { activeGroups: _, status: __, filterMode: ___, ...rest } = f as any;
+          setMyPageAdvancedFilters(rest);
+        }}
+        initialFilters={myPageAdvancedFilters}
       />
     </div>
   );

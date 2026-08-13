@@ -374,8 +374,6 @@ export default function PostsPage() {
       <FilterModal
         isOpen={isFilterModalOpen}
         onClose={() => setIsFilterModalOpen(false)}
-        hideGroupAndRegistrant={true}
-        hideStatus={true}
         onApply={(f) => {
           const { activeGroups: newGroups, status: newStatus, filterMode, ...rest } = f as any;
           updateFilter({
