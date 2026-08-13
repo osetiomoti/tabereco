@@ -37,14 +37,20 @@ export function ImageUpload({ items = [], onChange, maxFiles = 5, uploadProgress
     if (!newFiles) return;
     
     const addedFiles = Array.from(newFiles);
-    // 枚数制限
-    if (items.length + addedFiles.length > maxFiles) {
-      alert(`画像は最大${maxFiles}枚まで選択できます。`);
+    const availableSlots = maxFiles - items.length;
+    if (availableSlots <= 0) {
+      alert(`画像は最大${maxFiles}枚までです。`);
       if (inputRef.current) inputRef.current.value = '';
       return;
     }
+    
+    // 空き枠分だけ切り取る
+    const filesToAdd = addedFiles.slice(0, availableSlots);
+    if (addedFiles.length > availableSlots) {
+       alert(`画像は最大${maxFiles}枚までです。${filesToAdd.length}枚だけ追加しました。`);
+    }
 
-    onChange([...items, ...addedFiles]);
+    onChange([...items, ...filesToAdd]);
     if (inputRef.current) inputRef.current.value = '';
   };
 
@@ -128,7 +134,12 @@ export function ImageUpload({ items = [], onChange, maxFiles = 5, uploadProgress
               
               {isFirst && (
                 <div className="absolute top-2 left-2 bg-orange-500 text-white px-2 py-0.5 rounded-md text-[10px] font-black shadow-md z-10 pointer-events-none">
-                  サムネイル
+                  TOP
+                </div>
+              )}
+              {item instanceof File && (
+                <div className="absolute bottom-2 left-2 bg-pink-500 text-white px-2 py-0.5 rounded-md text-[10px] font-black shadow-md z-10 pointer-events-none">
+                  追加
                 </div>
               )}
 
@@ -179,7 +190,10 @@ export function ImageUpload({ items = [], onChange, maxFiles = 5, uploadProgress
             <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center shadow-sm group-hover:bg-orange-50 transition-colors pointer-events-none">
               <ImagePlus size={24} className="text-gray-300 group-hover:text-orange-500 transition-all duration-300 transform group-hover:scale-110" />
             </div>
-            <p className="text-[10px] text-gray-500 font-bold pointer-events-none">追加する</p>
+            <div className="flex flex-col items-center pointer-events-none">
+              <p className="text-[14px] text-gray-500 font-bold">+</p>
+              <p className="text-[10px] text-gray-400 font-bold">{maxFiles - items.length}枚</p>
+            </div>
           </div>
         )}
       </div>

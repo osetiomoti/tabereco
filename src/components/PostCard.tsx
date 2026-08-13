@@ -365,7 +365,14 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
               className="flex w-full h-full overflow-x-auto snap-x snap-mandatory scrollbar-hide"
             >
               {images.map((img, idx) => (
-                <div key={idx} className="relative w-full h-full flex-shrink-0 snap-center">
+                <div 
+                  key={idx} 
+                  className="relative w-full h-full flex-shrink-0 snap-center cursor-pointer"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    router.push(`/posts/${post.id}`);
+                  }}
+                >
                   <Image
                     src={img}
                     alt={post.title}
@@ -377,7 +384,13 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
               ))}
             </div>
           ) : post.status === 'want_to_go' ? (
-            <div className="w-full h-full relative bg-gray-100 flex items-center justify-center">
+            <div 
+              className="w-full h-full relative bg-gray-100 flex items-center justify-center cursor-pointer"
+              onClick={(e) => {
+                e.preventDefault();
+                router.push(`/posts/${post.id}`);
+              }}
+            >
               {staticMapUrl ? (
                 <>
                   <Image src={staticMapUrl} alt="Map" fill className="object-cover opacity-80" unoptimized />
@@ -395,7 +408,13 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
               )}
             </div>
           ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-gray-50 to-gray-100">
+            <div 
+              className="w-full h-full flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-gray-50 to-gray-100 cursor-pointer"
+              onClick={(e) => {
+                e.preventDefault();
+                router.push(`/posts/${post.id}`);
+              }}
+            >
               <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shadow-sm">
                 <span className="text-3xl">🍽️</span>
               </div>
@@ -729,11 +748,13 @@ function InlineCommentPanel({ postId, onClose }: { postId: string; onClose: () =
 
       {/* Comment input */}
       <form onSubmit={handleSubmit} className="flex items-center gap-2 px-4 py-3 border-t border-gray-100 bg-gray-50">
-        <input
+        <textarea
           value={content}
           onChange={e => setContent(e.target.value)}
           placeholder="コメントを追加..."
-          className="flex-1 bg-white rounded-full px-4 py-2 text-[13px] border border-gray-200 outline-none focus:border-orange-400 transition-colors"
+          rows={1}
+          style={{ minHeight: '38px', maxHeight: '100px' }}
+          className="flex-1 bg-white rounded-2xl px-4 py-2 text-[13px] border border-gray-200 outline-none focus:border-orange-400 transition-colors resize-none"
         />
         <button
           type="submit"
