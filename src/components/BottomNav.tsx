@@ -34,10 +34,16 @@ export function BottomNav() {
 function NavItem({ href, icon, label, isActive }: { href: string; icon: React.ReactNode; label: string; isActive: boolean }) {
   return (
     <Link href={href} className="flex flex-col items-center justify-center flex-1 gap-1 group">
-      <div className={`transition-all duration-300 ${isActive ? 'text-orange-500' : 'text-gray-500 hover:-translate-y-0.5'}`}>
+      <div
+        className={`transition-all duration-300 ${isActive ? '' : 'text-gray-500 hover:-translate-y-0.5'}`}
+        style={isActive ? { color: 'var(--color-primary)' } : undefined}
+      >
         {icon}
       </div>
-      <span className={`text-[9px] font-bold tracking-wider transition-colors ${isActive ? 'text-orange-500' : 'text-gray-500'}`}>
+      <span
+        className={`text-[9px] font-bold tracking-wider transition-colors ${isActive ? '' : 'text-gray-500'}`}
+        style={isActive ? { color: 'var(--color-primary)' } : undefined}
+      >
         {label}
       </span>
     </Link>

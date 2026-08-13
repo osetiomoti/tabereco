@@ -6,6 +6,7 @@ import { SWRProvider } from '@/components/SWRProvider';
 import { SessionKeepAlive } from '@/components/SessionKeepAlive';
 import { ToastProvider } from '@/components/Toast';
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
+import { AppTypeProvider } from '@/contexts/AppTypeContext';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -58,12 +59,14 @@ export default function RootLayout({
       </head>
       <body className={`${outfit.variable} ${notoSansJP.variable} font-sans bg-[#fcfcfc] text-gray-900 antialiased overflow-x-hidden min-h-[100dvh] flex flex-col`}>
         <SWRProvider>
-          <ToastProvider>
-            <SessionKeepAlive />
-            <ServiceWorkerRegister />
-            {children}
-            <BottomNav />
-          </ToastProvider>
+          <AppTypeProvider>
+            <ToastProvider>
+              <SessionKeepAlive />
+              <ServiceWorkerRegister />
+              {children}
+              <BottomNav />
+            </ToastProvider>
+          </AppTypeProvider>
         </SWRProvider>
       </body>
     </html>

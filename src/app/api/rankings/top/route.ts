@@ -62,10 +62,12 @@ export async function GET(request: NextRequest) {
           });
         } else {
           // ランキング未設定ならそのタグで最高評価の投稿
+          const appTypeTop = request.cookies.get('app_type')?.value === 'tabireco' ? 'tabireco' : 'tabereco';
           const topPost = await prisma.post.findFirst({
             where: {
               user_id: tagUserId,
               status: 'visited',
+              app_type: appTypeTop,
               tags: { some: { tag: { name: tagName } } },
             },
             orderBy: { rating: 'desc' },

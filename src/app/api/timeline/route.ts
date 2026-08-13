@@ -32,6 +32,10 @@ export async function GET(request: NextRequest) {
       // Build Prisma Where Clause
       const where: any = {};
 
+      // 0. App Type Filter (from Cookie)
+      const appType = request.cookies.get('app_type')?.value || 'tabereco';
+      where.app_type = appType === 'tabireco' ? 'tabireco' : 'tabereco';
+
       // 1. Base Scope
       if (timelineMode === 'home') {
         // Own posts + group posts

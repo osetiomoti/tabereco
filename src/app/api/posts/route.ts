@@ -96,6 +96,7 @@ export async function GET(request: NextRequest) {
       const posts = await prisma.post.findMany({
         where: {
           ...(isMine ? { user_id: auth.userId } : { user_id: auth.userId }),
+          app_type: request.cookies.get('app_type')?.value === 'tabireco' ? 'tabireco' : 'tabereco',
           ...(status ? { status } : {}),
           ...(isFavoriteParam === 'true' ? { is_favorite: true } : {}),
           ...(keyword ? { title: { contains: keyword, mode: 'insensitive' } } : {}),
@@ -160,6 +161,9 @@ export async function POST(request: NextRequest) {
     try {
       const { title, store_name, comment, rating, image_url, image_urls, visited_at, status, address, google_place_id, latitude, longitude, is_mine_only, price_min, price_max, tagNames } = await request.json();
 
+      // Cookieからapp_typeを取得（tabereco / tabireco）
+      const appType = request.cookies.get('app_type')?.value === 'tabireco' ? 'tabireco' : 'tabereco';
+
       const post = await prisma.post.create({
         data: {
           user_id: auth.userId,
@@ -178,6 +182,7 @@ export async function POST(request: NextRequest) {
           is_mine_only: is_mine_only || false,
           price_min: price_min ?? null,
           price_max: price_max ?? null,
+          app_type: appType,
         },
       });
 

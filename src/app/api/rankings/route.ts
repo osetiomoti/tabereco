@@ -47,9 +47,11 @@ export async function GET(request: NextRequest) {
       // タグを持つ全投稿を取得
       // 注意: tagsテーブルは user_id ごとに同名タグが別レコードのため、
       // タグ名だけで絞り込む必要がある
+      const appType = request.cookies.get('app_type')?.value === 'tabireco' ? 'tabireco' : 'tabereco';
       const postsWithTag = await prisma.post.findMany({
         where: {
           user_id: targetUserId,
+          app_type: appType,
           tags: { some: { tag: { name: tag } } },
         },
         include: { tags: { include: { tag: true } } },

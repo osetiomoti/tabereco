@@ -14,6 +14,7 @@ export type Post = {
   visited_at?: string | null; // YYYY-MM-DD
   created_at: string;
   status: PostStatus;
+  app_type?: string; // 'tabereco' | 'tabireco'
   is_public: boolean;
   is_favorite: boolean;
   is_mine_only: boolean;

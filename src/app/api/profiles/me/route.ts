@@ -15,9 +15,10 @@ export async function GET(request: NextRequest) {
       if (!user) return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
 
       // Total post count (own posts + marked posts)
+      const appType = request.cookies.get('app_type')?.value === 'tabireco' ? 'tabireco' : 'tabereco';
       const [visitedCount, wantToGoCount, markedVisitedCount, markedWantToGoCount] = await Promise.all([
-        prisma.post.count({ where: { user_id: auth.userId, status: 'visited' } }),
-        prisma.post.count({ where: { user_id: auth.userId, status: 'want_to_go' } }),
+        prisma.post.count({ where: { user_id: auth.userId, status: 'visited', app_type: appType } }),
+        prisma.post.count({ where: { user_id: auth.userId, status: 'want_to_go', app_type: appType } }),
         prisma.postVisited.count({ where: { user_id: auth.userId } }),
         prisma.postWantToGo.count({ where: { user_id: auth.userId } }),
       ]);
@@ -99,7 +100,7 @@ export async function GET(request: NextRequest) {
 
       // Total likes received (on their own posts)
       const ownPostIds = await prisma.post.findMany({
-        where: { user_id: auth.userId },
+        where: { user_id: auth.userId, app_type: appType },
         select: { id: true },
       });
       const postIds = ownPostIds.map(p => p.id);
