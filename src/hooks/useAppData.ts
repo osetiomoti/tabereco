@@ -15,8 +15,9 @@ const jsonFetcher = (url: string) => fetch(url).then(r => r.json());
 /** 自分のプロフィール（キャッシュ共有） */
 export function useMyProfile() {
   const { data, isLoading, mutate } = useSWR('/api/profiles/me', fetcher, {
-    dedupingInterval: 5_000, // 5秒間キャッシュ
-    revalidateOnFocus: true,
+    dedupingInterval: 0, // 常に最新を取得
+    revalidateOnMount: true,
+    revalidateOnFocus: false,
   });
   return { profile: data ?? null, isLoading, mutate };
 }

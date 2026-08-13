@@ -2,18 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
-import { Settings, Hash, ArrowDownUp, Plus, MapPin, Calendar, User, Search, Bookmark, Star, Heart, ThumbsUp, Filter } from 'lucide-react';
+import { Settings, Plus, MapPin, Calendar, User, Search, Star, ThumbsUp, Filter, Bookmark } from 'lucide-react';
 import { FilterModal } from '@/components/FilterModal';
 import { Header } from '@/components/Header';
 import Image from 'next/image';
 import Link from 'next/link';
 import { getPosts } from '@/lib/api/posts';
 import type { Post } from '@/lib/types';
-import { TagSelector } from '@/components/TagSelector';
 import { formatDate } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useSharedFilter } from '@/hooks/useSharedFilter';
 import { useScrollRestore } from '@/hooks/useScrollRestore';
+import { useMyProfile } from '@/hooks/useAppData';
 
 function MiniNoImageMap({ post }: { post: Post }) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
@@ -77,11 +77,9 @@ export default function MyPage() {
     }
   }, []);
 
-  const { data: myUserData, mutate: mutateMyUser } = useSWR<{ success: boolean, data: any }>(
-    !targetUserId ? '/api/profiles/me' : null,
-    (url: string) => fetch(url, { cache: 'no-store' }).then(r => r.json()),
-    { revalidateOnMount: true, revalidateOnFocus: true, dedupingInterval: 5000 }
-  );
+  const { profile: myProfileData, mutate: mutateMyUser } = useMyProfile();
+  // myProfileData is the raw .data object from /api/profiles/me
+  // (fetcher in useMyProfile returns j.data directly)
   const { data: targetUserData } = useSWR<{ success: boolean, data: any }>(
     targetUserId ? `/api/profiles/${targetUserId}` : null,
     (url: string) => fetch(url, { cache: 'no-store' }).then(r => r.json()),
@@ -116,7 +114,7 @@ export default function MyPage() {
     (url: string) => fetch(url).then(r => r.json())
   );
 
-  const user = targetUserId ? targetUserData?.data?.user : myUserData?.data;
+  const user = targetUserId ? targetUserData?.data?.user : myProfileData;
   const posts: Post[] = targetUserId ? (targetUserData?.data?.posts || []) : (ownPostsData || []);
   const loading = targetUserId ? !targetUserData : ownPostsLoading;
   const friendsCount = targetUserId ? (targetUserData?.data?.friendsCount || 0) : (friendsData?.length || 0);
@@ -124,16 +122,14 @@ export default function MyPage() {
   // Stats from API
   const avgRating = targetUserId
     ? (targetUserData?.data?.avgRating ?? null)
-    : (myUserData?.data?.avgRating ?? null);
+    : (myProfileData?.avgRating ?? null);
   const totalLikesReceived = targetUserId
     ? (targetUserData?.data?.totalLikesReceived ?? 0)
-    : (myUserData?.data?.totalLikesReceived ?? 0);
+    : (myProfileData?.totalLikesReceived ?? 0);
   const ratingUserId = targetUserId ?? undefined;
 
   const [sortField, setSortField] = useState<'created' | 'visited' | 'rating_desc' | 'rating_asc'>('created');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
-  const [isTagSortModalOpen, setIsTagSortModalOpen] = useState(false);
-  const [isTagSelectorOpen, setIsTagSelectorOpen] = useState(false);
   const [isMyFilterModalOpen, setIsMyFilterModalOpen] = useState(false);
   const [myPageAdvancedFilters, setMyPageAdvancedFilters] = useState<any>({});
   const [keyword, setKeyword] = useState('');
@@ -242,7 +238,7 @@ export default function MyPage() {
         advancedFilters: { ...filterState?.advancedFilters, registrantUserIds: [targetUserId], include_mine: false }
       });
     } else {
-      let myId = myUserData?.data?.id;
+      let myId = myProfileData?.id;
       if (!myId) {
         try {
           const r = await fetch('/api/profiles/me');
@@ -267,7 +263,7 @@ export default function MyPage() {
         advancedFilters: { ...filterState?.advancedFilters, registrantUserIds: [targetUserId], include_mine: false }
       });
     } else {
-      let myId = myUserData?.data?.id;
+      let myId = myProfileData?.id;
       if (!myId) {
         try {
           const r = await fetch('/api/profiles/me');
@@ -393,38 +389,18 @@ export default function MyPage() {
       )}
 
       {/* Action Row */}
-      <div className="px-4 mb-5 grid grid-cols-4 gap-2">
-        <button
-          onClick={() => setIsTagSortModalOpen(true)}
-          className={`flex flex-col h-[56px] border rounded-2xl items-center justify-center transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)] relative ${
-            selectedTags.length > 0 || sortField !== 'created'
-              ? 'bg-orange-50 text-orange-600 border-orange-200'
-              : 'bg-white text-gray-600 border-gray-100 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200'
-          }`}
-        >
-          <div className="flex items-center gap-1 mb-0.5">
-            <Hash size={16} strokeWidth={2.5} />
-            <ArrowDownUp size={14} strokeWidth={2.5} />
-          </div>
-          <span className="text-[9px] font-black tracking-wider">タグ・並び替え</span>
-          {(selectedTags.length > 0 || sortField !== 'created') && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center border-2 border-white">
-              {selectedTags.length + (sortField !== 'created' ? 1 : 0)}
-            </span>
-          )}
-        </button>
-
+      <div className="px-4 mb-5 grid grid-cols-3 gap-2">
         <button
           onClick={() => setIsMyFilterModalOpen(true)}
           className={`flex flex-col h-[56px] border rounded-2xl items-center justify-center transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)] relative ${
-            Object.values(myPageAdvancedFilters).some(v => v != null && v !== false && v !== '')
+            Object.values(myPageAdvancedFilters).some(v => v != null && v !== false && v !== '') || sortField !== 'created' || selectedTags.length > 0
               ? 'bg-orange-50 text-orange-600 border-orange-200'
               : 'bg-white text-gray-600 border-gray-100 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200'
           }`}
         >
           <Filter size={18} strokeWidth={2.5} className="mb-0.5" />
-          <span className="text-[9px] font-black tracking-wider">絞り込み</span>
-          {Object.values(myPageAdvancedFilters).some(v => v != null && v !== false && v !== '') && (
+          <span className="text-[9px] font-black tracking-wider">絞り込み・並び替え</span>
+          {(Object.values(myPageAdvancedFilters).some(v => v != null && v !== false && v !== '') || sortField !== 'created' || selectedTags.length > 0) && (
             <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center border-2 border-white">!</span>
           )}
         </button>
@@ -451,80 +427,7 @@ export default function MyPage() {
         </div>
       )}
 
-      {/* Tag Selector Modal */}
-      <TagSelector isOpen={isTagSelectorOpen} onClose={() => setIsTagSelectorOpen(false)} selectedTags={selectedTags} onSelect={(tags) => setSelectedTags(tags)} />
 
-      {/* Integrated Tag & Sort Modal */}
-      {isTagSortModalOpen && (
-        <div className="fixed inset-0 z-[110] flex flex-col justify-end animate-in fade-in duration-200">
-          <div className="absolute inset-0 bg-black/25 backdrop-blur-sm" onClick={() => setIsTagSortModalOpen(false)} />
-          <div className="relative w-full max-w-lg mx-auto bg-white rounded-t-3xl shadow-2xl p-6 z-10 space-y-6 animate-in slide-in-from-bottom duration-300">
-            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
-              <h3 className="text-base font-bold text-gray-900">タグ・並び替え</h3>
-              <button onClick={() => setIsTagSortModalOpen(false)} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200">
-                ×
-              </button>
-            </div>
-
-            {/* Sort Section */}
-            <div>
-              <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2">並び替え</label>
-              <div className="grid grid-cols-2 gap-2">
-                {[
-                  { key: 'created', label: '新しい順 (投稿日時順)' },
-                  { key: 'visited', label: '行った日順' },
-                  { key: 'rating_desc', label: '評価が高い順' },
-                  { key: 'rating_asc', label: '評価が低い順' },
-                ].map(opt => (
-                  <button
-                    key={opt.key}
-                    onClick={() => setSortField(opt.key as any)}
-                    className={`py-2.5 px-3 rounded-xl text-[12px] font-bold text-left border transition-all ${
-                      sortField === opt.key
-                        ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
-                        : 'bg-white text-gray-600 border-gray-200 hover:border-orange-200'
-                    }`}
-                  >
-                    {opt.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Tag Section */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">タグ絞り込み</label>
-                <button
-                  onClick={() => setIsTagSelectorOpen(true)}
-                  className="text-[12px] font-bold text-orange-500 hover:underline"
-                >
-                  タグを選択・編集 →
-                </button>
-              </div>
-              <div className="min-h-[44px] p-2.5 bg-gray-50 rounded-xl border border-gray-100 flex flex-wrap gap-1.5 items-center">
-                {selectedTags.length === 0 ? (
-                  <span className="text-[12px] text-gray-400">すべてのタグを表示中</span>
-                ) : (
-                  selectedTags.map(t => (
-                    <span key={t} className="inline-flex items-center gap-1 px-2.5 py-1 bg-white text-orange-600 border border-orange-200 rounded-lg text-[11px] font-bold shadow-2xs">
-                      #{t}
-                      <button onClick={() => setSelectedTags(prev => prev.filter(x => x !== t))} className="opacity-60 hover:opacity-100">×</button>
-                    </span>
-                  ))
-                )}
-              </div>
-            </div>
-
-            <button
-              onClick={() => setIsTagSortModalOpen(false)}
-              className="w-full py-3.5 bg-orange-500 text-white rounded-xl font-bold text-[14px] shadow-sm hover:bg-orange-600 active:scale-98 transition-all"
-            >
-              完了
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Search bar */}
       <div className="px-4 mb-4">
@@ -767,7 +670,7 @@ export default function MyPage() {
                    <span className="text-[10px] font-black">♥</span>
                 </div>
               )}
-              {post.user_id !== myUserData?.data?.id && (
+              {post.user_id !== myProfileData?.id && (
                 <div className="absolute bottom-1.5 right-1.5 bg-gray-800/80 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full z-10 shadow-sm opacity-90 scale-90 origin-bottom-right">
                   みんなの投稿
                 </div>
@@ -778,13 +681,7 @@ export default function MyPage() {
       )}
 
 
-      {/* Tag Selector Modal */}
-      <TagSelector
-        isOpen={isTagSelectorOpen}
-        onClose={() => setIsTagSelectorOpen(false)}
-        selectedTags={selectedTags}
-        onSelect={tags => setSelectedTags(tags)}
-      />
+
 
       {/* My Page Filter Modal (without group/registrant and status) */}
       <FilterModal
@@ -793,10 +690,25 @@ export default function MyPage() {
         hideGroupAndRegistrant={true}
         hideStatus={true}
         onApply={(f) => {
-          const { activeGroups: _, status: __, filterMode: ___, ...rest } = f as any;
+          // Apply sort_order → sortField
+          const sortMap: Record<string, 'created' | 'visited' | 'rating_desc' | 'rating_asc'> = {
+            'created_desc': 'created',
+            'visited_desc': 'visited',
+            'rating_desc': 'rating_desc',
+            'rating_asc': 'rating_asc',
+          };
+          if (f.sort_order && sortMap[f.sort_order]) setSortField(sortMap[f.sort_order]);
+          // Apply tags
+          if (f.tags) setSelectedTags(f.tags);
+          // Store remaining advanced filters (excluding sort/tags/group/status)
+          const { activeGroups: _, status: __, filterMode: ___, sort_order: ____, tags: _____, ...rest } = f as any;
           setMyPageAdvancedFilters(rest);
         }}
-        initialFilters={myPageAdvancedFilters}
+        initialFilters={{
+          ...myPageAdvancedFilters,
+          tags: selectedTags,
+          sort_order: sortField === 'created' ? 'created_desc' : sortField === 'visited' ? 'visited_desc' : sortField,
+        }}
       />
     </div>
   );
