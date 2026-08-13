@@ -21,8 +21,12 @@ export async function GET(request: NextRequest) {
       const isMine = searchParams.get('is_mine') === 'true';
 
       if (markedWantToGo) {
+        const appType = request.cookies.get('app_type')?.value === 'tabireco' ? 'tabireco' : 'tabereco';
         const wantToGos = await prisma.postWantToGo.findMany({
-          where: { user_id: auth.userId },
+          where: {
+            user_id: auth.userId,
+            post: { app_type: appType },
+          },
           include: {
             post: {
               include: {
@@ -45,8 +49,12 @@ export async function GET(request: NextRequest) {
       }
 
       if (markedVisited) {
+        const appType = request.cookies.get('app_type')?.value === 'tabireco' ? 'tabireco' : 'tabereco';
         const visiteds = await prisma.postVisited.findMany({
-          where: { user_id: auth.userId },
+          where: {
+            user_id: auth.userId,
+            post: { app_type: appType },
+          },
           include: {
             post: {
               include: {
@@ -62,7 +70,7 @@ export async function GET(request: NextRequest) {
           .filter((v) => v.post.user_id !== auth.userId)
           .map((v) => ({
             ...v.post,
-            rating: v.rating, // Overwrite with my rating instead of owner's rating
+            rating: v.rating,
             tags: v.post.tags.map((pt: any) => pt.tag),
             _markedVisitedAt: v.created_at,
           }));
@@ -70,8 +78,12 @@ export async function GET(request: NextRequest) {
       }
 
       if (likedByMe) {
+        const appType = request.cookies.get('app_type')?.value === 'tabireco' ? 'tabireco' : 'tabereco';
         const likes = await prisma.postLike.findMany({
-          where: { user_id: auth.userId },
+          where: {
+            user_id: auth.userId,
+            post: { app_type: appType },
+          },
           include: {
             post: {
               include: {
