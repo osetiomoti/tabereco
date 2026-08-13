@@ -21,7 +21,7 @@ type FilterState = {
   price_min?: number;
   price_max?: number;
   rating_min?: number;
-  sort_order: 'created_desc' | 'rating_asc' | 'rating_desc' | 'price_asc' | 'price_desc';
+  sort_order: 'created_desc' | 'visited_desc' | 'rating_asc' | 'rating_desc' | 'price_asc' | 'price_desc';
 };
 
 type Member = { id: string; name: string; avatar_url?: string };
@@ -33,6 +33,8 @@ type Props = {
   onApply: (filters: FilterState) => void;
   initialFilters?: Partial<FilterState>;
   initialTags?: Tag[];
+  hideGroupAndRegistrant?: boolean;
+  hideStatus?: boolean;
 };
 
 const PERIOD_OPTIONS = [
@@ -60,7 +62,7 @@ const DEFAULT: FilterState = {
   sort_order: 'created_desc',
 };
 
-export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialTags }: Props) {
+export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialTags, hideGroupAndRegistrant = false, hideStatus = false }: Props) {
   const [filters, setFilters] = useState<FilterState>({ ...DEFAULT, ...(initialFilters || {}) });
   const { tags: swrTags } = useMyTags();
   const { groups: swrGroups } = useGroups();
@@ -300,8 +302,9 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
         <div className="flex-1 overflow-y-auto pb-28">
 
           {/* ── Row 1: Filter Mode + Group/User selectors (horizontal scroll) ── */}
-          <div className="px-5 pt-5 pb-4 border-b border-gray-100">
-            <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 block">絞り込み方法</label>
+          {!hideGroupAndRegistrant && (
+            <div className="px-5 pt-5 pb-4 border-b border-gray-100">
+              <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2 block">絞り込み方法</label>
             {/* Toggle: Group left, User right */}
             <div className="flex p-1 bg-gray-100 rounded-xl gap-1 mb-4">
               <button
@@ -467,7 +470,8 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
                 </div>
               )
             )}
-          </div>
+            </div>
+          )}
 
           {/* ── Other filters ── */}
           <div className="px-5 pt-4 pb-4 space-y-6">
@@ -519,28 +523,30 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
               </div>
 
               {/* ── Status card ── */}
-              <div className="space-y-2">
-                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">状態</label>
-                <div className="flex flex-col gap-1.5">
-                  {[
-                    { id: 'all', label: 'すべて' },
-                    { id: 'visited', label: '行った' },
-                    { id: 'want_to_go', label: '行きたい' }
-                  ].map(s => (
-                    <button
-                      key={s.id}
-                      onClick={() => set('status', s.id as any)}
-                      className={`w-full py-2 rounded-xl text-[12px] font-bold transition-all border ${
-                        filters.status === s.id
-                          ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
-                          : 'bg-white text-gray-500 border-gray-200 hover:border-orange-300'
-                      }`}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
+              {!hideStatus && (
+                <div className="space-y-2">
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">状態</label>
+                  <div className="flex flex-col gap-1.5">
+                    {[
+                      { id: 'all', label: 'すべて' },
+                      { id: 'visited', label: '行った' },
+                      { id: 'want_to_go', label: '行きたい' }
+                    ].map(s => (
+                      <button
+                        key={s.id}
+                        onClick={() => set('status', s.id as any)}
+                        className={`w-full py-2 rounded-xl text-[12px] font-bold transition-all border ${
+                          filters.status === s.id
+                            ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
+                            : 'bg-white text-gray-500 border-gray-200 hover:border-orange-300'
+                        }`}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* ── Sort card ── */}
               <div className="space-y-2">
@@ -551,7 +557,8 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
                     onChange={e => set('sort_order', e.target.value)}
                     className="w-full appearance-none bg-white border border-gray-200 rounded-xl py-3 px-3 text-[13px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all font-medium"
                   >
-                    <option value="created_desc">新しい順</option>
+                    <option value="created_desc">新しい順 (投稿日時順)</option>
+                    <option value="visited_desc">行った日順</option>
                     <option value="rating_desc">評価が高い順</option>
                     <option value="rating_asc">評価が低い順</option>
                     <option value="price_desc">値段帯が高い順</option>

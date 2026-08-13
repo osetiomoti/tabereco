@@ -129,10 +129,9 @@ export default function MyPage() {
     : (myUserData?.data?.totalLikesReceived ?? 0);
   const ratingUserId = targetUserId ?? undefined;
 
-  const [sortField, setSortField] = useState<'date' | 'rating'>('date');
-  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
-  const [showSortMenu, setShowSortMenu] = useState(false);
+  const [sortField, setSortField] = useState<'created' | 'visited' | 'rating_desc' | 'rating_asc'>('created');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [isTagSortModalOpen, setIsTagSortModalOpen] = useState(false);
   const [isTagSelectorOpen, setIsTagSelectorOpen] = useState(false);
   const [keyword, setKeyword] = useState('');
 
@@ -186,14 +185,26 @@ export default function MyPage() {
       );
     }
     result.sort((a, b) => {
-      if (sortField === 'date') {
-        const tA = new Date(a.visited_at || a.created_at).getTime();
-        const tB = new Date(b.visited_at || b.created_at).getTime();
-        return sortOrder === 'desc' ? tB - tA : tA - tB;
-      } else {
+      if (sortField === 'visited') {
+        const tA = a.visited_at ? new Date(a.visited_at).getTime() : 0;
+        const tB = b.visited_at ? new Date(b.visited_at).getTime() : 0;
+        if (tA === 0 && tB === 0) return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        if (tA === 0) return 1;
+        if (tB === 0) return -1;
+        return tB - tA;
+      } else if (sortField === 'rating_desc') {
         const rA = a.rating || 0;
         const rB = b.rating || 0;
-        return sortOrder === 'desc' ? rB - rA : rA - rB;
+        return rB - rA;
+      } else if (sortField === 'rating_asc') {
+        const rA = a.rating || 0;
+        const rB = b.rating || 0;
+        return rA - rB;
+      } else {
+        // created: 投稿日時順
+        const tA = new Date(a.created_at).getTime();
+        const tB = new Date(b.created_at).getTime();
+        return tB - tA;
       }
     });
     return result;
@@ -357,28 +368,27 @@ export default function MyPage() {
       )}
 
       {/* Action Row */}
-      <div className={`px-4 mb-5 grid grid-cols-4 gap-2`}>
-        <button onClick={() => setIsTagSelectorOpen(true)} className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
-          <Hash size={20} strokeWidth={2.5} className="mb-0.5" />
-          <span className="text-[9px] font-black tracking-wider">タグ</span>
-        </button>
-        <div className="relative col-span-1">
-          <button onClick={() => setShowSortMenu(!showSortMenu)} className="w-full h-[56px] flex flex-col bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
-            <ArrowDownUp size={20} className="mb-0.5" strokeWidth={2.5} />
-            <span className="text-[9px] font-black tracking-wider">並び替え</span>
-          </button>
-
-          {showSortMenu && (
-            <div className="absolute top-16 left-1/2 -translate-x-1/2 w-[160px] bg-white border border-gray-100 shadow-2xl rounded-2xl overflow-hidden z-20 animate-in fade-in zoom-in-95 duration-200">
-              <div className="py-2">
-                <SortOption label="日付 (新しい順)" active={sortField === 'date' && sortOrder === 'desc'} onClick={() => { setSortField('date'); setSortOrder('desc'); setShowSortMenu(false); }} />
-                <SortOption label="日付 (古い順)" active={sortField === 'date' && sortOrder === 'asc'} onClick={() => { setSortField('date'); setSortOrder('asc'); setShowSortMenu(false); }} />
-                <SortOption label="評価 (高い順)" active={sortField === 'rating' && sortOrder === 'desc'} onClick={() => { setSortField('rating'); setSortOrder('desc'); setShowSortMenu(false); }} />
-                <SortOption label="評価 (低い順)" active={sortField === 'rating' && sortOrder === 'asc'} onClick={() => { setSortField('rating'); setSortOrder('asc'); setShowSortMenu(false); }} />
-              </div>
-            </div>
+      <div className="px-4 mb-5 grid grid-cols-3 gap-2">
+        <button
+          onClick={() => setIsTagSortModalOpen(true)}
+          className={`flex flex-col h-[56px] border rounded-2xl items-center justify-center transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)] relative ${
+            selectedTags.length > 0 || sortField !== 'created'
+              ? 'bg-orange-50 text-orange-600 border-orange-200'
+              : 'bg-white text-gray-600 border-gray-100 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200'
+          }`}
+        >
+          <div className="flex items-center gap-1 mb-0.5">
+            <Hash size={16} strokeWidth={2.5} />
+            <ArrowDownUp size={14} strokeWidth={2.5} />
+          </div>
+          <span className="text-[9px] font-black tracking-wider">タグ・並び替え</span>
+          {(selectedTags.length > 0 || sortField !== 'created') && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center border-2 border-white">
+              {selectedTags.length + (sortField !== 'created' ? 1 : 0)}
+            </span>
           )}
-        </div>
+        </button>
+
         <button onClick={goToMap} className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
           <MapPin size={20} strokeWidth={2.5} className="mb-0.5" />
           <span className="text-[9px] font-black tracking-wider">マップ</span>
@@ -398,6 +408,81 @@ export default function MyPage() {
               <button className="opacity-60 hover:opacity-100" onClick={() => setSelectedTags(prev => prev.filter(x => x !== t))}>×</button>
             </span>
           ))}
+        </div>
+      )}
+
+      {/* Tag Selector Modal */}
+      <TagSelector isOpen={isTagSelectorOpen} onClose={() => setIsTagSelectorOpen(false)} selectedTags={selectedTags} onSelect={(tags) => setSelectedTags(tags)} />
+
+      {/* Integrated Tag & Sort Modal */}
+      {isTagSortModalOpen && (
+        <div className="fixed inset-0 z-[110] flex flex-col justify-end animate-in fade-in duration-200">
+          <div className="absolute inset-0 bg-black/25 backdrop-blur-sm" onClick={() => setIsTagSortModalOpen(false)} />
+          <div className="relative w-full max-w-lg mx-auto bg-white rounded-t-3xl shadow-2xl p-6 z-10 space-y-6 animate-in slide-in-from-bottom duration-300">
+            <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+              <h3 className="text-base font-bold text-gray-900">タグ・並び替え</h3>
+              <button onClick={() => setIsTagSortModalOpen(false)} className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-gray-500 hover:bg-gray-200">
+                ×
+              </button>
+            </div>
+
+            {/* Sort Section */}
+            <div>
+              <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block mb-2">並び替え</label>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { key: 'created', label: '新しい順 (投稿日時順)' },
+                  { key: 'visited', label: '行った日順' },
+                  { key: 'rating_desc', label: '評価が高い順' },
+                  { key: 'rating_asc', label: '評価が低い順' },
+                ].map(opt => (
+                  <button
+                    key={opt.key}
+                    onClick={() => setSortField(opt.key as any)}
+                    className={`py-2.5 px-3 rounded-xl text-[12px] font-bold text-left border transition-all ${
+                      sortField === opt.key
+                        ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
+                        : 'bg-white text-gray-600 border-gray-200 hover:border-orange-200'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Tag Section */}
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">タグ絞り込み</label>
+                <button
+                  onClick={() => setIsTagSelectorOpen(true)}
+                  className="text-[12px] font-bold text-orange-500 hover:underline"
+                >
+                  タグを選択・編集 →
+                </button>
+              </div>
+              <div className="min-h-[44px] p-2.5 bg-gray-50 rounded-xl border border-gray-100 flex flex-wrap gap-1.5 items-center">
+                {selectedTags.length === 0 ? (
+                  <span className="text-[12px] text-gray-400">すべてのタグを表示中</span>
+                ) : (
+                  selectedTags.map(t => (
+                    <span key={t} className="inline-flex items-center gap-1 px-2.5 py-1 bg-white text-orange-600 border border-orange-200 rounded-lg text-[11px] font-bold shadow-2xs">
+                      #{t}
+                      <button onClick={() => setSelectedTags(prev => prev.filter(x => x !== t))} className="opacity-60 hover:opacity-100">×</button>
+                    </span>
+                  ))
+                )}
+              </div>
+            </div>
+
+            <button
+              onClick={() => setIsTagSortModalOpen(false)}
+              className="w-full py-3.5 bg-orange-500 text-white rounded-xl font-bold text-[14px] shadow-sm hover:bg-orange-600 active:scale-98 transition-all"
+            >
+              完了
+            </button>
+          </div>
         </div>
       )}
 

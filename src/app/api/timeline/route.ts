@@ -135,23 +135,54 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      // Build OrderBy Clause
+      const sortOption = sortOrder === 'created_desc' || sortField === 'created_at' || sortOrder === 'desc' ? (sortField === 'visited_at' || sortOrder === 'visited_desc' ? 'visited_desc' : sortField === 'rating' ? 'rating_desc' : 'created_desc') : sortOrder;
+
+      let orderBy: any[];
+      if (sortOption === 'visited_desc' || sortField === 'visited_at') {
+        orderBy = [
+          { visited_at: { sort: 'desc', nulls: 'last' } },
+          { created_at: 'desc' },
+          { id: 'desc' },
+        ];
+      } else if (sortOption === 'rating_desc' || (sortField === 'rating' && sortOrder === 'desc')) {
+        orderBy = [
+          { rating: 'desc' },
+          { created_at: 'desc' },
+          { id: 'desc' },
+        ];
+      } else if (sortOption === 'rating_asc' || (sortField === 'rating' && sortOrder === 'asc')) {
+        orderBy = [
+          { rating: 'asc' },
+          { created_at: 'desc' },
+          { id: 'desc' },
+        ];
+      } else if (sortOption === 'price_desc') {
+        orderBy = [
+          { price_max: 'desc' },
+          { created_at: 'desc' },
+          { id: 'desc' },
+        ];
+      } else if (sortOption === 'price_asc') {
+        orderBy = [
+          { price_min: 'asc' },
+          { created_at: 'desc' },
+          { id: 'desc' },
+        ];
+      } else {
+        // Default: 投稿日時順 (created_at desc)
+        orderBy = [
+          { created_at: 'desc' },
+          { id: 'desc' },
+        ];
+      }
+
       // Query Prisma
       const posts = await prisma.post.findMany({
         where,
         take: limit + 1, // Fetch 1 extra to determine if there is a next page
         ...(cursor ? { skip: 1, cursor: { id: cursor } } : {}),
-        orderBy: sortField === 'rating'
-          ? [
-              { rating: sortOrder as any },
-              { visited_at: 'desc' },
-              { created_at: 'desc' },
-              { id: 'desc' }
-            ]
-          : [
-              { visited_at: sortOrder as any },
-              { created_at: sortOrder as any },
-              { id: 'desc' }
-            ],
+        orderBy,
         include: {
           user: { select: { id: true, name: true, avatar_url: true } },
           tags: { include: { tag: true } },

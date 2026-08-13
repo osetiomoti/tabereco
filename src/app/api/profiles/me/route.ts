@@ -32,9 +32,9 @@ export async function GET(request: NextRequest) {
         }
       });
 
-      // Own posts with rating (ratings the user gave on their own posts)
+      // Own posts with rating (ratings the user gave on their own posts in current app_type)
       const ownRatedPosts = await prisma.post.findMany({
-        where: { user_id: auth.userId, rating: { not: null } },
+        where: { user_id: auth.userId, rating: { not: null }, app_type: appType },
         select: {
           id: true,
           title: true,
@@ -44,9 +44,9 @@ export async function GET(request: NextRequest) {
         },
       });
 
-      // PostVisited entries where user gave a rating (on others' posts)
+      // PostVisited entries where user gave a rating (on others' posts in current app_type)
       const visitedRated = await prisma.postVisited.findMany({
-        where: { user_id: auth.userId, rating: { not: null } },
+        where: { user_id: auth.userId, rating: { not: null }, post: { app_type: appType } },
         select: {
           rating: true,
           post: {
@@ -98,15 +98,21 @@ export async function GET(request: NextRequest) {
         ).length,
       }));
 
-      // Total likes received (on their own posts)
+      // Total likes/reactions received from others on their own posts
       const ownPostIds = await prisma.post.findMany({
         where: { user_id: auth.userId, app_type: appType },
         select: { id: true },
       });
       const postIds = ownPostIds.map(p => p.id);
-      const totalLikesReceived = postIds.length > 0
-        ? await prisma.postLike.count({ where: { post_id: { in: postIds } } })
-        : 0;
+      let totalLikesReceived = 0;
+      if (postIds.length > 0) {
+        const [likes, wants, visiteds] = await Promise.all([
+          prisma.postLike.count({ where: { post_id: { in: postIds }, user_id: { not: auth.userId } } }),
+          prisma.postWantToGo.count({ where: { post_id: { in: postIds }, user_id: { not: auth.userId } } }),
+          prisma.postVisited.count({ where: { post_id: { in: postIds }, user_id: { not: auth.userId } } }),
+        ]);
+        totalLikesReceived = likes + wants + visiteds;
+      }
 
       const response = NextResponse.json({
         success: true,

@@ -70,11 +70,14 @@ export async function GET(
         return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
       }
 
+      const appType = request.cookies.get('app_type')?.value === 'tabireco' ? 'tabireco' : 'tabereco';
+
       // Fetch user's public/shared posts (is_mine_only = false)
       const posts = await prisma.post.findMany({
         where: {
           user_id: targetUserId,
           is_mine_only: false,
+          app_type: appType,
         },
         include: {
           user: {
@@ -115,16 +118,16 @@ export async function GET(
 
       // Total post count (own visited + own want_to_go + marked)
       const [visitedCount, wantToGoCount, markedVisitedCount, markedWantToGoCount] = await Promise.all([
-        prisma.post.count({ where: { user_id: targetUserId, status: 'visited', is_mine_only: false } }),
-        prisma.post.count({ where: { user_id: targetUserId, status: 'want_to_go', is_mine_only: false } }),
-        prisma.postVisited.count({ where: { user_id: targetUserId, post: { is_mine_only: false } } }),
-        prisma.postWantToGo.count({ where: { user_id: targetUserId, post: { is_mine_only: false } } }),
+        prisma.post.count({ where: { user_id: targetUserId, status: 'visited', is_mine_only: false, app_type: appType } }),
+        prisma.post.count({ where: { user_id: targetUserId, status: 'want_to_go', is_mine_only: false, app_type: appType } }),
+        prisma.postVisited.count({ where: { user_id: targetUserId, post: { is_mine_only: false, app_type: appType } } }),
+        prisma.postWantToGo.count({ where: { user_id: targetUserId, post: { is_mine_only: false, app_type: appType } } }),
       ]);
       const totalPostCount = visitedCount + wantToGoCount + markedVisitedCount + markedWantToGoCount;
 
       // Average rating (Ratings the target user has given)
       const ownRatedPosts = await prisma.post.findMany({
-        where: { user_id: targetUserId, rating: { not: null }, is_mine_only: false },
+        where: { user_id: targetUserId, rating: { not: null }, is_mine_only: false, app_type: appType },
         select: {
           id: true,
           title: true,
@@ -134,7 +137,7 @@ export async function GET(
         },
       });
       const visitedRated = await prisma.postVisited.findMany({
-        where: { user_id: targetUserId, rating: { not: null } },
+        where: { user_id: targetUserId, rating: { not: null }, post: { app_type: appType } },
         select: {
           rating: true,
           post: {
@@ -187,13 +190,19 @@ export async function GET(
 
       // Total likes received on user's posts
       const ownPosts = await prisma.post.findMany({
-        where: { user_id: targetUserId },
+        where: { user_id: targetUserId, app_type: appType },
         select: { id: true },
       });
       const postIds = ownPosts.map(p => p.id);
-      const totalLikesReceived = postIds.length > 0
-        ? await prisma.postLike.count({ where: { post_id: { in: postIds } } })
-        : 0;
+      let totalLikesReceived = 0;
+      if (postIds.length > 0) {
+        const [likes, wants, visiteds] = await Promise.all([
+          prisma.postLike.count({ where: { post_id: { in: postIds }, user_id: { not: targetUserId } } }),
+          prisma.postWantToGo.count({ where: { post_id: { in: postIds }, user_id: { not: targetUserId } } }),
+          prisma.postVisited.count({ where: { post_id: { in: postIds }, user_id: { not: targetUserId } } }),
+        ]);
+        totalLikesReceived = likes + wants + visiteds;
+      }
 
       return NextResponse.json({
         success: true,
