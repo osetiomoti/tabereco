@@ -592,7 +592,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
         {/* マップ - 右端 */}
         {hasCoords ? (
           <a 
-            href={`https://www.google.com/maps/search/?api=1&query=${post.latitude},${post.longitude}`}
+            href={`https://www.google.com/maps/search/?api=1&query=${post.latitude},${post.longitude}${post.google_place_id ? `&query_place_id=${post.google_place_id}` : ''}`}
             target="_blank"
             rel="noopener noreferrer"
             onClick={e => e.stopPropagation()}
@@ -657,7 +657,11 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
         <div className="px-4 pb-2">
           <button
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsVisitedModalOpen(true); }}
-            className="w-full py-3 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-black text-[13px] rounded-2xl flex items-center justify-center gap-2 shadow-sm shadow-orange-200 active:scale-[0.98] transition-all"
+            className="w-full py-3 text-white font-black text-[13px] rounded-2xl flex items-center justify-center gap-2 shadow-sm active:scale-[0.98] transition-all"
+            style={{
+              background: 'linear-gradient(to right, var(--color-primary), var(--color-primary-hover))',
+              boxShadow: '0 4px 6px -1px var(--color-primary-shadow)'
+            }}
           >
             <Utensils size={16} />
             行ってきた！記録する
@@ -759,7 +763,7 @@ function InlineCommentPanel({ postId, onClose }: { postId: string; onClose: () =
         <button
           type="submit"
           disabled={!content.trim() || submitting}
-          className="w-9 h-9 rounded-full bg-orange-500 text-white flex items-center justify-center disabled:opacity-40 active:scale-95 transition-all"
+          className="w-9 h-9 rounded-full text-white flex items-center justify-center disabled:opacity-40 active:scale-95 transition-all bg-[var(--color-primary)]"
         >
           <Send size={16} />
         </button>

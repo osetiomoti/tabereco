@@ -279,7 +279,7 @@ export function PostForm({ post }: Props) {
             onClick={() => set('status', 'visited')}
             className={`flex-1 py-3 text-[13px] font-black rounded-xl transition-all duration-500 ${
               values.status === 'visited'
-                ? 'bg-white text-[#ff6b95] shadow-md ring-1 ring-black/5'
+                ? 'bg-white shadow-md ring-1 ring-black/5 text-[var(--color-primary)]'
                 : 'text-gray-400 hover:text-gray-600'
             }`}
           >
@@ -290,7 +290,7 @@ export function PostForm({ post }: Props) {
             onClick={() => set('status', 'want_to_go')}
             className={`flex-1 py-3 text-[13px] font-black rounded-xl transition-all duration-500 ${
               values.status === 'want_to_go'
-                ? 'bg-white text-[#ff6b95] shadow-md ring-1 ring-black/5'
+                ? 'bg-white shadow-md ring-1 ring-black/5 text-[var(--color-primary)]'
                 : 'text-gray-400 hover:text-gray-600'
             }`}
           >
@@ -321,11 +321,12 @@ export function PostForm({ post }: Props) {
               value={values.address}
               onChange={(e) => set('address', e.target.value)}
               placeholder="例：東京都中央区..."
-              className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-4 focus:ring-[#ff6b95]/5 focus:border-[#ff6b95]/20 focus:bg-white transition-all text-base font-bold"
+              className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-4 focus:bg-white transition-all text-base font-bold"
+              style={{ '--tw-ring-color': 'var(--color-primary-shadow)' } as React.CSSProperties}
             />
             {extractingGps && (
               <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                <Loader2 size={20} className="text-[#ff6b95] animate-spin" />
+                <Loader2 size={20} className="animate-spin text-[var(--color-primary)]" />
               </div>
             )}
           </div>
@@ -336,13 +337,13 @@ export function PostForm({ post }: Props) {
           <button
             type="button"
             onClick={() => setIsMapPickerOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-pink-50 text-[#ff6b95] rounded-full text-[11px] font-black hover:bg-pink-100 transition-colors border border-pink-100/50"
+            className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary-50)] text-[var(--color-primary)] rounded-full text-[11px] font-black hover:brightness-95 transition-colors border border-[var(--color-primary-light)]"
           >
             🗺️ 地図から選択
           </button>
           <button
             type="button"
-            className="flex items-center gap-2 px-4 py-2 bg-pink-50 text-[#ff6b95] rounded-full text-[11px] font-black hover:bg-pink-100 transition-colors border border-pink-100/50"
+            className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary-50)] text-[var(--color-primary)] rounded-full text-[11px] font-black hover:brightness-95 transition-colors border border-[var(--color-primary-light)]"
           >
             📍 現在地
           </button>
@@ -365,7 +366,8 @@ export function PostForm({ post }: Props) {
                 value={values.visited_at || ''}
                 onChange={(e) => set('visited_at', e.target.value)}
                 disabled={values.status === 'want_to_go'}
-                className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 focus:outline-none focus:ring-4 focus:ring-[#ff6b95]/5 focus:bg-white transition-all text-base font-bold [color-scheme:light] disabled:bg-gray-100 disabled:text-gray-400"
+                className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 focus:outline-none focus:ring-4 focus:bg-white transition-all text-base font-bold [color-scheme:light] disabled:bg-gray-100 disabled:text-gray-400"
+                style={{ '--tw-ring-color': 'var(--color-primary-shadow)' } as React.CSSProperties}
               />
               {values.visited_at && values.status !== 'want_to_go' && (
                 <button
@@ -396,7 +398,8 @@ export function PostForm({ post }: Props) {
             onChange={(e) => set('comment', e.target.value)}
             placeholder="味の感想や、お店の雰囲気を記録してね..."
             rows={4}
-            className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-4 focus:ring-[#ff6b95]/5 focus:border-[#ff6b95]/20 focus:bg-white transition-all text-base font-bold resize-none"
+            className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-4 focus:bg-white transition-all text-base font-bold resize-none"
+            style={{ '--tw-ring-color': 'var(--color-primary-shadow)' } as React.CSSProperties}
           />
         </div>
 
@@ -420,7 +423,8 @@ export function PostForm({ post }: Props) {
                   set('price_max', max ? parseInt(max, 10) : null);
                 }
               }}
-              className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 focus:outline-none focus:ring-4 focus:ring-[#ff6b95]/5 focus:bg-white transition-all text-base font-bold appearance-none cursor-pointer"
+              className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-4 text-gray-900 focus:outline-none focus:ring-4 focus:bg-white transition-all text-base font-bold appearance-none cursor-pointer"
+              style={{ '--tw-ring-color': 'var(--color-primary-shadow)' } as React.CSSProperties}
             >
               <option value="">未設定</option>
               <option value="1-1000">1〜1,000円</option>
@@ -443,7 +447,8 @@ export function PostForm({ post }: Props) {
                   value={values.price_min ?? ''}
                   onChange={(e) => set('price_min', e.target.value ? parseInt(e.target.value, 10) : null)}
                   placeholder="下限"
-                  className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-3 text-gray-900 focus:outline-none focus:ring-4 focus:ring-[#ff6b95]/5 focus:bg-white transition-all text-base font-bold"
+                  className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-3 text-gray-900 focus:outline-none focus:ring-4 focus:bg-white transition-all text-base font-bold"
+                  style={{ '--tw-ring-color': 'var(--color-primary-shadow)' } as React.CSSProperties}
                 />
                 <span className="text-gray-400 font-bold">〜</span>
                 <input
@@ -451,7 +456,8 @@ export function PostForm({ post }: Props) {
                   value={values.price_max ?? ''}
                   onChange={(e) => set('price_max', e.target.value ? parseInt(e.target.value, 10) : null)}
                   placeholder="上限"
-                  className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-3 text-gray-900 focus:outline-none focus:ring-4 focus:ring-[#ff6b95]/5 focus:bg-white transition-all text-base font-bold"
+                  className="w-full bg-gray-50/50 border border-gray-100 rounded-2xl px-5 py-3 text-gray-900 focus:outline-none focus:ring-4 focus:bg-white transition-all text-base font-bold"
+                  style={{ '--tw-ring-color': 'var(--color-primary-shadow)' } as React.CSSProperties}
                 />
                 <span className="text-gray-400 font-bold shrink-0 text-sm">円</span>
               </div>
@@ -478,7 +484,7 @@ export function PostForm({ post }: Props) {
             <button
               type="button"
               onClick={() => setIsTagSelectorOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 bg-[#ff6b95]/5 text-[#ff6b95] rounded-xl text-[12px] font-black hover:bg-[#ff6b95]/10 transition-all border border-[#ff6b95]/10"
+              className="flex items-center gap-2 px-4 py-2 bg-[var(--color-primary-50)] text-[var(--color-primary)] rounded-xl text-[12px] font-black hover:brightness-95 transition-all border border-[var(--color-primary-light)]"
             >
               <Plus size={14} strokeWidth={3} />
               タグを選択
@@ -554,7 +560,11 @@ export function PostForm({ post }: Props) {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-5 rounded-[2rem] bg-gradient-to-r from-[#ff6b95] to-[#ff9a8b] text-white font-black text-[18px] hover:brightness-105 disabled:opacity-50 transition-all shadow-xl shadow-[#ff6b95]/30 flex items-center justify-center gap-3 active:scale-[0.98] relative overflow-hidden group"
+          className="w-full py-5 rounded-[2rem] text-white font-black text-[18px] hover:brightness-105 disabled:opacity-50 transition-all shadow-xl flex items-center justify-center gap-3 active:scale-[0.98] relative overflow-hidden group"
+          style={{
+            background: 'linear-gradient(to bottom right, var(--color-primary), var(--color-primary-hover))',
+            boxShadow: '0 20px 25px -5px var(--color-primary-shadow), 0 8px 10px -6px var(--color-primary-shadow)'
+          }}
         >
           {loading ? (
             uploadTotal > 0 ? (

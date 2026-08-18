@@ -49,7 +49,10 @@ export function AppTypeProvider({ children, initialAppType = 'tabereco' }: { chi
     document.documentElement.setAttribute('data-app-type', type);
 
     // SWR キャッシュを全クリアして新しい app_type で再フェッチ
-    mutate(() => true, undefined, { revalidate: true });
+    mutate(() => true, undefined, { revalidate: true }).then(() => {
+      // 完全に画面をリロードして古いデータを残さないようにする
+      window.location.reload();
+    });
   }, []);
 
   return (

@@ -108,7 +108,7 @@ export function VisitedModal({ postId, storeName, onClose, onSuccess }: Props) {
             ))}
           </div>
           {(hoverRating || rating) > 0 && (
-            <p className="text-center text-[13px] font-black text-orange-500 animate-in fade-in">
+            <p className="text-center text-[13px] font-black text-[var(--color-primary)] animate-in fade-in">
               {starLabels[hoverRating || rating]}
             </p>
           )}
@@ -130,7 +130,11 @@ export function VisitedModal({ postId, storeName, onClose, onSuccess }: Props) {
         <button
           onClick={handleSubmit}
           disabled={loading}
-          className="w-full py-4 bg-gradient-to-r from-orange-500 to-pink-500 text-white font-black text-[15px] rounded-2xl flex items-center justify-center gap-2 shadow-md shadow-orange-200 active:scale-[0.98] transition-all disabled:opacity-60"
+          className="w-full py-4 text-white font-black text-[15px] rounded-2xl flex items-center justify-center gap-2 shadow-md active:scale-[0.98] transition-all disabled:opacity-60"
+          style={{
+            background: 'linear-gradient(to right, var(--color-primary), var(--color-primary-hover))',
+            boxShadow: '0 4px 6px -1px var(--color-primary-shadow)'
+          }}
         >
           {loading ? (
             <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

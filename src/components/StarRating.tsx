@@ -116,7 +116,7 @@ export function StarInput({ value, onChange }: InputProps) {
       </button>
 
       {/* Score */}
-      <span className="text-2xl sm:text-3xl font-black text-[#ff6b95] min-w-[2.5rem] sm:min-w-[3.5rem] text-center drop-shadow-sm shrink-0">
+      <span className="text-2xl sm:text-3xl font-black text-[var(--color-primary)] min-w-[2.5rem] sm:min-w-[3.5rem] text-center drop-shadow-sm shrink-0">
         {displayValue.toFixed(1)}
       </span>
 
