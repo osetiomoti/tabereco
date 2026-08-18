@@ -350,6 +350,8 @@ function TagSelectorView({
   isLoading: boolean;
   onSelect: (tag: string) => void;
 }) {
+  const [searchQuery, setSearchQuery] = useState('');
+
   if (isLoading) {
     return (
       <div className="px-4 py-8 space-y-3">
@@ -370,30 +372,54 @@ function TagSelectorView({
     );
   }
 
+  const filteredTags = tags.filter(tag => tag.name.toLowerCase().includes(searchQuery.toLowerCase()));
+
   return (
-    <div className="px-4 py-4 space-y-2">
-      {tags.map((tag, i) => (
-        <button
-          key={tag.name}
-          onClick={() => onSelect(tag.name)}
-          className="w-full flex items-center justify-between px-4 py-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:border-[var(--color-primary-light)] hover:bg-[var(--color-primary-50)] active:scale-[0.98] transition-all"
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-[13px] font-black text-gray-300 w-6 text-right flex-shrink-0">
-              {i + 1}
-            </span>
-            <div className="text-left">
-              <p className="font-black text-gray-900 text-[15px]">#{tag.name}</p>
-              <p className="text-[11px] text-gray-400 font-bold mt-0.5">
-                {tag.user_count}人 · {tag.post_count}件
-              </p>
-            </div>
-          </div>
-          <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+    <div className="px-4 py-4 space-y-4">
+      {/* 検索入力欄 */}
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+          <svg className="h-5 w-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
           </svg>
-        </button>
-      ))}
+        </div>
+        <input
+          type="text"
+          placeholder="タグを検索..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="block w-full pl-10 pr-3 py-3 border border-gray-100 rounded-2xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[var(--color-primary-light)] focus:border-[var(--color-primary-light)] sm:text-sm transition-all"
+        />
+      </div>
+
+      <div className="space-y-2">
+        {filteredTags.length === 0 ? (
+          <p className="text-center text-sm text-gray-400 py-8 font-bold">一致するタグがありません</p>
+        ) : (
+          filteredTags.map((tag, i) => (
+            <button
+              key={tag.name}
+              onClick={() => onSelect(tag.name)}
+              className="w-full flex items-center justify-between px-4 py-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:border-[var(--color-primary-light)] hover:bg-[var(--color-primary-50)] active:scale-[0.98] transition-all"
+            >
+              <div className="flex items-center gap-3">
+                <span className="text-[13px] font-black text-gray-300 w-6 text-right flex-shrink-0">
+                  {i + 1}
+                </span>
+                <div className="text-left">
+                  <p className="font-black text-gray-900 text-[15px]">#{tag.name}</p>
+                  <p className="text-[11px] text-gray-400 font-bold mt-0.5">
+                    {tag.user_count}人 · {tag.post_count}件
+                  </p>
+                </div>
+              </div>
+              <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
+          ))
+        )}
+      </div>
     </div>
   );
 }
