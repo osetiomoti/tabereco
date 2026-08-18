@@ -11,6 +11,7 @@ import { todayString } from '@/lib/utils';
 import { getExifGPS } from '@/lib/exif';
 import type { Post, PostFormValues, PostStatus } from '@/lib/types';
 import { Loader2, MapPin, Globe, Hash, Check, Tag as TagIcon, Plus, X, Heart, ChevronDown, Lock } from 'lucide-react';
+import { useAppType } from '@/contexts/AppTypeContext';
 
 import { PlaceAutocomplete } from './PlaceAutocomplete';
 import { TagSelector } from './TagSelector';
@@ -24,6 +25,7 @@ type Props = {
 
 export function PostForm({ post }: Props) {
   const router = useRouter();
+  const { appType } = useAppType();
   const searchParams = useSearchParams();
   const { uploadFile, isUploading } = useUpload();
   const isEdit = Boolean(post);
@@ -63,8 +65,8 @@ export function PostForm({ post }: Props) {
     is_mine_only: post?.is_mine_only ?? false,
     price_min: post?.price_min ?? 1000,
     price_max: post?.price_max ?? 2000,
-    temperature_min: post?.temperature_min ?? null,
-    temperature_max: post?.temperature_max ?? null,
+    temperature_min: post ? post.temperature_min : 37,
+    temperature_max: post ? post.temperature_max : 38,
   });
 
   const isCustomTemp = post && post.tags?.some(t => t.name === '温泉') ? 
@@ -680,7 +682,7 @@ export function PostForm({ post }: Props) {
           ) : (
             <>
               <Check size={24} strokeWidth={4} className="group-hover:scale-110 transition-transform" />
-              <span>{isEdit ? '内容を更新する' : 'この食事を記録する'}</span>
+              <span>{isEdit ? '内容を更新する' : (appType === 'tabireco' ? 'この場所を記録する' : 'この食事を記録する')}</span>
             </>
           )}
         </button>
