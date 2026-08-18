@@ -25,6 +25,8 @@ export type Post = {
   latitude: number | null;
   longitude: number | null;
   visit_count: number;
+  temperature_min: number | null;
+  temperature_max: number | null;
   _avgRating?: number | null;
   _ratingCount?: number;
   tags?: Tag[];
@@ -55,6 +57,8 @@ export type PostInsert = {
   latitude?: number | null;
   longitude?: number | null;
   visit_count?: number;
+  temperature_min?: number | null;
+  temperature_max?: number | null;
 };
 
 export type PostUpdate = {
@@ -76,6 +80,8 @@ export type PostUpdate = {
   latitude?: number | null;
   longitude?: number | null;
   visit_count?: number;
+  temperature_min?: number | null;
+  temperature_max?: number | null;
 };
 
 export type PostFormValues = {
@@ -97,6 +103,8 @@ export type PostFormValues = {
   latitude?: number;
   longitude?: number;
   is_mine_only: boolean;
+  temperature_min: number | null;
+  temperature_max: number | null;
 };
 
 export type Tag = {

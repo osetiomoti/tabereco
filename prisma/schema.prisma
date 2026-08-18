@@ -82,6 +82,8 @@ model Post {
   price_min   Int?
   price_max   Int?
   visit_count Int         @default(1)
+  temperature_min Float?
+  temperature_max Float?
   app_type    String      @default("tabereco") @db.VarChar(20)
   user        User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
   tags        PostTag[]

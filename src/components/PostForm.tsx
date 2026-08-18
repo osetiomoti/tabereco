@@ -63,7 +63,14 @@ export function PostForm({ post }: Props) {
     is_mine_only: post?.is_mine_only ?? false,
     price_min: post?.price_min ?? 1000,
     price_max: post?.price_max ?? 2000,
+    temperature_min: post?.temperature_min ?? null,
+    temperature_max: post?.temperature_max ?? null,
   });
+
+  const isCustomTemp = post && post.tags?.some(t => t.name === '温泉') ? 
+    (post.temperature_min === null && post.temperature_max === null ? false : !['null-34', '35-36', '37-38', '39-40', '41-42', '43-null'].includes(`${post.temperature_min}-${post.temperature_max}`))
+    : false;
+  const [tempMode, setTempMode] = useState<'preset' | 'custom'>(isCustomTemp ? 'custom' : 'preset');
 
   const isCustomPrice = post ? 
     (post.price_min === null && post.price_max === null ? false : !['1-1000', '1000-2000', '2000-3000', '3000-4000', '4000-5000', '5000-10000', '10000-'].includes(`${post.price_min}-${post.price_max || ''}`))
@@ -235,6 +242,8 @@ export function PostForm({ post }: Props) {
         is_mine_only: values.is_mine_only,
         price_min: values.price_min,
         price_max: values.price_max,
+        temperature_min: values.tags.includes('温泉') ? values.temperature_min : null,
+        temperature_max: values.tags.includes('温泉') ? values.temperature_max : null,
       };
 
       let result;
@@ -491,6 +500,96 @@ export function PostForm({ post }: Props) {
             </button>
           </div>
         </div>
+
+        {/* 温泉の温度設定 */}
+        {values.tags.includes('温泉') && (
+          <div className="space-y-2.5 animate-in slide-in-from-top-2 fade-in duration-300">
+            <label className="text-[12px] font-black text-gray-500 tracking-widest ml-1 block">温度帯</label>
+            <div className="p-4 bg-gray-50/50 border border-gray-100 rounded-[1.5rem] shadow-inner space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">🌡️</span>
+                <span className="text-sm font-bold text-gray-700">お湯の温度</span>
+              </div>
+              
+              <div className="flex bg-gray-200/50 p-1 rounded-xl">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTempMode('preset');
+                    set('temperature_min', null);
+                    set('temperature_max', null);
+                  }}
+                  className={`flex-1 py-2 text-[12px] font-bold rounded-lg transition-all ${
+                    tempMode === 'preset' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  選択
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setTempMode('custom');
+                  }}
+                  className={`flex-1 py-2 text-[12px] font-bold rounded-lg transition-all ${
+                    tempMode === 'custom' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  カスタム入力
+                </button>
+              </div>
+
+              {tempMode === 'preset' ? (
+                <select
+                  value={`${values.temperature_min}-${values.temperature_max}`}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === 'unknown') {
+                      set('temperature_min', null);
+                      set('temperature_max', null);
+                    } else {
+                      const [minStr, maxStr] = val.split('-');
+                      set('temperature_min', minStr === 'null' ? null : parseFloat(minStr));
+                      set('temperature_max', maxStr === 'null' ? null : parseFloat(maxStr));
+                    }
+                  }}
+                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-shadow)] font-bold appearance-none cursor-pointer"
+                >
+                  <option value="unknown">わからない</option>
+                  <option value="null-34">〜34℃</option>
+                  <option value="35-36">35〜36℃</option>
+                  <option value="37-38">37〜38℃</option>
+                  <option value="39-40">39〜40℃</option>
+                  <option value="41-42">41〜42℃</option>
+                  <option value="43-null">43℃〜</option>
+                </select>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={values.temperature_min ?? ''}
+                    onChange={(e) => set('temperature_min', e.target.value ? parseFloat(e.target.value) : null)}
+                    placeholder="下限"
+                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-shadow)] font-bold text-center"
+                  />
+                  <span className="text-gray-400 font-bold">〜</span>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={values.temperature_max ?? ''}
+                    onChange={(e) => set('temperature_max', e.target.value ? parseFloat(e.target.value) : null)}
+                    placeholder="上限"
+                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-shadow)] font-bold text-center"
+                  />
+                  <span className="text-gray-400 font-bold shrink-0">℃</span>
+                </div>
+              )}
+            </div>
+            {tempMode === 'custom' && values.temperature_min !== null && values.temperature_max !== null && values.temperature_min > values.temperature_max && (
+              <p className="text-red-500 text-xs font-bold px-2">左の数字は右の数字より小さくしてください。</p>
+            )}
+          </div>
+        )}
       </section>
 
       {/* 4. プライバシー */}

@@ -380,7 +380,11 @@ export default function MyPage() {
         <div className="px-4 mb-6">
           <Link
             href="/posts/new"
-            className="w-full py-4 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-2xl font-black text-lg flex items-center justify-center gap-3 shadow-lg shadow-orange-500/20 hover:scale-[1.01] active:scale-98 transition-all"
+            className="w-full py-4 text-white rounded-2xl font-black text-lg flex items-center justify-center gap-3 shadow-lg hover:scale-[1.01] active:scale-98 transition-all"
+            style={{
+              background: 'linear-gradient(to right, var(--color-primary), var(--color-primary-hover))',
+              boxShadow: '0 10px 15px -3px var(--color-primary-shadow), 0 4px 6px -2px var(--color-primary-shadow)'
+            }}
           >
             <div className="p-1.5 bg-white/20 rounded-[10px]"><Plus size={22} strokeWidth={3} /></div>
             <span>新しく記録する</span>
@@ -394,8 +398,8 @@ export default function MyPage() {
           onClick={() => setIsMyFilterModalOpen(true)}
           className={`flex flex-col h-[56px] border rounded-2xl items-center justify-center transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)] relative ${
             Object.values(myPageAdvancedFilters).some(v => v != null && v !== false && v !== '') || sortField !== 'created' || selectedTags.length > 0
-              ? 'bg-orange-50 text-orange-600 border-orange-200'
-              : 'bg-white text-gray-600 border-gray-100 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200'
+              ? 'bg-[var(--color-primary-50)] text-[var(--color-primary)] border-[var(--color-primary-light)]'
+              : 'bg-white text-gray-600 border-gray-100 hover:bg-[var(--color-primary-50)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-light)]'
           }`}
         >
           <Filter size={18} strokeWidth={2.5} className="mb-0.5" />
@@ -405,11 +409,11 @@ export default function MyPage() {
           )}
         </button>
 
-        <button onClick={goToMap} className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+        <button onClick={goToMap} className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-[var(--color-primary-50)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-light)] transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
           <MapPin size={20} strokeWidth={2.5} className="mb-0.5" />
           <span className="text-[9px] font-black tracking-wider">マップ</span>
         </button>
-        <button onClick={goToCalendar} className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-orange-50 hover:text-orange-600 hover:border-orange-200 transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
+        <button onClick={goToCalendar} className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-[var(--color-primary-50)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-light)] transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
           <Calendar size={20} strokeWidth={2.5} className="mb-0.5" />
           <span className="text-[9px] font-black tracking-wider">カレンダー</span>
         </button>
@@ -419,7 +423,7 @@ export default function MyPage() {
       {selectedTags.length > 0 && (
         <div className="px-4 mb-4 flex gap-2 flex-wrap">
           {selectedTags.map(t => (
-            <span key={t} className="inline-flex items-center gap-1 px-3 py-1 bg-orange-50 text-orange-600 rounded-lg text-[12px] font-bold">
+            <span key={t} className="inline-flex items-center gap-1 px-3 py-1 bg-[var(--color-primary-50)] text-[var(--color-primary)] rounded-lg text-[12px] font-bold border border-[var(--color-primary-light)]">
               #{t}
               <button className="opacity-60 hover:opacity-100" onClick={() => setSelectedTags(prev => prev.filter(x => x !== t))}>×</button>
             </span>

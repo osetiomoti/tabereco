@@ -169,6 +169,19 @@ export default async function PostDetailPage({ params }: Props) {
              </div>
           </div>
         )}
+
+        {(post.temperature_min != null || post.temperature_max != null) && (
+          <div className="px-5 py-4 flex justify-between items-center bg-gray-50/20">
+             <div className="flex items-center gap-5">
+               <span className="font-bold text-[15px] text-gray-900 tracking-widest">温度帯</span>
+               <span className="text-gray-500 text-[13.5px] font-bold">
+                 {post.temperature_min != null && post.temperature_max == null ? `${post.temperature_min}℃〜` : ''}
+                 {post.temperature_min == null && post.temperature_max != null ? `〜${post.temperature_max}℃` : ''}
+                 {post.temperature_min != null && post.temperature_max != null ? `${post.temperature_min}〜${post.temperature_max}℃` : ''}
+               </span>
+             </div>
+          </div>
+        )}
         
         <div className="px-5 py-4 bg-gray-50/20">
            <div className="flex justify-between items-center mb-3">

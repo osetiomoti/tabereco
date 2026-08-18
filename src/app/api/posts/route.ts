@@ -175,7 +175,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   return withAuth(request, async (auth) => {
     try {
-      const { title, store_name, comment, rating, image_url, image_urls, visited_at, status, address, google_place_id, latitude, longitude, is_mine_only, price_min, price_max, tagNames } = await request.json();
+      const { title, store_name, comment, rating, image_url, image_urls, visited_at, status, address, google_place_id, latitude, longitude, is_mine_only, price_min, price_max, temperature_min, temperature_max, tagNames } = await request.json();
 
       // Cookieからapp_typeを取得（tabereco / tabireco）
       const appType = request.cookies.get('app_type')?.value === 'tabireco' ? 'tabireco' : 'tabereco';
@@ -198,6 +198,8 @@ export async function POST(request: NextRequest) {
           is_mine_only: is_mine_only || false,
           price_min: price_min ?? null,
           price_max: price_max ?? null,
+          temperature_min: temperature_min ?? null,
+          temperature_max: temperature_max ?? null,
           app_type: appType,
         },
       });
