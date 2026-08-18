@@ -35,6 +35,7 @@ type Props = {
   initialTags?: Tag[];
   hideGroupAndRegistrant?: boolean;
   hideStatus?: boolean;
+  hideTags?: boolean;
 };
 
 const PERIOD_OPTIONS = [
@@ -62,7 +63,7 @@ const DEFAULT: FilterState = {
   sort_order: 'created_desc',
 };
 
-export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialTags, hideGroupAndRegistrant = false, hideStatus = false }: Props) {
+export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialTags, hideGroupAndRegistrant = false, hideStatus = false, hideTags = false }: Props) {
   const [filters, setFilters] = useState<FilterState>({ ...DEFAULT, ...(initialFilters || {}) });
   const { tags: swrTags } = useMyTags();
   const { groups: swrGroups } = useGroups();
@@ -477,6 +478,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
           <div className="px-5 pt-4 pb-4 space-y-6">
 
               {/* ── Tag card ── */}
+              {!hideTags && (
               <div className="space-y-2">
                 <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">タグ</label>
                 <div className="w-full border border-gray-200 rounded-xl px-3 py-2.5 bg-white flex items-center justify-between min-h-[48px] relative">
@@ -500,6 +502,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
                 </div>
                 <TagSelector isOpen={isTagSelectorOpen} onClose={() => setIsTagSelectorOpen(false)} selectedTags={filters.tags} onSelect={(tags: string[]) => set('tags', tags)} />
               </div>
+              )}
 
               {/* ── Period card ── */}
               <div className="space-y-2">

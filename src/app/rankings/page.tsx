@@ -1,13 +1,12 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
-import { Trophy, Save, ChevronDown } from 'lucide-react';
+import { useState, useCallback, useRef } from 'react';
+import { Trophy, SlidersHorizontal, Crown, GripVertical, ChevronLeft, Loader2 } from 'lucide-react';
 import Image from 'next/image';
-import { saveRankings } from '@/lib/api/friends';
-import { useMyTags, useFriends, useMyProfile, useGroupTags } from '@/hooks/useAppData';
-import type { Tag } from '@/lib/types';
+import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import useSWR, { mutate } from 'swr';
+import { FilterModal } from '@/components/FilterModal';
 
 // dnd-kit
 import {
@@ -27,317 +26,655 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
-// ─── Sortable Row ──────────────────────────────────────────────────────
-function SortableRow({ post, index, isReadOnly, medals }: {
-  post: any;
+// ─── Types ──────────────────────────────────────────────────────────────────
+type RankingPost = {
+  id: string;
+  title: string;
+  store_name: string | null;
+  image_url: string | null;
+  image_urls: string[];
+  rating: number | null;
+  visited_at: string | null;
+};
+
+type UserRanking = {
+  id: string;
+  name: string;
+  avatar_url: string | null;
+  isMe: boolean;
+  postCount: number;
+  isKing: boolean;
+  posts: RankingPost[];
+};
+
+type TagInfo = {
+  name: string;
+  post_count: number;
+  user_count: number;
+};
+
+// ─── Medal helper ───────────────────────────────────────────────────────────
+const MEDALS = ['🥇', '🥈', '🥉'];
+
+function getRankDisplay(index: number) {
+  if (index < 3) return { emoji: MEDALS[index], text: null };
+  return { emoji: null, text: `${index + 1}` };
+}
+
+// ─── Sortable Row (自分のランキング用) ───────────────────────────────────────
+function SortableRow({ post, index, onNavigate }: {
+  post: RankingPost;
   index: number;
-  isReadOnly: boolean;
-  medals: string[];
+  onNavigate: (id: string) => void;
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: post.id,
-    disabled: isReadOnly,
-  });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: post.id });
+  const rank = getRankDisplay(index);
 
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.5 : 1,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 50 : undefined,
   };
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 bg-white border rounded-2xl p-3 transition-colors ${
-        isDragging ? 'border-orange-300 shadow-lg' : 'border-gray-100 shadow-sm'
-      } ${!isReadOnly ? 'hover:shadow-md' : ''}`}
+      className={`flex items-center gap-3 rounded-2xl p-3 transition-all select-none touch-none ${
+        isDragging
+          ? 'bg-pink-50 border-2 border-pink-200 shadow-xl scale-[1.02]'
+          : index === 0
+          ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200 shadow-sm'
+          : 'bg-white border border-gray-100 shadow-sm'
+      }`}
     >
       {/* 順位バッジ */}
-      <div className="w-8 text-center flex-shrink-0">
-        {index < 3 ? (
-          <span className="text-xl leading-none">{medals[index]}</span>
+      <div className="w-8 flex-shrink-0 flex items-center justify-center">
+        {rank.emoji ? (
+          <span className={`leading-none ${index === 0 ? 'text-2xl' : 'text-xl'}`}>{rank.emoji}</span>
         ) : (
-          <span className="text-sm font-black text-gray-300">{index + 1}</span>
+          <span className="text-[13px] font-black text-gray-300">{rank.text}</span>
         )}
       </div>
 
       {/* サムネイル */}
-      <div className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 relative bg-gray-100">
-        {post.image_url ? (
-          <Image src={post.image_url} alt={post.title} fill className="object-cover" />
+      <button
+        type="button"
+        onClick={() => onNavigate(post.id)}
+        className="w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 relative bg-gray-100 active:scale-95 transition-transform"
+      >
+        {(post.image_urls?.[0] || post.image_url) ? (
+          <Image
+            src={post.image_urls?.[0] || post.image_url!}
+            alt={post.title}
+            fill
+            className="object-cover"
+            unoptimized
+          />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-2xl">🍽️</div>
+          <div className="w-full h-full flex items-center justify-center text-xl">🍽️</div>
         )}
-      </div>
+      </button>
 
       {/* テキスト */}
-      <div className="flex-1 min-w-0">
-        <p className="font-black text-sm text-gray-900 truncate">{post.title}</p>
-        <p className="text-xs text-gray-400 font-bold truncate">{post.store_name}</p>
-        {post.rating && (
-          <span className="text-[11px] font-black text-orange-400">{'★'.repeat(Math.floor(post.rating))}</span>
+      <button
+        type="button"
+        onClick={() => onNavigate(post.id)}
+        className="flex-1 min-w-0 text-left"
+      >
+        <p className={`font-black text-sm text-gray-900 truncate ${index === 0 ? 'text-amber-800' : ''}`}>
+          {post.title || post.store_name || '無題'}
+        </p>
+        {post.store_name && post.title && (
+          <p className="text-xs text-gray-400 font-bold truncate">{post.store_name}</p>
         )}
-      </div>
+        {post.rating != null && (
+          <span className="text-[11px] font-black text-[var(--color-primary)]">
+            {'★'.repeat(Math.min(5, Math.floor(post.rating)))}
+            <span className="text-gray-300">{'★'.repeat(5 - Math.min(5, Math.floor(post.rating)))}</span>
+          </span>
+        )}
+      </button>
 
       {/* ドラッグハンドル */}
-      {!isReadOnly && (
-        <div
-          {...attributes}
-          {...listeners}
-          className="flex-shrink-0 text-gray-300 hover:text-gray-500 transition-colors cursor-grab active:cursor-grabbing p-1 touch-none"
-        >
-          <svg width="16" height="20" viewBox="0 0 16 20" fill="currentColor">
-            <circle cx="5" cy="4" r="2" /><circle cx="11" cy="4" r="2" />
-            <circle cx="5" cy="10" r="2" /><circle cx="11" cy="10" r="2" />
-            <circle cx="5" cy="16" r="2" /><circle cx="11" cy="16" r="2" />
-          </svg>
-        </div>
-      )}
+      <div
+        {...attributes}
+        {...listeners}
+        className="flex-shrink-0 p-3 text-gray-300 hover:text-gray-500 cursor-grab active:cursor-grabbing transition-colors touch-none"
+        style={{ touchAction: 'none' }}
+      >
+        <GripVertical size={18} />
+      </div>
     </div>
   );
 }
 
-// ─── Rankings Fetcher ──────────────────────────────────────────────────
-function useRankings(tag: string, userId?: string) {
-  const key = tag ? `/api/rankings?tag=${encodeURIComponent(tag)}${userId ? `&userId=${encodeURIComponent(userId)}` : ''}` : null;
-  return useSWR<any[]>(key, (url: string) =>
-    fetch(url).then(r => r.json()).then(j => j.data ?? []), {
-    revalidateOnFocus: false,
-    dedupingInterval: 30_000,
-  });
-}
-
-// ─── Main Page ──────────────────────────────────────────────────────────
-export default function RankingsPage() {
-  const { tags: myTags } = useMyTags();
-  const { tags: groupTags } = useGroupTags();
-  const { friends } = useFriends();
-  const { profile: myProfile } = useMyProfile();
-
-  const [friendTags, setFriendTags] = useState<Tag[]>([]);
-  const [rankingTag, setRankingTag] = useState<string>('');
-  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
-  const [showTagDropdown, setShowTagDropdown] = useState(false);
-  const [rankingSaved, setRankingSaved] = useState(false);
-  const [localPosts, setLocalPosts] = useState<any[] | null>(null);
-  const [showGroupTagsInRanking, setShowGroupTagsInRanking] = useState(false);
-
-  const isReadOnly = selectedUserId !== null;
-
-  // タグリスト（自分 or フレンド or グループ全員）
-  const displayTags = useMemo(() => {
-    if (selectedUserId !== null) return friendTags;
-    if (showGroupTagsInRanking) return groupTags;
-    return myTags;
-  }, [selectedUserId, myTags, friendTags, groupTags, showGroupTagsInRanking]);
-
-  // ランキングデータ（SWRキャッシュ）
-  const { data: remoteRankingPosts, isLoading: rankingLoading } = useRankings(
-    rankingTag,
-    selectedUserId ?? undefined
-  );
-
-  // ローカル並び替えがあればそちらを優先
-  const rankingPosts = localPosts ?? remoteRankingPosts ?? [];
-
-  // タグ or ユーザー変更時にローカル並び替えをリセット
-  const handleTagSelect = (tag: string) => {
-    setRankingTag(tag);
-    setShowTagDropdown(false);
-    setLocalPosts(null);
-    setRankingSaved(false);
-  };
-
-  const handleUserSelect = (userId: string | null) => {
-    setSelectedUserId(userId);
-    setRankingTag('');
-    setLocalPosts(null);
-    setRankingSaved(false);
-    if (userId !== null) {
-      setFriendTags([]);
-      import('@/lib/api/posts').then(({ getUserTags }) => {
-        getUserTags(userId).then(tags => setFriendTags(tags ?? [])).catch(() => {});
-      });
-    }
-  };
-
-  // dnd-kit sensors（マウス + タッチ両対応）
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
-  );
-
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    setLocalPosts(prev => {
-      const list = prev ?? remoteRankingPosts ?? [];
-      const oldIdx = list.findIndex(p => p.id === active.id);
-      const newIdx = list.findIndex(p => p.id === over.id);
-      return arrayMove(list, oldIdx, newIdx);
-    });
-    setRankingSaved(false);
-  }, [remoteRankingPosts]);
-
-  const handleSave = async () => {
-    if (isReadOnly || !rankingTag) return;
-    await saveRankings(rankingTag, rankingPosts.map(p => p.id));
-    mutate(key => typeof key === 'string' && key.startsWith('/api/rankings'));
-    setRankingSaved(true);
-  };
-
-  const medals = ['🥇', '🥈', '🥉'];
+// ─── Read-only Row (他ユーザー用) ─────────────────────────────────────────────
+function ReadOnlyRow({ post, index, onNavigate }: {
+  post: RankingPost;
+  index: number;
+  onNavigate: (id: string) => void;
+}) {
+  const rank = getRankDisplay(index);
 
   return (
-    <div className="min-h-screen bg-white pb-[100px]">
-      <Header title="ランキング" />
-
-      {/* User Selector */}
-      <div className="flex gap-4 overflow-x-auto px-4 py-4 hide-scrollbar border-b border-gray-50 bg-gray-50/50">
-        <button onClick={() => handleUserSelect(null)} className="flex flex-col items-center gap-1.5 flex-shrink-0">
-          <div className={`w-[52px] h-[52px] rounded-full overflow-hidden border-[3px] transition-all bg-white ${selectedUserId === null ? 'border-orange-500 scale-110 shadow-md p-[2px]' : 'border-transparent opacity-70 hover:opacity-100'}`}>
-            <div className="w-full h-full rounded-full overflow-hidden bg-gray-100 relative">
-              {myProfile?.avatar_url ? (
-                <Image src={myProfile.avatar_url} alt="You" fill className="object-cover" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-300">
-                  <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                </div>
-              )}
-            </div>
-          </div>
-          <span className={`text-[10px] font-black truncate max-w-[60px] ${selectedUserId === null ? 'text-orange-500' : 'text-gray-400'}`}>マイランキング</span>
-        </button>
-        {friends.map(friend => (
-          <button key={friend.id} onClick={() => handleUserSelect(friend.id)} className="flex flex-col items-center gap-1.5 flex-shrink-0">
-            <div className={`w-[52px] h-[52px] rounded-full overflow-hidden border-[3px] transition-all bg-white ${selectedUserId === friend.id ? 'border-orange-500 scale-110 shadow-md p-[2px]' : 'border-transparent opacity-70 hover:opacity-100'}`}>
-              <div className="w-full h-full rounded-full overflow-hidden bg-gray-100 relative">
-                {friend.avatar_url ? (
-                  <Image src={friend.avatar_url} alt={friend.name} fill className="object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-gray-300">
-                    <svg viewBox="0 0 24 24" fill="currentColor" className="w-6 h-6"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-                  </div>
-                )}
-              </div>
-            </div>
-            <span className={`text-[10px] font-black truncate max-w-[60px] ${selectedUserId === friend.id ? 'text-orange-500' : 'text-gray-400'}`}>{friend.name}</span>
-          </button>
-        ))}
+    <button
+      type="button"
+      onClick={() => onNavigate(post.id)}
+      className={`w-full flex items-center gap-3 rounded-2xl p-3 text-left transition-all active:scale-[0.98] ${
+        index === 0
+          ? 'bg-gradient-to-r from-yellow-50 to-amber-50 border border-yellow-200'
+          : 'bg-white border border-gray-100'
+      }`}
+    >
+      <div className="w-8 flex-shrink-0 flex items-center justify-center">
+        {rank.emoji ? (
+          <span className={index === 0 ? 'text-2xl' : 'text-xl'}>{rank.emoji}</span>
+        ) : (
+          <span className="text-[13px] font-black text-gray-300">{rank.text}</span>
+        )}
       </div>
 
-      <div className="px-4 pt-6">
-        {/* タグ選択 */}
-        <div className="mb-6 relative">
-          <div className="flex items-center justify-between ml-1 mb-2">
-            <label className="text-[11px] font-black text-gray-400 tracking-widest">
-              {isReadOnly ? 'ランキングを見るタグを選択' : 'ランキングするタグを選択'}
-            </label>
-            {!isReadOnly && (
-              <label className="flex items-center gap-2 cursor-pointer bg-gray-50/50 px-2 py-1 rounded-lg border border-gray-100 hover:bg-orange-50/50 transition-colors">
-                <span className="text-[10px] font-bold text-gray-500 whitespace-nowrap">
-                  全員
-                </span>
-                <div className="relative flex items-center">
-                  <input
-                    type="checkbox"
-                    className="peer sr-only"
-                    checked={showGroupTagsInRanking}
-                    onChange={(e) => setShowGroupTagsInRanking(e.target.checked)}
-                  />
-                  <div className="w-8 h-4 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-orange-500 shadow-inner"></div>
-                </div>
-              </label>
+      <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 relative bg-gray-100">
+        {(post.image_urls?.[0] || post.image_url) ? (
+          <Image
+            src={post.image_urls?.[0] || post.image_url!}
+            alt={post.title}
+            fill
+            className="object-cover"
+            unoptimized
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-lg">🍽️</div>
+        )}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <p className={`font-black text-sm text-gray-900 truncate ${index === 0 ? 'text-amber-800' : ''}`}>
+          {post.title || post.store_name || '無題'}
+        </p>
+        {post.store_name && post.title && (
+          <p className="text-xs text-gray-400 font-bold truncate">{post.store_name}</p>
+        )}
+        {post.rating != null && (
+          <span className="text-[11px] font-black text-[var(--color-primary)]">
+            {'★'.repeat(Math.min(5, Math.floor(post.rating)))}
+          </span>
+        )}
+      </div>
+    </button>
+  );
+}
+
+// ─── User Panel ────────────────────────────────────────────────────────────
+function UserPanel({
+  userRanking,
+  tag,
+  onNavigate,
+  onReorder,
+}: {
+  userRanking: UserRanking;
+  tag: string;
+  onNavigate: (id: string) => void;
+  onReorder: (userId: string, posts: RankingPost[]) => void;
+}) {
+  const [localPosts, setLocalPosts] = useState<RankingPost[] | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const posts = localPosts ?? userRanking.posts;
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
+  );
+
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const current = localPosts ?? userRanking.posts;
+    const oldIdx = current.findIndex(p => p.id === active.id);
+    const newIdx = current.findIndex(p => p.id === over.id);
+    const reordered = arrayMove(current, oldIdx, newIdx);
+    setLocalPosts(reordered);
+    setSaveError(false);
+
+    // 即時保存
+    setSaving(true);
+    try {
+      const res = await fetch('/api/rankings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tag, orderedPostIds: reordered.map(p => p.id) }),
+      });
+      if (!res.ok) throw new Error('save failed');
+      onReorder(userRanking.id, reordered);
+      mutate((key: any) => typeof key === 'string' && key.startsWith('/api/rankings'));
+    } catch {
+      setSaveError(true);
+      setLocalPosts(current); // 元に戻す
+    } finally {
+      setSaving(false);
+    }
+  }, [localPosts, userRanking.posts, userRanking.id, tag, onReorder]);
+
+  return (
+    <div className="flex-shrink-0 w-[calc(100vw-48px)] max-w-[340px] bg-gray-50 rounded-3xl overflow-hidden border border-gray-100">
+      {/* パネルヘッダー */}
+      <div className={`px-4 py-3 border-b ${userRanking.isMe ? 'bg-[var(--color-primary-50)] border-[var(--color-primary-light)]' : 'bg-white border-gray-100'}`}>
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-200 relative flex-shrink-0">
+            {userRanking.avatar_url ? (
+              <Image src={userRanking.avatar_url} alt={userRanking.name} fill className="object-cover" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-gray-300">
+                <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                </svg>
+              </div>
             )}
           </div>
-          <button
-            onClick={() => setShowTagDropdown(!showTagDropdown)}
-            className="w-full flex items-center justify-between px-4 py-3.5 bg-white border border-gray-200 rounded-2xl text-sm font-bold text-left shadow-sm hover:border-orange-300 transition-colors"
-          >
-            <span className={rankingTag ? 'text-gray-900' : 'text-gray-400'}>
-              {rankingTag ? `#${rankingTag}` : 'タグを選ぶ...'}
-            </span>
-            <ChevronDown size={16} className={`text-gray-400 transition-transform ${showTagDropdown ? 'rotate-180' : ''}`} />
-          </button>
-          {showTagDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-100 rounded-2xl shadow-xl z-20 max-h-56 overflow-y-auto">
-              {displayTags.length === 0 ? (
-                <p className="text-center text-sm text-gray-400 font-bold p-4">タグがありません</p>
-              ) : (
-                displayTags.map(t => (
-                  <button
-                    key={t.id}
-                    onClick={() => handleTagSelect(t.name)}
-                    className={`w-full text-left px-4 py-3 text-sm font-bold hover:bg-orange-50 transition-colors ${rankingTag === t.name ? 'text-orange-500 bg-orange-50' : 'text-gray-700'}`}
-                  >
-                    #{t.name}
-                  </button>
-                ))
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-1.5">
+              {userRanking.isKing && (
+                <Crown size={13} className="text-amber-500 flex-shrink-0" fill="currentColor" />
+              )}
+              <span className="font-black text-[14px] text-gray-900 truncate">{userRanking.name}</span>
+              {userRanking.isMe && (
+                <span className="text-[10px] font-black text-[var(--color-primary)] bg-[var(--color-primary-50)] border border-[var(--color-primary-light)] px-1.5 py-0.5 rounded-full flex-shrink-0">
+                  自分
+                </span>
               )}
             </div>
-          )}
+            <div className="flex items-center gap-2 mt-0.5">
+              <span className="text-[11px] text-gray-400 font-bold">{userRanking.postCount}件</span>
+              {saving && (
+                <span className="flex items-center gap-1 text-[10px] text-gray-400">
+                  <Loader2 size={10} className="animate-spin" /> 保存中...
+                </span>
+              )}
+              {saveError && (
+                <span className="text-[10px] text-red-500 font-bold">保存失敗</span>
+              )}
+            </div>
+          </div>
         </div>
+        {userRanking.isMe && (
+          <p className="text-[10px] text-[var(--color-primary)] font-bold mt-2 flex items-center gap-1">
+            <GripVertical size={10} />
+            ドラッグで並び替え可能
+          </p>
+        )}
+      </div>
 
-        {/* ランキングリスト */}
-        {!rankingTag ? (
-          <div className="text-center py-16 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-            <Trophy size={40} className="mx-auto text-gray-200 mb-3" />
-            <p className="text-gray-400 font-bold text-sm">タグを選ぶとランキングが表示されます</p>
-            {!isReadOnly && <p className="text-gray-300 font-bold text-xs mt-1">ドラッグして順位を自分で設定できます</p>}
-          </div>
-        ) : rankingLoading && rankingPosts.length === 0 ? (
-          <div className="space-y-2">
-            {[1, 2, 3].map(i => (
-              <div key={i} className="h-20 bg-gray-50 animate-pulse rounded-2xl border border-gray-100" />
-            ))}
-          </div>
-        ) : rankingPosts.length === 0 ? (
-          <div className="text-center py-16 bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-            <p className="text-gray-400 font-bold text-sm">#{rankingTag} が付いた記録がありません</p>
-          </div>
+      {/* ランキングリスト */}
+      <div className="p-3 space-y-2 max-h-[60vh] overflow-y-auto">
+        {posts.length === 0 ? (
+          <div className="py-8 text-center text-gray-300 text-sm font-bold">記録なし</div>
+        ) : userRanking.isMe ? (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={posts.map(p => p.id)} strategy={verticalListSortingStrategy}>
+              {posts.map((post, i) => (
+                <SortableRow
+                  key={post.id}
+                  post={post}
+                  index={i}
+                  onNavigate={onNavigate}
+                />
+              ))}
+            </SortableContext>
+          </DndContext>
         ) : (
-          <>
-            {!isReadOnly && (
-              <p className="text-[11px] text-gray-400 font-bold ml-1 mb-3">
-                ドラッグして順位を変更 → 保存ボタンで確定
+          posts.map((post, i) => (
+            <ReadOnlyRow
+              key={post.id}
+              post={post}
+              index={i}
+              onNavigate={onNavigate}
+            />
+          ))
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Tag Selector ──────────────────────────────────────────────────────────
+function TagSelectorView({
+  tags,
+  isLoading,
+  onSelect,
+}: {
+  tags: TagInfo[];
+  isLoading: boolean;
+  onSelect: (tag: string) => void;
+}) {
+  if (isLoading) {
+    return (
+      <div className="px-4 py-8 space-y-3">
+        {[1, 2, 3, 4, 5].map(i => (
+          <div key={i} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />
+        ))}
+      </div>
+    );
+  }
+
+  if (tags.length === 0) {
+    return (
+      <div className="px-4 py-16 text-center">
+        <Trophy size={48} className="mx-auto text-gray-200 mb-4" />
+        <p className="text-gray-400 font-bold">タグがありません</p>
+        <p className="text-gray-300 text-sm mt-1">投稿にタグをつけてランキングを楽しもう！</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-4 py-4 space-y-2">
+      {tags.map((tag, i) => (
+        <button
+          key={tag.name}
+          onClick={() => onSelect(tag.name)}
+          className="w-full flex items-center justify-between px-4 py-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:border-[var(--color-primary-light)] hover:bg-[var(--color-primary-50)] active:scale-[0.98] transition-all"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-[13px] font-black text-gray-300 w-6 text-right flex-shrink-0">
+              {i + 1}
+            </span>
+            <div className="text-left">
+              <p className="font-black text-gray-900 text-[15px]">#{tag.name}</p>
+              <p className="text-[11px] text-gray-400 font-bold mt-0.5">
+                {tag.user_count}人 · {tag.post_count}件
               </p>
-            )}
-            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              <SortableContext items={rankingPosts.map(p => p.id)} strategy={verticalListSortingStrategy}>
-                <div className="space-y-2 mb-6">
-                  {rankingPosts.map((post, i) => (
-                    <SortableRow
-                      key={post.id}
-                      post={post}
-                      index={i}
-                      isReadOnly={isReadOnly}
-                      medals={medals}
+            </div>
+          </div>
+          <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+// ─── Main Page ──────────────────────────────────────────────────────────────
+export default function RankingsPage() {
+  const router = useRouter();
+
+  const [scope, setScope] = useState<'all' | 'mine'>('all');
+  const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [rankingFilters, setRankingFilters] = useState<any>({
+    status: 'all',
+    period: 'none',
+    sort_order: 'created_desc',
+  });
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [activeUserIndex, setActiveUserIndex] = useState(0);
+
+  // タグ一覧を取得
+  const { data: tagsData, isLoading: tagsLoading } = useSWR(
+    `/api/rankings/tags?scope=${scope}`,
+    (url: string) => fetch(url).then(r => r.json()).then(j => (j.data ?? []) as TagInfo[]),
+    { dedupingInterval: 60_000, revalidateOnFocus: false }
+  );
+  const tags = tagsData ?? [];
+
+  // 選択タグのランキングデータを取得
+  const { data: rankingData, isLoading: rankingLoading } = useSWR(
+    selectedTag ? `/api/rankings?tag=${encodeURIComponent(selectedTag)}&mode=all` : null,
+    (url: string) => fetch(url).then(r => r.json()).then(j => j.data as { users: UserRanking[] } | null),
+    { dedupingInterval: 30_000, revalidateOnFocus: false }
+  );
+
+  const allUsers = rankingData?.users ?? [];
+
+  // フィルターを適用してユーザーごとの投稿を絞り込む
+  const filteredUsers = allUsers.map(user => {
+    let filtered = [...user.posts];
+
+    // 状態フィルター（visited / want_to_go はランキング対象外なのでスキップ）
+    // 評価フィルター
+    if (rankingFilters.rating_min != null) {
+      filtered = filtered.filter(p => p.rating != null && p.rating >= rankingFilters.rating_min);
+    }
+    // 訪問日フィルター
+    if (rankingFilters.period && rankingFilters.period !== 'none') {
+      const now = new Date();
+      const getStartDate = () => {
+        switch (rankingFilters.period) {
+          case 'this_month': return new Date(now.getFullYear(), now.getMonth(), 1);
+          case 'last_3_months': return new Date(now.getFullYear(), now.getMonth() - 3, 1);
+          case 'this_year': return new Date(now.getFullYear(), 0, 1);
+          case 'last_year': return new Date(now.getFullYear() - 1, 0, 1);
+          default: return null;
+        }
+      };
+      const getEndDate = () => {
+        if (rankingFilters.period === 'last_year') return new Date(now.getFullYear() - 1, 11, 31);
+        return null;
+      };
+      const start = getStartDate();
+      const end = getEndDate();
+      if (start || end) {
+        filtered = filtered.filter(p => {
+          if (!p.visited_at) return false;
+          const d = new Date(p.visited_at);
+          if (start && d < start) return false;
+          if (end && d > end) return false;
+          return true;
+        });
+      }
+    }
+
+    return { ...user, posts: filtered };
+  }).filter(u => u.posts.length > 0);
+
+  // 王判定を再計算（フィルター後）
+  const maxCount = filteredUsers.length > 0 ? Math.max(...filteredUsers.map(u => u.postCount)) : 0;
+  const kings = filteredUsers.filter(u => u.postCount === maxCount && maxCount > 0);
+
+  const handleNavigate = useCallback((postId: string) => {
+    router.push(`/posts/${postId}`);
+  }, [router]);
+
+  const handleReorder = useCallback((userId: string, posts: RankingPost[]) => {
+    // SWRキャッシュを無効化して再取得
+    mutate((key: any) => typeof key === 'string' && key.startsWith('/api/rankings'));
+  }, []);
+
+  const handleScroll = useCallback(() => {
+    if (!scrollRef.current) return;
+    const el = scrollRef.current;
+    const panelWidth = el.firstElementChild?.clientWidth ?? 300;
+    const gap = 12;
+    const index = Math.round(el.scrollLeft / (panelWidth + gap));
+    setActiveUserIndex(index);
+  }, []);
+
+  const handleTagSelect = (tag: string) => {
+    setSelectedTag(tag);
+    setActiveUserIndex(0);
+    setRankingFilters({ status: 'all', period: 'none', sort_order: 'created_desc' });
+  };
+
+  const handleBackToTags = () => {
+    setSelectedTag(null);
+    setActiveUserIndex(0);
+  };
+
+  const activeFilterCount = [
+    rankingFilters.rating_min != null,
+    rankingFilters.period && rankingFilters.period !== 'none',
+  ].filter(Boolean).length;
+
+  return (
+    <div className="min-h-screen bg-gray-50 pb-[100px]">
+      {/* カスタムヘッダー */}
+      {selectedTag ? (
+        <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-100/50 h-14">
+          <div className="max-w-2xl mx-auto px-4 h-full flex items-center justify-between relative">
+            <button
+              onClick={handleBackToTags}
+              className="w-9 h-9 bg-gray-100/80 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+            >
+              <ChevronLeft size={20} className="text-gray-900" />
+            </button>
+            <div className="absolute inset-0 flex justify-center items-center pointer-events-none">
+              <h1 className="font-bold text-gray-900 text-[16px] truncate">#{selectedTag}</h1>
+            </div>
+            <button
+              onClick={() => setIsFilterOpen(true)}
+              className="relative w-9 h-9 bg-gray-100/80 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+            >
+              <SlidersHorizontal size={18} className="text-gray-600" />
+              {activeFilterCount > 0 && (
+                <span
+                  className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[9px] font-black text-white flex items-center justify-center"
+                  style={{ background: 'var(--color-primary)' }}
+                >
+                  {activeFilterCount}
+                </span>
+              )}
+            </button>
+          </div>
+        </header>
+      ) : (
+        <Header title="ランキング" />
+      )}
+
+      {!selectedTag ? (
+        /* ── タグ選択画面 ── */
+        <>
+          {/* 全員/自分 トグル */}
+          <div className="px-4 pt-4 pb-2">
+            <div className="flex bg-white border border-gray-100 rounded-2xl p-1 shadow-sm">
+              <button
+                onClick={() => setScope('all')}
+                className={`flex-1 py-2.5 text-[13px] font-black rounded-xl transition-all ${
+                  scope === 'all'
+                    ? 'text-white shadow-sm'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+                style={scope === 'all' ? { background: 'var(--color-primary)' } : undefined}
+              >
+                👥 全員
+              </button>
+              <button
+                onClick={() => setScope('mine')}
+                className={`flex-1 py-2.5 text-[13px] font-black rounded-xl transition-all ${
+                  scope === 'mine'
+                    ? 'text-white shadow-sm'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+                style={scope === 'mine' ? { background: 'var(--color-primary)' } : undefined}
+              >
+                👤 自分のみ
+              </button>
+            </div>
+          </div>
+
+          <div className="px-4 mb-2">
+            <p className="text-[11px] text-gray-400 font-bold">
+              {scope === 'all' ? 'ともだち全員の投稿数が多い順' : '自分の投稿数が多い順'}
+            </p>
+          </div>
+
+          <TagSelectorView
+            tags={tags}
+            isLoading={tagsLoading}
+            onSelect={handleTagSelect}
+          />
+        </>
+      ) : (
+        /* ── ランキング表示画面 ── */
+        <>
+          {rankingLoading ? (
+            <div className="px-4 py-8 flex flex-col items-center gap-3">
+              <Loader2 size={32} className="animate-spin text-gray-300" />
+              <p className="text-gray-400 text-sm font-bold">読み込み中...</p>
+            </div>
+          ) : filteredUsers.length === 0 ? (
+            <div className="px-4 py-16 text-center">
+              <Trophy size={48} className="mx-auto text-gray-200 mb-4" />
+              <p className="text-gray-400 font-bold">#{selectedTag} のランキングデータがありません</p>
+            </div>
+          ) : (
+            <>
+              {/* ○○王バナー */}
+              {kings.length > 0 && (
+                <div className="mx-4 mt-4 mb-3 bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-2xl px-4 py-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <Crown size={18} className="text-amber-500 flex-shrink-0" fill="currentColor" />
+                    <span className="text-[13px] font-black text-amber-700">
+                      #{selectedTag}王
+                    </span>
+                    <span className="text-[13px] font-bold text-amber-600">
+                      {kings.map(k => k.name).join(' · ')}
+                      <span className="text-amber-500 ml-1">（{kings[0].postCount}件）</span>
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* ユーザー横スクロール */}
+              <div
+                ref={scrollRef}
+                onScroll={handleScroll}
+                className="flex gap-3 overflow-x-auto px-4 pb-4 pt-2"
+                style={{ scrollSnapType: 'x mandatory', WebkitOverflowScrolling: 'touch' }}
+              >
+                {filteredUsers.map(userRanking => (
+                  <div key={userRanking.id} style={{ scrollSnapAlign: 'start' }}>
+                    <UserPanel
+                      userRanking={userRanking}
+                      tag={selectedTag}
+                      onNavigate={handleNavigate}
+                      onReorder={handleReorder}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* スクロールインジケーター */}
+              {filteredUsers.length > 1 && (
+                <div className="flex justify-center gap-1.5 pb-4">
+                  {filteredUsers.map((u, i) => (
+                    <button
+                      key={u.id}
+                      onClick={() => {
+                        const el = scrollRef.current;
+                        if (!el) return;
+                        const panelWidth = el.firstElementChild?.clientWidth ?? 300;
+                        el.scrollTo({ left: i * (panelWidth + 12), behavior: 'smooth' });
+                        setActiveUserIndex(i);
+                      }}
+                      className={`rounded-full transition-all ${
+                        i === activeUserIndex
+                          ? 'w-6 h-2'
+                          : 'w-2 h-2 bg-gray-200'
+                      }`}
+                      style={i === activeUserIndex ? { background: 'var(--color-primary)' } : undefined}
                     />
                   ))}
                 </div>
-              </SortableContext>
-            </DndContext>
+              )}
+            </>
+          )}
+        </>
+      )}
 
-            {!isReadOnly && (
-              <button
-                onClick={handleSave}
-                className={`w-full py-4 rounded-2xl font-black text-base flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] ${
-                  rankingSaved
-                    ? 'bg-green-500 text-white shadow-green-200'
-                    : 'bg-gradient-to-r from-orange-500 to-red-500 text-white shadow-orange-200'
-                }`}
-              >
-                {rankingSaved ? (
-                  <><span>✓</span>保存しました！</>
-                ) : (
-                  <><Save size={18} />このランキングを保存</>
-                )}
-              </button>
-            )}
-          </>
-        )}
-      </div>
+      {/* フィルターモーダル（タグ欄なし） */}
+      <FilterModal
+        isOpen={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
+        onApply={(f) => setRankingFilters(f)}
+        initialFilters={rankingFilters}
+        hideGroupAndRegistrant={true}
+        hideStatus={true}
+        hideTags={true}
+      />
     </div>
   );
 }

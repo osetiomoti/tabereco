@@ -1,13 +1,133 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Header } from '@/components/Header';
 import { getUserTags, deleteTag, updateTagName, updateTagOrder, createTag } from '@/lib/api/posts';
 import type { Tag } from '@/lib/types';
-import { Tag as TagIcon, Check, AlertCircle, Trash2, ChevronUp, ChevronDown, Loader2 } from 'lucide-react';
+import { Tag as TagIcon, Check, AlertCircle, Trash2, Loader2, GripVertical } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
+// dnd-kit
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragOverlay,
+  DragStartEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+// ─── Sortable Tag Row ──────────────────────────────────────────────────────
+function SortableTagRow({
+  tag,
+  editingId,
+  editName,
+  onStartEdit,
+  onSaveEdit,
+  onEditNameChange,
+  onDelete,
+  savingOrder,
+}: {
+  tag: Tag;
+  editingId: string | null;
+  editName: string;
+  onStartEdit: (tag: Tag) => void;
+  onSaveEdit: (id: string) => void;
+  onEditNameChange: (name: string) => void;
+  onDelete: (id: string, name: string) => void;
+  savingOrder: boolean;
+}) {
+  const isEditing = editingId === tag.id;
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: tag.id,
+    disabled: isEditing,
+  });
+
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 50 : undefined,
+    position: 'relative',
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`group flex items-center justify-between px-6 py-5 transition-colors ${
+        isDragging ? 'bg-orange-50/80 shadow-lg rounded-2xl' : 'hover:bg-gray-50/50'
+      }`}
+    >
+      {/* ドラッグハンドル */}
+      {!isEditing && (
+        <div
+          {...attributes}
+          {...listeners}
+          className="flex-shrink-0 p-2 -ml-2 mr-1 text-gray-200 hover:text-gray-400 cursor-grab active:cursor-grabbing transition-colors touch-none"
+          style={{ touchAction: 'none' }}
+        >
+          <GripVertical size={18} />
+        </div>
+      )}
+
+      {/* タグ名 */}
+      <div className="flex-1 flex items-center gap-3">
+        <span className="text-gray-300 font-black text-lg select-none">#</span>
+        {isEditing ? (
+          <input
+            type="text"
+            value={editName}
+            onChange={(e) => onEditNameChange(e.target.value)}
+            onBlur={() => onSaveEdit(tag.id)}
+            onKeyDown={(e) => e.key === 'Enter' && onSaveEdit(tag.id)}
+            autoFocus
+            className="flex-1 bg-white border border-orange-200 rounded-xl px-3 py-2 text-[15px] font-bold text-gray-700 focus:outline-none focus:ring-4 focus:ring-orange-500/10"
+          />
+        ) : (
+          <span
+            className="text-gray-700 font-bold text-[15px] cursor-pointer hover:text-orange-500 transition-colors tracking-tight"
+            onClick={() => onStartEdit(tag)}
+          >
+            {tag.name}
+          </span>
+        )}
+      </div>
+
+      {/* 右側ボタン */}
+      <div className="flex items-center gap-2 ml-4 flex-shrink-0">
+        {isEditing ? (
+          <button
+            onClick={() => onSaveEdit(tag.id)}
+            className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center hover:bg-orange-100 transition-colors"
+          >
+            <Check size={20} strokeWidth={3} />
+          </button>
+        ) : (
+          <button
+            onClick={() => onDelete(tag.id, tag.name)}
+            className="w-10 h-10 rounded-xl text-red-200 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100"
+          >
+            <Trash2 size={20} strokeWidth={2} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Page ──────────────────────────────────────────────────────────────
 export default function TagsPage() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
@@ -16,7 +136,13 @@ export default function TagsPage() {
   const [editName, setEditName] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [savingOrder, setSavingOrder] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
   const router = useRouter();
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
+  );
 
   useEffect(() => {
     loadTags();
@@ -88,24 +214,34 @@ export default function TagsPage() {
     }
   };
 
-  const handleMove = async (index: number, direction: 'up' | 'down') => {
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
-    if (newIndex < 0 || newIndex >= tags.length) return;
+  const handleDragStart = useCallback((event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  }, []);
 
-    const newTags = [...tags];
-    [newTags[index], newTags[newIndex]] = [newTags[newIndex], newTags[index]];
-    setTags(newTags);
+  const handleDragEnd = useCallback(async (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+    if (!over || active.id === over.id) return;
 
-    setSavingOrder(true);
-    try {
-      await updateTagOrder(newTags.map((t, i) => ({ id: t.id, sort_order: i })));
-    } catch (err) {
-      console.error(err);
-      loadTags();
-    } finally {
-      setSavingOrder(false);
-    }
-  };
+    setTags(prev => {
+      const oldIdx = prev.findIndex(t => t.id === active.id);
+      const newIdx = prev.findIndex(t => t.id === over.id);
+      const newOrder = arrayMove(prev, oldIdx, newIdx);
+
+      // バックグラウンドで保存
+      setSavingOrder(true);
+      updateTagOrder(newOrder.map((t, i) => ({ id: t.id, sort_order: i })))
+        .catch(err => {
+          console.error(err);
+          loadTags(); // 失敗時はリロード
+        })
+        .finally(() => setSavingOrder(false));
+
+      return newOrder;
+    });
+  }, []);
+
+  const activeTag = activeId ? tags.find(t => t.id === activeId) : null;
 
   return (
     <div className="bg-[#fcfcfc] min-h-[100dvh] pb-32">
@@ -118,7 +254,7 @@ export default function TagsPage() {
           <h1 className="text-2xl font-black text-gray-900 tracking-tight">
             タグ管理
           </h1>
-          <div className="w-12" /> {/* Spacer */}
+          <div className="w-12" />
         </header>
 
         {error && (
@@ -133,15 +269,15 @@ export default function TagsPage() {
           <p className="text-gray-400 text-[11px] font-black mb-4 ml-1 tracking-widest uppercase">新しいタグを作成</p>
           <div className="relative group">
             <div className="absolute left-5 top-1/2 -translate-y-1/2 font-black text-gray-300 group-focus-within:text-orange-400 text-lg transition-colors">#</div>
-            <input 
-              type="text" 
-              placeholder="タグ名を入力" 
+            <input
+              type="text"
+              placeholder="タグ名を入力"
               value={newTagName}
               onChange={(e) => setNewTagName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
               className="w-full bg-gray-50 border-none py-4 pl-12 pr-28 rounded-2xl text-[15px] font-bold text-gray-700 placeholder:text-gray-300 focus:outline-none focus:ring-4 focus:ring-orange-500/10 transition-all"
             />
-            <button 
+            <button
               onClick={handleAdd}
               disabled={!newTagName.trim()}
               className="absolute right-2 top-1/2 -translate-y-1/2 bg-orange-500 text-white font-black text-sm px-6 py-2.5 rounded-xl hover:bg-orange-600 disabled:opacity-30 disabled:hover:bg-orange-500 active:scale-95 transition-all shadow-lg shadow-orange-500/20"
@@ -154,10 +290,18 @@ export default function TagsPage() {
         {/* 登録済みタグ一覧 */}
         <div className="space-y-4">
           <div className="flex items-center justify-between px-2">
-             <span className="text-gray-400 text-[11px] font-black tracking-widest uppercase">登録済みタグ ({tags.length}件)</span>
-             {savingOrder && <span className="text-orange-500 text-[10px] font-black animate-pulse">保存中...</span>}
+            <span className="text-gray-400 text-[11px] font-black tracking-widest uppercase">
+              登録済みタグ ({tags.length}件)
+            </span>
+            <span className="text-gray-300 text-[10px] font-black tracking-widest uppercase flex items-center gap-1">
+              {savingOrder ? (
+                <><Loader2 size={10} className="animate-spin text-orange-400" /><span className="text-orange-400">保存中...</span></>
+              ) : (
+                <><GripVertical size={10} />ドラッグで並び替え</>
+              )}
+            </span>
           </div>
-          
+
           <div className="bg-white rounded-[2.5rem] shadow-sm border border-gray-100 overflow-hidden divide-y divide-gray-50">
             {loading ? (
               <div className="flex items-center justify-center py-20">
@@ -171,70 +315,39 @@ export default function TagsPage() {
                 <p className="text-gray-400 font-bold text-sm">タグがありません</p>
               </div>
             ) : (
-              tags.map((tag, index) => (
-                <div
-                  key={tag.id}
-                  className="group flex items-center justify-between px-6 py-5 hover:bg-gray-50/50 transition-colors"
-                >
-                  <div className="flex-1 flex items-center gap-3">
-                    <span className="text-gray-300 font-black text-lg select-none">#</span>
-                    {editingId === tag.id ? (
-                      <input
-                        type="text"
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                        onBlur={() => handleSaveEdit(tag.id)}
-                        onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit(tag.id)}
-                        autoFocus
-                        className="flex-1 bg-white border border-orange-200 rounded-xl px-3 py-2 text-[15px] font-bold text-gray-700 focus:outline-none focus:ring-4 focus:ring-orange-500/10"
-                      />
-                    ) : (
-                      <span
-                        className="text-gray-700 font-bold text-[15px] cursor-pointer hover:text-orange-500 transition-colors tracking-tight"
-                        onClick={() => handleStartEdit(tag)}
-                      >
-                        {tag.name}
-                      </span>
-                    )}
-                  </div>
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext items={tags.map(t => t.id)} strategy={verticalListSortingStrategy}>
+                  {tags.map((tag) => (
+                    <SortableTagRow
+                      key={tag.id}
+                      tag={tag}
+                      editingId={editingId}
+                      editName={editName}
+                      onStartEdit={handleStartEdit}
+                      onSaveEdit={handleSaveEdit}
+                      onEditNameChange={setEditName}
+                      onDelete={handleDelete}
+                      savingOrder={savingOrder}
+                    />
+                  ))}
+                </SortableContext>
 
-                  <div className="flex items-center gap-4 ml-4">
-                    {editingId === tag.id ? (
-                      <button
-                        onClick={() => handleSaveEdit(tag.id)}
-                        className="w-10 h-10 rounded-xl bg-orange-50 text-orange-600 flex items-center justify-center hover:bg-orange-100 transition-colors"
-                      >
-                        <Check size={20} strokeWidth={3} />
-                      </button>
-                    ) : (
-                      <>
-                        <div className="flex flex-col">
-                          <button
-                            onClick={() => handleMove(index, 'up')}
-                            disabled={index === 0 || savingOrder}
-                            className="p-1 text-gray-200 hover:text-orange-400 disabled:opacity-0 transition-all hover:scale-125"
-                          >
-                            <ChevronUp size={20} strokeWidth={3} />
-                          </button>
-                          <button
-                            onClick={() => handleMove(index, 'down')}
-                            disabled={index === tags.length - 1 || savingOrder}
-                            className="p-1 text-gray-200 hover:text-orange-400 disabled:opacity-0 transition-all hover:scale-125"
-                          >
-                            <ChevronDown size={20} strokeWidth={3} />
-                          </button>
-                        </div>
-                        <button
-                          onClick={() => handleDelete(tag.id, tag.name)}
-                          className="w-10 h-10 rounded-xl text-red-200 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center"
-                        >
-                          <Trash2 size={20} strokeWidth={2} />
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))
+                {/* ドラッグ中のゴースト */}
+                <DragOverlay>
+                  {activeTag ? (
+                    <div className="flex items-center gap-3 px-6 py-5 bg-white border border-orange-200 rounded-2xl shadow-xl opacity-95">
+                      <GripVertical size={18} className="text-orange-300 flex-shrink-0" />
+                      <span className="text-gray-300 font-black text-lg">#</span>
+                      <span className="text-gray-700 font-bold text-[15px]">{activeTag.name}</span>
+                    </div>
+                  ) : null}
+                </DragOverlay>
+              </DndContext>
             )}
           </div>
         </div>
