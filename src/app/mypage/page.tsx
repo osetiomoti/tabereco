@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import useSWR from 'swr';
-import { Settings, Plus, MapPin, Calendar, User, Search, Star, ThumbsUp, Filter, Bookmark } from 'lucide-react';
+import { Settings, Plus, MapPin, Calendar, User, Search, Star, ThumbsUp, Filter, Bookmark, BarChart2 } from 'lucide-react';
 import { FilterModal } from '@/components/FilterModal';
 import { Header } from '@/components/Header';
 import Image from 'next/image';
@@ -399,7 +399,15 @@ export default function MyPage() {
       )}
 
       {/* Action Row */}
-      <div className="px-4 mb-5 grid grid-cols-3 gap-2">
+      <div className="px-4 mb-5 grid grid-cols-4 gap-2">
+        <button
+          onClick={() => router.push('/mypage/stats')}
+          className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-[var(--color-primary-50)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-light)] transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
+        >
+          <BarChart2 size={18} strokeWidth={2.5} className="mb-0.5" />
+          <span className="text-[9px] font-black tracking-wider">統計</span>
+        </button>
+
         <button
           onClick={() => setIsMyFilterModalOpen(true)}
           className={`flex flex-col h-[56px] border rounded-2xl items-center justify-center transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)] relative ${
@@ -409,18 +417,18 @@ export default function MyPage() {
           }`}
         >
           <Filter size={18} strokeWidth={2.5} className="mb-0.5" />
-          <span className="text-[9px] font-black tracking-wider">絞り込み・並び替え</span>
+          <span className="text-[9px] font-black tracking-wider leading-tight text-center">絞り込み<br/>並び替え</span>
           {(Object.values(myPageAdvancedFilters).some(v => v != null && v !== false && v !== '') || sortField !== 'created' || selectedTags.length > 0) && (
             <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center border-2 border-white">!</span>
           )}
         </button>
 
         <button onClick={goToMap} className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-[var(--color-primary-50)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-light)] transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
-          <MapPin size={20} strokeWidth={2.5} className="mb-0.5" />
+          <MapPin size={18} strokeWidth={2.5} className="mb-0.5" />
           <span className="text-[9px] font-black tracking-wider">マップ</span>
         </button>
         <button onClick={goToCalendar} className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-[var(--color-primary-50)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-light)] transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
-          <Calendar size={20} strokeWidth={2.5} className="mb-0.5" />
+          <Calendar size={18} strokeWidth={2.5} className="mb-0.5" />
           <span className="text-[9px] font-black tracking-wider">カレンダー</span>
         </button>
       </div>
