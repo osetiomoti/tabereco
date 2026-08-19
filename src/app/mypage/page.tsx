@@ -185,9 +185,15 @@ export default function MyPage() {
       }
     }
     if (selectedTags.length > 0) {
-      result = result.filter(p =>
-        selectedTags.every(tag => p.tags?.some((t: any) => t.name === tag))
-      );
+      if (myPageAdvancedFilters.tagMatchMode === 'OR') {
+        result = result.filter(p =>
+          selectedTags.some(tag => p.tags?.some((t: any) => t.name === tag))
+        );
+      } else {
+        result = result.filter(p =>
+          selectedTags.every(tag => p.tags?.some((t: any) => t.name === tag))
+        );
+      }
     }
     // Advanced filters from filter modal
     if (myPageAdvancedFilters.minRating != null) {
@@ -401,7 +407,7 @@ export default function MyPage() {
       {/* Action Row */}
       <div className="px-4 mb-5 grid grid-cols-4 gap-2">
         <button
-          onClick={() => router.push('/mypage/stats')}
+          onClick={() => router.push('/stats?mode=mypage')}
           className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-[var(--color-primary-50)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-light)] transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
         >
           <BarChart2 size={18} strokeWidth={2.5} className="mb-0.5" />
@@ -741,11 +747,18 @@ export default function MyPage() {
           if (f.tags) setSelectedTags(f.tags);
           // Store remaining advanced filters (excluding sort/tags/group/status)
           const { activeGroups: _, status: __, filterMode: ___, sort_order: ____, tags: _____, ...rest } = f as any;
-          setMyPageAdvancedFilters(rest);
+          setMyPageAdvancedFilters({
+            minRating: f.rating_min,
+            dateFrom: f.period_start,
+            dateTo: f.period_end,
+            isFavorite: f.is_favorite,
+            tagMatchMode: f.tagMatchMode,
+          });
         }}
         initialFilters={{
           ...myPageAdvancedFilters,
           tags: selectedTags,
+          tagMatchMode: myPageAdvancedFilters.tagMatchMode || 'AND',
           sort_order: sortField === 'created' ? 'created_desc' : sortField === 'visited' ? 'visited_desc' : sortField,
         }}
       />

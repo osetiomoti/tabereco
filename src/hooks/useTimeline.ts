@@ -55,6 +55,7 @@ export function useTimeline(options: UseTimelineOptions = {}) {
       const activeMapTag = filterState.activeMapTag;
       
       const tags = filters.tags !== undefined ? filters.tags : (advancedFilters as any)?.tags;
+      const tagMatchMode = (advancedFilters as any)?.tagMatchMode || filterState.tagMatchMode || 'AND';
 
       if (activeTab && activeTab !== 'all') params.append('status', activeTab);
       if (keyword) params.append('keyword', keyword);
@@ -76,6 +77,7 @@ export function useTimeline(options: UseTimelineOptions = {}) {
       
       if (tags && tags.length > 0) {
         params.append('selected_tags', tags.join(','));
+        params.append('tag_match_mode', tagMatchMode);
       }
       
       if (filters.sortField) params.append('sort_field', filters.sortField);

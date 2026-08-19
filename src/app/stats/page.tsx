@@ -1,10 +1,13 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, Suspense } from 'react';
 import useSWR from 'swr';
 import { Header } from '@/components/Header';
 import { Loader2, AlertCircle, Filter, X } from 'lucide-react';
 import { FilterModal } from '@/components/FilterModal';
+import { useSharedFilter } from '@/hooks/useSharedFilter';
+import { useSearchParams } from 'next/navigation';
+import { useMyProfile } from '@/hooks/useAppData';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface StatsData {
@@ -239,64 +242,101 @@ function StatCard({ title, subtitle, children }: { title: string; subtitle?: Rea
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
-export default function MyPageStats() {
+function StatsPageInner() {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [filters, setFilters] = useState<any>({
-    tags: [],
-    period: 'none',
-    status: 'all',
-    is_favorite: false,
-  });
+  
+  const { filterState, updateFilter } = useSharedFilter();
+  const searchParams = useSearchParams();
+  const mode = searchParams.get('mode');
+  const { profile } = useMyProfile();
 
   // フィルタ状態からクエリ文字列を構築
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
-    if (filters.tags?.length > 0) params.append('tags', filters.tags.join(','));
-    if (filters.period && filters.period !== 'none') params.append('period', filters.period);
-    if (filters.status && filters.status !== 'all') params.append('status', filters.status);
-    if (filters.is_favorite) params.append('is_favorite', 'true');
-    if (filters.rating_min) params.append('rating_min', String(filters.rating_min));
-    if (filters.price_min) params.append('price_min', String(filters.price_min));
-    if (filters.price_max) params.append('price_max', String(filters.price_max));
+    
+    // SharedFilterからのパラメータ
+    const advanced = filterState.advancedFilters || {};
+    const tags = advanced.tags || [];
+    
+    if (tags.length > 0) {
+      params.append('selected_tags', tags.join(','));
+      params.append('tag_match_mode', advanced.tagMatchMode || filterState.tagMatchMode || 'AND');
+    }
+    if (filterState.activeTab && filterState.activeTab !== 'all') params.append('status', filterState.activeTab);
+    
+    const filterMode = advanced.filterMode || 'registrant';
+    if (filterMode === 'group') {
+      if (filterState.activeGroups.length > 0 && !filterState.activeGroups.includes('all')) {
+        params.append('group_ids', filterState.activeGroups.join(','));
+      }
+    } else {
+      if (advanced.registrantUserIds && advanced.registrantUserIds.length > 0) {
+        params.append('registrant_ids', advanced.registrantUserIds.join(','));
+      }
+    }
+
+    if (mode === 'mypage' && profile) {
+      params.set('timeline_mode', 'user');
+      params.set('target_user_id', profile.id);
+    } else {
+      params.set('timeline_mode', 'home');
+    }
+
     return params.toString();
-  }, [filters]);
+  }, [filterState, mode, profile]);
 
   const { data, isLoading, error } = useSWR<{ success: boolean; data: StatsData }>(
-    `/api/mypage/stats?${queryString}`,
+    profile ? `/api/stats?${queryString}` : null,
     (url: string) => fetch(url).then(r => r.json()),
     { revalidateOnFocus: false }
   );
 
   const stats = data?.data;
-  const hasActiveFilters = queryString.length > 0;
+  
+  // マイページモードのときは、グループや他の人のフィルターを隠す
+  const isMyPageMode = mode === 'mypage';
+  const hasActiveFilters = (filterState.advancedFilters?.tags?.length > 0) || 
+                           (filterState.activeTab !== 'all' && filterState.activeTab !== 'visited'); // Default is usually visited or all depending on user logic
 
   const handleTagClick = (tag: string) => {
-    if (tag === 'その他') return; // 'その他' is not a real tag
-    setFilters((prev: any) => ({
-      ...prev,
-      tags: prev.tags.includes(tag) ? prev.tags : [...(prev.tags || []), tag]
-    }));
+    if (tag === 'その他') return;
+    const currentTags = filterState.advancedFilters?.tags || [];
+    if (!currentTags.includes(tag)) {
+      updateFilter({
+        advancedFilters: {
+          ...filterState.advancedFilters,
+          tags: [...currentTags, tag]
+        }
+      });
+    }
   };
 
   const removeTagFilter = (tag: string) => {
-    setFilters((prev: any) => ({
-      ...prev,
-      tags: prev.tags.filter((t: string) => t !== tag)
-    }));
-  };
-
-  const clearFilters = () => {
-    setFilters({
-      tags: [],
-      period: 'none',
-      status: 'all',
-      is_favorite: false,
+    const currentTags = filterState.advancedFilters?.tags || [];
+    updateFilter({
+      advancedFilters: {
+        ...filterState.advancedFilters,
+        tags: currentTags.filter((t: string) => t !== tag)
+      }
     });
   };
 
+  const clearFilters = () => {
+    updateFilter({
+      activeTab: 'all',
+      advancedFilters: {
+        ...filterState.advancedFilters,
+        tags: [],
+        tagMatchMode: 'AND'
+      }
+    });
+  };
+
+  const activeTags = filterState.advancedFilters?.tags || [];
+
   return (
     <div className="bg-[#fcfcfc] min-h-[100dvh] pb-24">
-      <Header title="マイデータ" showBackButton>
+      <Header title={isMyPageMode ? "マイデータ" : "統計データ"} showBackButton>
         <button
           onClick={() => setIsFilterModalOpen(true)}
           className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-all ${
@@ -319,7 +359,7 @@ export default function MyPageStats() {
         {hasActiveFilters && (
           <div className="flex flex-wrap gap-2 items-center mb-2">
             <span className="text-[10px] font-black text-gray-400 mr-1">絞り込み中:</span>
-            {filters.tags?.map((tag: string) => (
+            {activeTags.map((tag: string) => (
               <span key={tag} className="inline-flex items-center gap-1 px-2 py-1 bg-orange-50 text-orange-600 rounded-full text-[10px] font-bold border border-orange-100">
                 #{tag}
                 <button onClick={() => removeTagFilter(tag)} className="hover:bg-orange-200 rounded-full p-0.5 transition-colors">
@@ -327,14 +367,9 @@ export default function MyPageStats() {
                 </button>
               </span>
             ))}
-            {filters.status !== 'all' && (
+            {filterState.activeTab && filterState.activeTab !== 'all' && (
               <span className="inline-flex items-center px-2 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-bold border border-blue-100">
-                状態: {filters.status === 'visited' ? '行った' : '行きたい'}
-              </span>
-            )}
-            {filters.is_favorite && (
-              <span className="inline-flex items-center px-2 py-1 bg-pink-50 text-pink-600 rounded-full text-[10px] font-bold border border-pink-100">
-                お気に入り
+                状態: {filterState.activeTab === 'visited' ? '行った' : '行きたい'}
               </span>
             )}
             <button onClick={clearFilters} className="text-[10px] font-bold text-gray-400 hover:text-gray-600 underline ml-auto">
@@ -361,7 +396,7 @@ export default function MyPageStats() {
             <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-3xl p-5 border border-orange-100">
               <p className="text-[11px] font-black text-orange-400 tracking-widest uppercase mb-1">TOTAL</p>
               <p className="text-3xl font-black text-orange-500">{stats.totalPosts}<span className="text-base font-bold text-orange-300 ml-1">件</span></p>
-              <p className="text-[12px] font-bold text-orange-300 mt-0.5">これまでの投稿数</p>
+              <p className="text-[12px] font-bold text-orange-300 mt-0.5">{isMyPageMode ? 'これまでの投稿数' : '絞り込み条件に一致する投稿数'}</p>
             </div>
 
             {/* ① ジャンル割合 */}
@@ -406,13 +441,41 @@ export default function MyPageStats() {
       <FilterModal
         isOpen={isFilterModalOpen}
         onClose={() => setIsFilterModalOpen(false)}
-        initialFilters={filters}
+        initialFilters={{
+          tags: filterState.advancedFilters?.tags || [],
+          activeGroups: filterState.activeGroups || [],
+          registrantUserIds: filterState.advancedFilters?.registrantUserIds || [],
+          filterMode: filterState.advancedFilters?.filterMode || 'group',
+          tagMatchMode: filterState.advancedFilters?.tagMatchMode || filterState.tagMatchMode || 'AND',
+        }}
         onApply={(newFilters) => {
-          setFilters(newFilters);
+          updateFilter({
+            activeGroups: newFilters.activeGroups,
+            advancedFilters: {
+              ...filterState.advancedFilters,
+              tags: newFilters.tags,
+              registrantUserIds: newFilters.registrantUserIds,
+              filterMode: newFilters.filterMode,
+              tagMatchMode: newFilters.tagMatchMode,
+            },
+            tagMatchMode: newFilters.tagMatchMode,
+          });
           setIsFilterModalOpen(false);
         }}
-        hideGroupAndRegistrant
+        hideGroupAndRegistrant={isMyPageMode}
       />
     </div>
+  );
+}
+
+export default function StatsPage() {
+  return (
+    <Suspense fallback={
+      <div className="bg-[#fcfcfc] min-h-[100dvh] flex items-center justify-center">
+        <Loader2 className="animate-spin text-orange-400" size={32} />
+      </div>
+    }>
+      <StatsPageInner />
+    </Suspense>
   );
 }

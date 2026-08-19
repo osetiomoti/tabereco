@@ -22,6 +22,7 @@ type FilterState = {
   price_max?: number;
   rating_min?: number;
   sort_order: 'created_desc' | 'visited_desc' | 'rating_asc' | 'rating_desc' | 'price_asc' | 'price_desc';
+  tagMatchMode: 'AND' | 'OR';
 };
 
 type Member = { id: string; name: string; avatar_url?: string };
@@ -61,6 +62,7 @@ const DEFAULT: FilterState = {
   include_mine: true,
   activeGroups: [],
   sort_order: 'created_desc',
+  tagMatchMode: 'AND',
 };
 
 export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialTags, hideGroupAndRegistrant = false, hideStatus = false, hideTags = false }: Props) {
@@ -480,7 +482,29 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
               {/* ── Tag card ── */}
               {!hideTags && (
               <div className="space-y-2">
-                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">タグ</label>
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">タグ</label>
+                  <div className="flex bg-gray-100 p-0.5 rounded-lg">
+                    <button
+                      type="button"
+                      onClick={() => set('tagMatchMode', 'AND')}
+                      className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${
+                        filters.tagMatchMode !== 'OR' ? 'bg-white text-orange-500 shadow-sm' : 'text-gray-400 hover:bg-gray-200'
+                      }`}
+                    >
+                      すべて含む
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => set('tagMatchMode', 'OR')}
+                      className={`px-3 py-1 text-[10px] font-bold rounded-md transition-all ${
+                        filters.tagMatchMode === 'OR' ? 'bg-white text-orange-500 shadow-sm' : 'text-gray-400 hover:bg-gray-200'
+                      }`}
+                    >
+                      いずれかを含む
+                    </button>
+                  </div>
+                </div>
                 <div className="w-full border border-gray-200 rounded-xl px-3 py-2.5 bg-white flex items-center justify-between min-h-[48px] relative">
                   <div className="flex flex-wrap gap-1 items-center flex-1 pr-10 py-0.5">
                     {filters.tags.length === 0 ? (

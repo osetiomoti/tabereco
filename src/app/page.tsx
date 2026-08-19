@@ -241,7 +241,7 @@ export default function HomePage() {
 
           {/* 統計 */}
           <Link
-            href="/mypage/stats"
+            href="/stats"
             className="flex flex-col items-center p-3 bg-white/70 backdrop-blur-md border border-white rounded-[1.5rem] font-black shadow-sm active:scale-[0.97] transition-all hover:bg-white text-gray-800"
           >
             <div className="w-9 h-9 bg-gradient-to-br from-emerald-400 to-teal-500 text-white rounded-[12px] flex items-center justify-center mb-2 shadow-sm">

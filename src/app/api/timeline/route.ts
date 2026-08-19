@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
       const groupIdsParam = searchParams.get('group_ids');
       const tagId = searchParams.get('tag_id');
       const selectedTagsParam = searchParams.get('selected_tags');
+      const tagMatchMode = searchParams.get('tag_match_mode') || 'AND';
       const sortField = searchParams.get('sort_field') || 'date';
       const sortOrder = searchParams.get('sort_order') || 'desc';
 
@@ -129,9 +130,15 @@ export async function GET(request: NextRequest) {
         const tags = selectedTagsParam.split(',').filter(Boolean);
         if (tags.length > 0) {
           if (!where.AND) where.AND = [];
-          tags.forEach(tag => {
-            where.AND.push({ tags: { some: { tag: { name: tag } } } });
-          });
+          if (tagMatchMode === 'OR') {
+            where.AND.push({
+              OR: tags.map(tag => ({ tags: { some: { tag: { name: tag } } } }))
+            });
+          } else {
+            tags.forEach(tag => {
+              where.AND.push({ tags: { some: { tag: { name: tag } } } });
+            });
+          }
         }
       }
 

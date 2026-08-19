@@ -10,6 +10,7 @@ type SharedFilterState = {
   advancedFilters: any;
   activeMapTag: string | null;
   filterMode?: 'group' | 'registrant';
+  tagMatchMode?: 'AND' | 'OR';
 };
 
 const defaultState: SharedFilterState = {

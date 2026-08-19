@@ -156,7 +156,12 @@ export function useFilteredPosts() {
     }
 
     if (advancedFilters?.tags && advancedFilters.tags.length > 0) {
-      result = result.filter(p => advancedFilters.tags.every((tag: string) => p.tags?.some((t: any) => t.name === tag)));
+      const tagMatchMode = (advancedFilters as any)?.tagMatchMode || 'AND';
+      if (tagMatchMode === 'OR') {
+        result = result.filter(p => advancedFilters.tags.some((tag: string) => p.tags?.some((t: any) => t.name === tag)));
+      } else {
+        result = result.filter(p => advancedFilters.tags.every((tag: string) => p.tags?.some((t: any) => t.name === tag)));
+      }
     }
     if (advancedFilters?.is_favorite) {
       result = result.filter(p => p.is_favorite);
