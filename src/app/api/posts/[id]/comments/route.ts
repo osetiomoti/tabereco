@@ -72,11 +72,13 @@ export async function POST(
           }
         });
         // Send Web Push
+        const isTabireco = post.app_type === 'tabireco';
         await sendPushNotification(post.user_id, {
-          title: '食べレコ',
+          title: isTabireco ? '旅レコ' : '食べレコ',
           body: `${actor?.name || '誰か'}さんがコメントしました: ${content.trim().slice(0, 40)}`,
           url: `/posts/${postId}`,
           tag: `comment-${postId}`,
+          icon: isTabireco ? '/tabireco-192.png' : '/icon-192.png',
         });
       }
 

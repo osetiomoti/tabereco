@@ -57,11 +57,13 @@ export async function POST(
               message: `あなたの投稿に★${rating}の評価をつけました`,
             }
           });
+          const isTabireco = post.app_type === 'tabireco';
           await sendPushNotification(post.user_id, {
-            title: '食べレコ',
+            title: isTabireco ? '旅レコ' : '食べレコ',
             body: `${actor?.name || '誰か'}さんが「${post.title}」に★${rating}をつけました`,
             url: `/posts/${postId}`,
             tag: `rating-${postId}`,
+            icon: isTabireco ? '/tabireco-192.png' : '/icon-192.png',
           });
         }
 
@@ -98,11 +100,13 @@ export async function POST(
             }
           });
           // Send Web Push
+          const isTabireco = post.app_type === 'tabireco';
           await sendPushNotification(post.user_id, {
-            title: '食べレコ',
+            title: isTabireco ? '旅レコ' : '食べレコ',
             body: `${actor?.name || '誰か'}さんが「${post.title}」を行ったに追加しました`,
             url: `/posts/${postId}`,
             tag: `visited-${postId}`,
+            icon: isTabireco ? '/tabireco-192.png' : '/icon-192.png',
           });
         }
 

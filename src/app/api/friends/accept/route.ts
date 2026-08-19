@@ -41,11 +41,14 @@ export async function PUT(request: NextRequest) {
           message: 'ともだちリクエストが承認されました',
         }
       });
+      const appType = request.cookies.get('app_type')?.value === 'tabireco' ? 'tabireco' : 'tabereco';
+      const isTabireco = appType === 'tabireco';
       await sendPushNotification(friendship.user_id, {
-        title: '食べレコ',
+        title: isTabireco ? '旅レコ' : '食べレコ',
         body: `${accepter?.name || '誰か'}さんがともだちリクエストを承認しました！`,
         url: '/groups',
         tag: `friend-accepted-${auth.userId}`,
+        icon: isTabireco ? '/tabireco-192.png' : '/icon-192.png',
       });
 
       return NextResponse.json({ success: true, data: updated });

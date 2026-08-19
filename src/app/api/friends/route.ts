@@ -87,11 +87,14 @@ export async function POST(request: NextRequest) {
           message: 'あなたにともだちリクエストを送りました',
         }
       });
+      const appType = request.cookies.get('app_type')?.value === 'tabireco' ? 'tabireco' : 'tabereco';
+      const isTabireco = appType === 'tabireco';
       await sendPushNotification(friendUserId, {
-        title: '食べレコ',
+        title: isTabireco ? '旅レコ' : '食べレコ',
         body: `${actor?.name || '誰か'}さんからともだちリクエストが届きました！`,
         url: '/groups?tab=pending',
         tag: `friend-request-${auth.userId}`,
+        icon: isTabireco ? '/tabireco-192.png' : '/icon-192.png',
       });
 
       return NextResponse.json({ success: true, data: friendship });

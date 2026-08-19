@@ -49,11 +49,14 @@ export async function POST(
           message: `グループ「${group?.name || 'グループ'}」に追加されました`,
         }
       });
+      const appType = request.cookies.get('app_type')?.value === 'tabireco' ? 'tabireco' : 'tabereco';
+      const isTabireco = appType === 'tabireco';
       await sendPushNotification(userId, {
-        title: '食べレコ',
+        title: isTabireco ? '旅レコ' : '食べレコ',
         body: `${inviter?.name || '誰か'}さんが「${group?.name || 'グループ'}」に追加しました！`,
         url: '/groups',
         tag: `group-added-${groupId}`,
+        icon: isTabireco ? '/tabireco-192.png' : '/icon-192.png',
       });
 
       return NextResponse.json({ success: true, data: member });

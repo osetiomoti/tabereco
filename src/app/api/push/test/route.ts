@@ -9,11 +9,15 @@ import { sendPushNotification } from '@/lib/webpush';
 export async function POST(request: NextRequest) {
   return withAuth(request, async (auth) => {
     try {
+      const appType = request.cookies.get('app_type')?.value === 'tabireco' ? 'tabireco' : 'tabereco';
+      const isTabireco = appType === 'tabireco';
+
       await sendPushNotification(auth.userId, {
-        title: 'テスト通知 🔔',
+        title: isTabireco ? '旅レコ テスト通知 🔔' : '食べレコ テスト通知 🔔',
         body: 'プッシュ通知の設定が正しく完了しています！',
         url: '/settings',
         tag: 'test-notification',
+        icon: isTabireco ? '/tabireco-192.png' : '/icon-192.png',
       });
       return NextResponse.json({ success: true });
     } catch (e: any) {
