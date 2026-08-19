@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, Suspense } from 'react';
+import { useState, useMemo, Suspense, useEffect } from 'react';
 import useSWR from 'swr';
 import { Header } from '@/components/Header';
 import { Loader2, AlertCircle, Filter, X } from 'lucide-react';
@@ -8,6 +8,10 @@ import { FilterModal } from '@/components/FilterModal';
 import { useSharedFilter } from '@/hooks/useSharedFilter';
 import { useSearchParams } from 'next/navigation';
 import { useMyProfile } from '@/hooks/useAppData';
+import Image from 'next/image';
+import Link from 'next/link';
+import { useTimeline } from '@/hooks/useTimeline';
+import type { Post } from '@/lib/types';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface StatsData {
@@ -24,6 +28,36 @@ const COLORS = [
   '#f97316', '#fb923c', '#fdba74', '#fcd34d', '#86efac',
   '#6ee7f7', '#a5b4fc', '#f9a8d4', '#c4b5fd', '#94a3b8', '#d1d5db',
 ];
+
+// ─── Mini Map (for Want to Go) ───────────────────────────────────────────────
+function MiniNoImageMap({ post }: { post: Post }) {
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
+  const hasCoords = post.latitude != null && post.longitude != null;
+  const staticMapUrl = hasCoords && apiKey
+    ? `https://maps.googleapis.com/maps/api/staticmap?center=${post.latitude},${post.longitude}&zoom=15&size=300x300&markers=color:0xf43f5e%7C${post.latitude},${post.longitude}&key=${apiKey}`
+    : null;
+
+  return (
+    <div className="w-full h-full relative bg-gray-100 flex items-center justify-center group-hover:scale-105 transition-transform duration-500">
+      {staticMapUrl ? (
+        <>
+          <Image src={staticMapUrl} alt="Map" fill className="object-cover opacity-80" unoptimized />
+          <div className="absolute inset-0 bg-white/40 flex flex-col items-center justify-center pointer-events-none p-1">
+            <span className="text-gray-600 font-bold text-[8px] bg-white/80 px-2 py-1 rounded shadow-sm backdrop-blur-sm text-center leading-tight">
+              画像が登録されて<br />いません
+            </span>
+          </div>
+        </>
+      ) : (
+        <div className="flex flex-col items-center justify-center gap-1 p-2 bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 w-full h-full">
+          <span className="text-xl mb-1">📍</span>
+          <span className="text-[9px] font-black text-center leading-tight text-gray-700 line-clamp-2 px-1">{post.title}</span>
+          <span className="text-[8px] font-bold text-gray-500 mt-0.5 text-center leading-tight">画像がありません</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Pie Chart ───────────────────────────────────────────────────────────────
 function PieChart({ data, onTagClick }: { data: { name: string; count: number }[], onTagClick: (tag: string) => void }) {
@@ -241,6 +275,97 @@ function StatCard({ title, subtitle, children }: { title: string; subtitle?: Rea
   );
 }
 
+// ─── Filtered Posts List ──────────────────────────────────────────────────────
+function FilteredPostsList({ isMyPageMode, profileId }: { isMyPageMode: boolean, profileId?: string }) {
+  const [activeTab, setActiveTab] = useState<'visited' | 'want_to_go'>('visited');
+
+  const {
+    posts,
+    isLoading,
+    isLoadingMore,
+    isReachingEnd,
+    loadMore
+  } = useTimeline({
+    timelineMode: isMyPageMode ? 'user' : 'home',
+    targetUserId: isMyPageMode ? profileId : undefined,
+    filters: { status: activeTab }
+  });
+
+  return (
+    <div className="mt-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex items-center gap-2 mb-4">
+        <h3 className="text-[13px] font-black text-gray-800">絞り込み結果の投稿</h3>
+      </div>
+      {/* Tabs */}
+      <div className="flex bg-gray-100/80 rounded-[14px] p-1 border border-black/5 shadow-inner mb-4">
+        <button
+          onClick={() => setActiveTab('visited')}
+          className={`flex-1 py-2 text-[12px] font-black rounded-[10px] transition-all duration-300 ${activeTab === 'visited' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+        >
+          行った
+        </button>
+        <button
+          onClick={() => setActiveTab('want_to_go')}
+          className={`flex-1 py-2 text-[12px] font-black rounded-[10px] transition-all duration-300 ${activeTab === 'want_to_go' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+        >
+          行きたい
+        </button>
+      </div>
+
+      {/* Grid */}
+      <div className="mb-2">
+        {isLoading && posts.length === 0 ? (
+          <div className="px-0.5 grid grid-cols-3 gap-0.5">
+            {[1,2,3,4,5,6].map(i => <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />)}
+          </div>
+        ) : posts.length === 0 ? (
+          <div className="py-8 text-center text-gray-300 text-[12px] font-bold">該当する投稿がありません</div>
+        ) : (
+          <div className="px-0.5 grid grid-cols-3 gap-0.5 pb-4">
+            {posts.map(post => (
+              <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
+                {post.image_url ? (
+                  <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
+                ) : activeTab === 'want_to_go' ? (
+                  <MiniNoImageMap post={post} />
+                ) : (
+                  <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100 group-hover:scale-105 transition-transform duration-500">
+                    <span className="text-2xl mb-1">🍽️</span>
+                    <span className="text-[9px] font-black text-center leading-tight text-gray-700 line-clamp-2 px-1">{post.title}</span>
+                  </div>
+                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
+                <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
+                  <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
+                  {post.store_name && (
+                    <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate mt-0.5 opacity-80">
+                      {post.store_name}
+                    </span>
+                  )}
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Load More Button */}
+      {!isLoading && !isReachingEnd && posts.length > 0 && (
+        <div className="flex justify-center py-4">
+          <button
+            onClick={() => loadMore()}
+            disabled={isLoadingMore}
+            className="px-6 py-2 bg-gray-100 text-gray-600 rounded-full text-[11px] font-bold hover:bg-gray-200 transition-colors disabled:opacity-50 flex items-center gap-2"
+          >
+            {isLoadingMore && <Loader2 size={14} className="animate-spin" />}
+            もっと見る
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 function StatsPageInner() {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -249,6 +374,9 @@ function StatsPageInner() {
   const searchParams = useSearchParams();
   const mode = searchParams.get('mode');
   const { profile } = useMyProfile();
+
+  const [showPosts, setShowPosts] = useState(false);
+  const [lastQueryString, setLastQueryString] = useState('');
 
   // フィルタ状態からクエリ文字列を構築
   const queryString = useMemo(() => {
@@ -284,6 +412,13 @@ function StatsPageInner() {
 
     return params.toString();
   }, [filterState, mode, profile]);
+
+  useEffect(() => {
+    if (queryString !== lastQueryString) {
+      setShowPosts(false);
+      setLastQueryString(queryString);
+    }
+  }, [queryString, lastQueryString]);
 
   const { data, isLoading, error } = useSWR<{ success: boolean; data: StatsData }>(
     profile ? `/api/stats?${queryString}` : null,
@@ -435,6 +570,22 @@ function StatsPageInner() {
               }
             </StatCard>
           </>
+        )}
+
+        {/* Load Posts Button or Posts List */}
+        {stats && (
+          <div className="pt-4 pb-8">
+            {!showPosts ? (
+              <button
+                onClick={() => setShowPosts(true)}
+                className="w-full py-3.5 bg-orange-500 text-white rounded-2xl font-black text-sm shadow-[0_4px_12px_rgba(249,115,22,0.2)] hover:bg-orange-600 hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+              >
+                この条件の投稿を見る
+              </button>
+            ) : (
+              <FilteredPostsList isMyPageMode={isMyPageMode} profileId={profile?.id} />
+            )}
+          </div>
         )}
       </main>
 
