@@ -14,8 +14,8 @@ self.addEventListener('push', function(event) {
   const title = data.title || '食べレコ';
   const options = {
     body: data.body || '新しい通知があります',
-    icon: '/icons/icon-192x192.png',
-    badge: '/icons/badge-72x72.png',
+    icon: data.icon || '/icon-192.png',
+    badge: '/icon-192.png',
     tag: data.tag || 'tabereco-notification',
     data: {
       url: data.url || '/',

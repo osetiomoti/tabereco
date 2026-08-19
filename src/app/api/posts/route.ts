@@ -245,13 +245,17 @@ export async function POST(request: NextRequest) {
             }))
           });
           // Send Web Push to all friends
+          const isTabireco = appType === 'tabireco';
           await Promise.all(
             friendIds.map((friendId: string) =>
               sendPushNotification(friendId, {
-                title: '食べレコ',
-                body: `${actor?.name || '誰か'}さんが新しい投稿をしました！`,
+                title: isTabireco ? '旅レコ' : '食べレコ',
+                body: isTabireco
+                  ? `${actor?.name || '誰か'}さんが旅の記録を投稿しました！`
+                  : `${actor?.name || '誰か'}さんが新しい投稿をしました！`,
                 url: `/posts/${post.id}`,
                 tag: `new-post-${post.id}`,
+                icon: isTabireco ? '/tabireco-192.png' : '/icon-192.png',
               })
             )
           );

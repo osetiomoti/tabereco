@@ -21,6 +21,7 @@ export interface PushNotificationPayload {
   body: string;
   url?: string;
   tag?: string;
+  icon?: string;
 }
 
 /**

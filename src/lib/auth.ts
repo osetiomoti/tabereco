@@ -77,7 +77,7 @@ export async function withAuth(
   }
 
   // 3. User Sync (Cognito -> Database)
-  let user;
+  let user: Awaited<ReturnType<typeof prisma.user.findUnique>> & { group_members: { group_id: string }[] } | null = null;
   try {
     user = await prisma.user.findUnique({
       where: { cognito_sub: cognitoPayload.sub },
@@ -100,7 +100,7 @@ export async function withAuth(
       const defaultTabirecoTags = ['温泉', 'ホテル', '旅館', '自然', '絶景', '体験', 'テーマパーク'];
       await prisma.tag.createMany({
         data: defaultTabirecoTags.map((tagName, index) => ({
-          user_id: user.id,
+          user_id: user!.id,
           name: tagName,
           app_type: 'tabireco',
           sort_order: index,
