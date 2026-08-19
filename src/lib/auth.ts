@@ -95,6 +95,18 @@ export async function withAuth(
         },
         include: { group_members: { select: { group_id: true }, take: 1 } },
       });
+
+      // 旅レコ(tabireco)用のデフォルトタグを作成
+      const defaultTabirecoTags = ['温泉', 'ホテル', '旅館', '自然', '絶景', '体験', 'テーマパーク'];
+      await prisma.tag.createMany({
+        data: defaultTabirecoTags.map((tagName, index) => ({
+          user_id: user.id,
+          name: tagName,
+          app_type: 'tabireco',
+          sort_order: index,
+        })),
+        skipDuplicates: true,
+      });
     }
   } catch (dbError: any) {
     console.error('[Auth] Database sync failed:', dbError);
