@@ -407,14 +407,6 @@ export default function MyPage() {
       {/* Action Row */}
       <div className="px-4 mb-5 grid grid-cols-4 gap-2">
         <button
-          onClick={() => router.push('/stats?mode=mypage')}
-          className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-[var(--color-primary-50)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-light)] transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
-        >
-          <BarChart2 size={18} strokeWidth={2.5} className="mb-0.5" />
-          <span className="text-[9px] font-black tracking-wider">統計</span>
-        </button>
-
-        <button
           onClick={() => setIsMyFilterModalOpen(true)}
           className={`flex flex-col h-[56px] border rounded-2xl items-center justify-center transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)] relative ${
             Object.values(myPageAdvancedFilters).some(v => v != null && v !== false && v !== '') || sortField !== 'created' || selectedTags.length > 0
@@ -433,9 +425,18 @@ export default function MyPage() {
           <MapPin size={18} strokeWidth={2.5} className="mb-0.5" />
           <span className="text-[9px] font-black tracking-wider">マップ</span>
         </button>
+        
         <button onClick={goToCalendar} className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-[var(--color-primary-50)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-light)] transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]">
           <Calendar size={18} strokeWidth={2.5} className="mb-0.5" />
           <span className="text-[9px] font-black tracking-wider">カレンダー</span>
+        </button>
+
+        <button
+          onClick={() => router.push('/stats?mode=mypage')}
+          className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-[var(--color-primary-50)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-light)] transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
+        >
+          <BarChart2 size={18} strokeWidth={2.5} className="mb-0.5" />
+          <span className="text-[9px] font-black tracking-wider">統計</span>
         </button>
       </div>
 

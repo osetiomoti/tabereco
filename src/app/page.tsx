@@ -206,6 +206,17 @@ export default function HomePage() {
 
         {/* 3. クイックメニュー */}
         <div className="grid grid-cols-4 gap-2.5">
+          {/* タイムライン */}
+          <Link
+            href="/posts"
+            className="flex flex-col items-center p-3 bg-white/70 backdrop-blur-md border border-white rounded-[1.5rem] font-black shadow-sm active:scale-[0.97] transition-all hover:bg-white text-gray-800"
+          >
+            <div className="w-9 h-9 bg-gradient-to-br from-purple-400 to-purple-500 text-white rounded-[12px] flex items-center justify-center mb-2 shadow-sm">
+              <TrendingUp size={16} />
+            </div>
+            <span className="text-[10px] tracking-wide">タイムライン</span>
+          </Link>
+
           {/* マップから探す */}
           <Link
             href="/map"
@@ -226,17 +237,6 @@ export default function HomePage() {
               <Calendar size={16} />
             </div>
             <span className="text-[10px] tracking-wide">カレンダー</span>
-          </Link>
-
-          {/* タイムライン */}
-          <Link
-            href="/posts"
-            className="flex flex-col items-center p-3 bg-white/70 backdrop-blur-md border border-white rounded-[1.5rem] font-black shadow-sm active:scale-[0.97] transition-all hover:bg-white text-gray-800"
-          >
-            <div className="w-9 h-9 bg-gradient-to-br from-purple-400 to-purple-500 text-white rounded-[12px] flex items-center justify-center mb-2 shadow-sm">
-              <TrendingUp size={16} />
-            </div>
-            <span className="text-[10px] tracking-wide">タイムライン</span>
           </Link>
 
           {/* 統計 */}
