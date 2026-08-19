@@ -14,6 +14,7 @@ import {
   AlertCircle,
   Calendar,
   Sparkles,
+  BarChart2,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -204,38 +205,49 @@ export default function HomePage() {
         </div>
 
         {/* 3. クイックメニュー */}
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-4 gap-2.5">
           {/* マップから探す */}
           <Link
             href="/map"
-            className="flex flex-col items-center p-4 bg-white/70 backdrop-blur-md border border-white rounded-[1.5rem] font-black shadow-sm active:scale-[0.97] transition-all hover:bg-white text-gray-800"
+            className="flex flex-col items-center p-3 bg-white/70 backdrop-blur-md border border-white rounded-[1.5rem] font-black shadow-sm active:scale-[0.97] transition-all hover:bg-white text-gray-800"
           >
-            <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-500 text-white rounded-[12px] flex items-center justify-center mb-2.5 shadow-sm">
-              <MapIcon size={18} />
+            <div className="w-9 h-9 bg-gradient-to-br from-orange-400 to-orange-500 text-white rounded-[12px] flex items-center justify-center mb-2 shadow-sm">
+              <MapIcon size={16} />
             </div>
-            <span className="text-[11px] tracking-wide">マップ</span>
+            <span className="text-[10px] tracking-wide">マップ</span>
           </Link>
 
           {/* カレンダーで見る */}
           <Link
             href="/calendar"
-            className="flex flex-col items-center p-4 bg-white/70 backdrop-blur-md border border-white rounded-[1.5rem] font-black shadow-sm active:scale-[0.97] transition-all hover:bg-white text-gray-800"
+            className="flex flex-col items-center p-3 bg-white/70 backdrop-blur-md border border-white rounded-[1.5rem] font-black shadow-sm active:scale-[0.97] transition-all hover:bg-white text-gray-800"
           >
-            <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-blue-500 text-white rounded-[12px] flex items-center justify-center mb-2.5 shadow-sm">
-              <Calendar size={18} />
+            <div className="w-9 h-9 bg-gradient-to-br from-blue-400 to-blue-500 text-white rounded-[12px] flex items-center justify-center mb-2 shadow-sm">
+              <Calendar size={16} />
             </div>
-            <span className="text-[11px] tracking-wide">カレンダー</span>
+            <span className="text-[10px] tracking-wide">カレンダー</span>
           </Link>
 
           {/* タイムライン */}
           <Link
             href="/posts"
-            className="flex flex-col items-center p-4 bg-white/70 backdrop-blur-md border border-white rounded-[1.5rem] font-black shadow-sm active:scale-[0.97] transition-all hover:bg-white text-gray-800"
+            className="flex flex-col items-center p-3 bg-white/70 backdrop-blur-md border border-white rounded-[1.5rem] font-black shadow-sm active:scale-[0.97] transition-all hover:bg-white text-gray-800"
           >
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-purple-500 text-white rounded-[12px] flex items-center justify-center mb-2.5 shadow-sm">
-              <TrendingUp size={18} />
+            <div className="w-9 h-9 bg-gradient-to-br from-purple-400 to-purple-500 text-white rounded-[12px] flex items-center justify-center mb-2 shadow-sm">
+              <TrendingUp size={16} />
             </div>
-            <span className="text-[11px] tracking-wide">タイムライン</span>
+            <span className="text-[10px] tracking-wide">タイムライン</span>
+          </Link>
+
+          {/* 統計 */}
+          <Link
+            href="/mypage/stats"
+            className="flex flex-col items-center p-3 bg-white/70 backdrop-blur-md border border-white rounded-[1.5rem] font-black shadow-sm active:scale-[0.97] transition-all hover:bg-white text-gray-800"
+          >
+            <div className="w-9 h-9 bg-gradient-to-br from-emerald-400 to-teal-500 text-white rounded-[12px] flex items-center justify-center mb-2 shadow-sm">
+              <BarChart2 size={16} />
+            </div>
+            <span className="text-[10px] tracking-wide">統計</span>
           </Link>
         </div>
 

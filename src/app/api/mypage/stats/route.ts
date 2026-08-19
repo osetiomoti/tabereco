@@ -34,8 +34,19 @@ export async function GET(request: NextRequest) {
       const cookieStore = request.cookies;
       const appType = cookieStore.get('app_type')?.value === 'tabireco' ? 'tabireco' : 'tabereco';
 
+      const urlParams = request.nextUrl.searchParams;
+      const status = urlParams.get('status') || 'all';
+      const tagsParam = urlParams.get('tags') || '';
+      const period = urlParams.get('period') || 'none';
+      const isFavorite = urlParams.get('is_favorite') === 'true';
+      const ratingMin = parseFloat(urlParams.get('rating_min') || '0');
+      const priceMin = parseInt(urlParams.get('price_min') || '0', 10);
+      const priceMax = parseInt(urlParams.get('price_max') || '0', 10);
+
+      const filterTags = tagsParam ? tagsParam.split(',') : [];
+
       // 自分の投稿を全件取得（タグも含む）
-      const posts = await prisma.post.findMany({
+      let posts = await prisma.post.findMany({
         where: {
           user_id: auth.userId,
           app_type: appType,
@@ -48,6 +59,43 @@ export async function GET(request: NextRequest) {
           },
         },
       });
+
+      // 絞り込みの適用
+      if (status !== 'all') {
+        posts = posts.filter(p => p.status === status);
+      }
+      if (isFavorite) {
+        posts = posts.filter(p => p.is_favorite);
+      }
+      if (filterTags.length > 0) {
+        posts = posts.filter(p => 
+          filterTags.every(ft => p.tags.some((pt: any) => pt.tag.name === ft))
+        );
+      }
+      if (ratingMin > 0) {
+        posts = posts.filter(p => p.rating != null && p.rating >= ratingMin);
+      }
+      if (priceMin > 0) {
+        posts = posts.filter(p => (p.price_min != null && p.price_min >= priceMin) || (p.price_max != null && p.price_max >= priceMin));
+      }
+      if (priceMax > 0) {
+        posts = posts.filter(p => (p.price_max != null && p.price_max <= priceMax) || (p.price_min != null && p.price_min <= priceMax));
+      }
+      if (period !== 'none' && period !== 'all') {
+        const now = new Date();
+        posts = posts.filter(p => {
+           if (!p.visited_at) return false;
+           const d = new Date(p.visited_at);
+           if (period === 'this_month') return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+           if (period === 'last_3_months') {
+             const limit = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+             return d >= limit;
+           }
+           if (period === 'this_year') return d.getFullYear() === now.getFullYear();
+           if (period === 'last_year') return d.getFullYear() === now.getFullYear() - 1;
+           return true;
+        });
+      }
 
       // ─── ① ジャンル割合（タグ集計）───────────────────────
       const tagCountMap: Record<string, number> = {};
@@ -70,7 +118,7 @@ export async function GET(request: NextRequest) {
       }
 
       // ─── ② 月ごとの投稿数 ─────────────────────────────
-      const monthlyCountMap: Record<string, number> = {};
+      const monthlyCountMap: Record<string, { count: number; sortKey: string }> = {};
       let noDateCount = 0;
 
       for (const post of posts) {
@@ -79,14 +127,17 @@ export async function GET(request: NextRequest) {
           continue;
         }
         const d = new Date(post.visited_at);
-        const key = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}`;
-        monthlyCountMap[key] = (monthlyCountMap[key] || 0) + 1;
+        const key = `${d.getFullYear()}年${d.getMonth() + 1}月`;
+        // ソート用に 'YYYY/MM' のキーも持たせる
+        const sortKey = `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+        if (!monthlyCountMap[key]) monthlyCountMap[key] = { count: 0, sortKey };
+        monthlyCountMap[key].count += 1;
       }
 
       // 時系列でソート
       const monthlyData = Object.entries(monthlyCountMap)
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([month, count]) => ({ month, count }));
+        .sort(([, a], [, b]) => a.sortKey.localeCompare(b.sortKey))
+        .map(([month, data]) => ({ month, count: data.count }));
 
       // ─── ③ 評価分布 ───────────────────────────────────
       const ratingBuckets: Record<string, number> = {

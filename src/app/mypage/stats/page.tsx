@@ -1,9 +1,10 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import useSWR from 'swr';
 import { Header } from '@/components/Header';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { Loader2, AlertCircle, Filter, X } from 'lucide-react';
+import { FilterModal } from '@/components/FilterModal';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface StatsData {
@@ -22,7 +23,7 @@ const COLORS = [
 ];
 
 // ─── Pie Chart ───────────────────────────────────────────────────────────────
-function PieChart({ data }: { data: { name: string; count: number }[] }) {
+function PieChart({ data, onTagClick }: { data: { name: string; count: number }[], onTagClick: (tag: string) => void }) {
   const total = data.reduce((s, d) => s + d.count, 0);
   if (total === 0) return <p className="text-gray-300 text-sm text-center py-8">データがありません</p>;
 
@@ -53,11 +54,11 @@ function PieChart({ data }: { data: { name: string; count: number }[] }) {
       <div className="space-y-2">
         {stops.map((s, i) => (
           <div key={i} className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
+            <button onClick={() => onTagClick(s.name)} className="flex items-center gap-2 min-w-0 hover:opacity-70 transition-opacity">
               <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: s.color }} />
               <span className="text-[12px] font-bold text-gray-700 truncate">{s.name}</span>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
+            </button>
+            <div className="flex items-center gap-2 flex-shrink-0 pointer-events-none">
               <span className="text-[11px] text-gray-400">{s.count}件</span>
               <span className="text-[11px] font-black text-gray-600 w-10 text-right">{s.pct.toFixed(1)}%</span>
             </div>
@@ -239,19 +240,108 @@ function StatCard({ title, subtitle, children }: { title: string; subtitle?: Rea
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function MyPageStats() {
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [filters, setFilters] = useState<any>({
+    tags: [],
+    period: 'none',
+    status: 'all',
+    is_favorite: false,
+  });
+
+  // フィルタ状態からクエリ文字列を構築
+  const queryString = useMemo(() => {
+    const params = new URLSearchParams();
+    if (filters.tags?.length > 0) params.append('tags', filters.tags.join(','));
+    if (filters.period && filters.period !== 'none') params.append('period', filters.period);
+    if (filters.status && filters.status !== 'all') params.append('status', filters.status);
+    if (filters.is_favorite) params.append('is_favorite', 'true');
+    if (filters.rating_min) params.append('rating_min', String(filters.rating_min));
+    if (filters.price_min) params.append('price_min', String(filters.price_min));
+    if (filters.price_max) params.append('price_max', String(filters.price_max));
+    return params.toString();
+  }, [filters]);
+
   const { data, isLoading, error } = useSWR<{ success: boolean; data: StatsData }>(
-    '/api/mypage/stats',
+    `/api/mypage/stats?${queryString}`,
     (url: string) => fetch(url).then(r => r.json()),
     { revalidateOnFocus: false }
   );
 
   const stats = data?.data;
+  const hasActiveFilters = queryString.length > 0;
+
+  const handleTagClick = (tag: string) => {
+    if (tag === 'その他') return; // 'その他' is not a real tag
+    setFilters((prev: any) => ({
+      ...prev,
+      tags: prev.tags.includes(tag) ? prev.tags : [...(prev.tags || []), tag]
+    }));
+  };
+
+  const removeTagFilter = (tag: string) => {
+    setFilters((prev: any) => ({
+      ...prev,
+      tags: prev.tags.filter((t: string) => t !== tag)
+    }));
+  };
+
+  const clearFilters = () => {
+    setFilters({
+      tags: [],
+      period: 'none',
+      status: 'all',
+      is_favorite: false,
+    });
+  };
 
   return (
     <div className="bg-[#fcfcfc] min-h-[100dvh] pb-24">
-      <Header title="マイデータ" showBackButton />
+      <Header title="マイデータ" showBackButton>
+        <button
+          onClick={() => setIsFilterModalOpen(true)}
+          className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+            hasActiveFilters
+              ? 'bg-orange-50 text-orange-500'
+              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+          }`}
+        >
+          <Filter size={18} />
+          {hasActiveFilters && (
+            <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center border-2 border-white shadow-sm">
+              !
+            </span>
+          )}
+        </button>
+      </Header>
 
       <main className="max-w-xl mx-auto px-4 py-6 space-y-4">
+        {/* Active Filters Display */}
+        {hasActiveFilters && (
+          <div className="flex flex-wrap gap-2 items-center mb-2">
+            <span className="text-[10px] font-black text-gray-400 mr-1">絞り込み中:</span>
+            {filters.tags?.map((tag: string) => (
+              <span key={tag} className="inline-flex items-center gap-1 px-2 py-1 bg-orange-50 text-orange-600 rounded-full text-[10px] font-bold border border-orange-100">
+                #{tag}
+                <button onClick={() => removeTagFilter(tag)} className="hover:bg-orange-200 rounded-full p-0.5 transition-colors">
+                  <X size={10} />
+                </button>
+              </span>
+            ))}
+            {filters.status !== 'all' && (
+              <span className="inline-flex items-center px-2 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-bold border border-blue-100">
+                状態: {filters.status === 'visited' ? '行った' : '行きたい'}
+              </span>
+            )}
+            {filters.is_favorite && (
+              <span className="inline-flex items-center px-2 py-1 bg-pink-50 text-pink-600 rounded-full text-[10px] font-bold border border-pink-100">
+                お気に入り
+              </span>
+            )}
+            <button onClick={clearFilters} className="text-[10px] font-bold text-gray-400 hover:text-gray-600 underline ml-auto">
+              クリア
+            </button>
+          </div>
+        )}
         {isLoading && (
           <div className="flex items-center justify-center py-24">
             <Loader2 className="animate-spin text-orange-400" size={32} />
@@ -278,7 +368,7 @@ export default function MyPageStats() {
             <StatCard title="① ジャンル割合">
               {stats.genreData.length === 0
                 ? <p className="text-gray-300 text-sm text-center py-8">タグがついた投稿がありません</p>
-                : <PieChart data={stats.genreData} />
+                : <PieChart data={stats.genreData} onTagClick={handleTagClick} />
               }
             </StatCard>
 
@@ -312,6 +402,17 @@ export default function MyPageStats() {
           </>
         )}
       </main>
+
+      <FilterModal
+        isOpen={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        initialFilters={filters}
+        onApply={(newFilters) => {
+          setFilters(newFilters);
+          setIsFilterModalOpen(false);
+        }}
+        hideGroupAndRegistrant
+      />
     </div>
   );
 }
