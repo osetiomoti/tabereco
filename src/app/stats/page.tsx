@@ -3,7 +3,7 @@
 import { useState, useMemo, Suspense, useEffect } from 'react';
 import useSWR from 'swr';
 import { Header } from '@/components/Header';
-import { Loader2, AlertCircle, Filter, X } from 'lucide-react';
+import { Loader2, AlertCircle, Filter, X, Search } from 'lucide-react';
 import { FilterModal } from '@/components/FilterModal';
 import { useSharedFilter } from '@/hooks/useSharedFilter';
 import { useSearchParams } from 'next/navigation';
@@ -275,8 +275,7 @@ function StatCard({ title, subtitle, children }: { title: string; subtitle?: Rea
   );
 }
 
-// ─── Filtered Posts List ──────────────────────────────────────────────────────
-function FilteredPostsList({ isMyPageMode, profileId }: { isMyPageMode: boolean, profileId?: string }) {
+function FilteredPostsList({ isMyPageMode, profileId, keyword, searchMode }: { isMyPageMode: boolean, profileId?: string, keyword: string, searchMode: string }) {
   const [activeTab, setActiveTab] = useState<'visited' | 'want_to_go'>('visited');
 
   const {
@@ -288,7 +287,7 @@ function FilteredPostsList({ isMyPageMode, profileId }: { isMyPageMode: boolean,
   } = useTimeline({
     timelineMode: isMyPageMode ? 'user' : 'home',
     targetUserId: isMyPageMode ? profileId : undefined,
-    filters: { status: activeTab }
+    filters: { status: activeTab, keyword, searchMode }
   });
 
   return (
@@ -378,6 +377,18 @@ function StatsPageInner() {
   const [showPosts, setShowPosts] = useState(false);
   const [lastQueryString, setLastQueryString] = useState('');
 
+  const [inputValue, setInputValue] = useState(filterState.keyword || '');
+  const [debouncedKeyword, setDebouncedKeyword] = useState(filterState.keyword || '');
+  const [searchMode, setSearchMode] = useState<'store_name' | 'address'>((filterState.searchMode as any) || 'store_name');
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedKeyword(inputValue);
+      updateFilter({ keyword: inputValue, searchMode });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [inputValue, searchMode, updateFilter]);
+
   // フィルタ状態からクエリ文字列を構築
   const queryString = useMemo(() => {
     const params = new URLSearchParams();
@@ -385,6 +396,11 @@ function StatsPageInner() {
     // SharedFilterからのパラメータ
     const advanced = filterState.advancedFilters || {};
     const tags = advanced.tags || [];
+    
+    if (debouncedKeyword) {
+      params.append('keyword', debouncedKeyword);
+      params.append('search_mode', searchMode);
+    }
     
     if (tags.length > 0) {
       params.append('selected_tags', tags.join(','));
@@ -490,6 +506,42 @@ function StatsPageInner() {
       </Header>
 
       <main className="max-w-xl mx-auto px-4 py-6 space-y-4">
+        {/* Search bar */}
+        <div className="mb-4">
+          <div className="flex gap-2 mb-2.5">
+            <button
+              onClick={() => { setSearchMode('store_name'); setInputValue(''); }}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-black transition-all ${
+                searchMode === 'store_name'
+                  ? 'bg-orange-500 text-white shadow-sm'
+                  : 'bg-white border border-gray-100 text-gray-400 hover:bg-gray-50'
+              }`}
+            >
+              🏪 店名
+            </button>
+            <button
+              onClick={() => { setSearchMode('address'); setInputValue(''); }}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-black transition-all ${
+                searchMode === 'address'
+                  ? 'bg-orange-500 text-white shadow-sm'
+                  : 'bg-white border border-gray-100 text-gray-400 hover:bg-gray-50'
+              }`}
+            >
+              📍 住所
+            </button>
+          </div>
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
+            <input
+              type="text"
+              placeholder={searchMode === 'address' ? '住所・エリアで検索（例：渋谷区...）' : '記録を検索...'}
+              className="w-full pl-11 pr-4 py-3.5 bg-white border border-gray-100 rounded-2xl text-sm focus:ring-2 focus:ring-orange-100 transition-all font-medium text-gray-800 placeholder:text-gray-300 shadow-sm"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+            />
+          </div>
+        </div>
+
         {/* Active Filters Display */}
         {hasActiveFilters && (
           <div className="flex flex-wrap gap-2 items-center mb-2">
@@ -583,7 +635,7 @@ function StatsPageInner() {
                 この条件の投稿を見る
               </button>
             ) : (
-              <FilteredPostsList isMyPageMode={isMyPageMode} profileId={profile?.id} />
+              <FilteredPostsList isMyPageMode={isMyPageMode} profileId={profile?.id} keyword={debouncedKeyword} searchMode={searchMode} />
             )}
           </div>
         )}
