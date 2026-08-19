@@ -112,3 +112,12 @@ export async function updateTagName(id: string, name: string): Promise<Tag> {
   });
   return handleResponse(res);
 }
+
+export async function bulkAddTags(postIds: string[], tagNames: string[]): Promise<any> {
+  const res = await fetch('/api/tags/bulk', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ postIds, tagNames }),
+  });
+  return handleResponse(res);
+}

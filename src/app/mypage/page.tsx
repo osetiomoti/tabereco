@@ -133,6 +133,7 @@ export default function MyPage() {
   const [isMyFilterModalOpen, setIsMyFilterModalOpen] = useState(false);
   const [myPageAdvancedFilters, setMyPageAdvancedFilters] = useState<any>({});
   const [keyword, setKeyword] = useState('');
+  const [searchMode, setSearchMode] = useState<'store_name' | 'address'>('store_name');
 
   const markedWantToGoPosts: Post[] = markedWantToGoData?.data || [];
   const markedVisitedPosts: Post[] = markedVisitedData?.data || [];
@@ -171,12 +172,17 @@ export default function MyPage() {
     let result = [...postArray];
     if (keyword) {
       const lower = keyword.toLowerCase();
-      result = result.filter(p =>
-        p.title?.toLowerCase().includes(lower) ||
-        p.store_name?.toLowerCase().includes(lower) ||
-        p.comment?.toLowerCase().includes(lower) ||
-        p.address?.toLowerCase().includes(lower)
-      );
+      if (searchMode === 'store_name') {
+        result = result.filter(p =>
+          p.title?.toLowerCase().includes(lower) ||
+          p.store_name?.toLowerCase().includes(lower) ||
+          p.comment?.toLowerCase().includes(lower)
+        );
+      } else {
+        result = result.filter(p =>
+          p.address?.toLowerCase().includes(lower)
+        );
+      }
     }
     if (selectedTags.length > 0) {
       result = result.filter(p =>
@@ -435,12 +441,35 @@ export default function MyPage() {
 
       {/* Search bar */}
       <div className="px-4 mb-4">
+        {/* Search mode toggle */}
+        <div className="flex gap-2 mb-2.5">
+          <button
+            onClick={() => { setSearchMode('store_name'); setKeyword(''); }}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-black transition-all ${
+              searchMode === 'store_name'
+                ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+            }`}
+          >
+            🏪 店名
+          </button>
+          <button
+            onClick={() => { setSearchMode('address'); setKeyword(''); }}
+            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-black transition-all ${
+              searchMode === 'address'
+                ? 'bg-[var(--color-primary)] text-white shadow-sm'
+                : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+            }`}
+          >
+            📍 住所
+          </button>
+        </div>
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
           <input
             type="text"
-            placeholder="記録を検索..."
-            className="w-full pl-11 pr-4 py-3 bg-gray-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-orange-100 transition-all font-medium text-gray-800 placeholder:text-gray-300"
+            placeholder={searchMode === 'address' ? '住所・エリアで検索（例：渋谷区...）' : '記録を検索...'}
+            className="w-full pl-11 pr-4 py-3.5 bg-gray-50 border-none rounded-2xl text-sm focus:ring-2 focus:ring-orange-100 transition-all font-medium text-gray-800 placeholder:text-gray-300"
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
           />
@@ -479,14 +508,15 @@ export default function MyPage() {
                     ) : (
                       <MiniNoImageMap post={post} />
                     )}
-                    {post.image_url && (
-                      <>
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
-                        <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
-                          <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
-                        </div>
-                      </>
-                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
+                    <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
+                      <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
+                      {post.store_name && (
+                        <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate mt-0.5 opacity-80">
+                          {post.store_name}
+                        </span>
+                      )}
+                    </div>
                     {post.is_favorite && (
                       <div className="absolute top-1.5 right-1.5 bg-pink-500/90 text-white w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
                         <span className="text-[10px] font-black">♥</span>
@@ -519,15 +549,14 @@ export default function MyPage() {
                     ) : (
                       <MiniNoImageMap post={post} />
                     )}
-                    {post.image_url && (
-                      <>
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
-                        <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
-                          <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
-                          {post.user?.name && <span className="text-orange-300 font-black text-[8px] drop-shadow-md truncate mt-0.5">by {post.user.name}</span>}
-                        </div>
-                      </>
-                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
+                    <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
+                      <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
+                      <div className="flex flex-col gap-0.5 mt-0.5">
+                        {post.store_name && <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate opacity-80">{post.store_name}</span>}
+                        {post.user?.name && <span className="text-orange-300 font-black text-[8px] drop-shadow-md truncate">by {post.user.name}</span>}
+                      </div>
+                    </div>
                   </Link>
                 ))}
               </div>
@@ -651,16 +680,14 @@ export default function MyPage() {
                 </div>
               )}
 
-              {post.image_url && <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
 
-              {post.image_url && (
-                <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
-                  <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
-                  <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate mt-0.5 opacity-80">
-                    {post.store_name} • {post.visited_at ? formatDate(post.visited_at).split('-').slice(1).join('/') : ''}
-                  </span>
-                </div>
-              )}
+              <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
+                <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
+                <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate mt-0.5 opacity-80">
+                  {post.store_name} {post.visited_at ? `• ${formatDate(post.visited_at).split('-').slice(1).join('/')}` : ''}
+                </span>
+              </div>
 
               {post.rating && (
                 <div className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur-sm text-orange-500 px-1 py-0.5 rounded flex items-center gap-0.5 shadow-sm scale-75 origin-top-left">

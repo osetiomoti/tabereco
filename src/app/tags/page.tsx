@@ -254,7 +254,11 @@ export default function TagsPage() {
           <h1 className="text-2xl font-black text-gray-900 tracking-tight">
             タグ管理
           </h1>
-          <div className="w-12" />
+          <div className="w-16 flex justify-end">
+            <Link href="/tags/bulk" className="text-orange-500 font-black text-[11px] bg-orange-50 px-3 py-1.5 rounded-full whitespace-nowrap hover:bg-orange-100 transition-colors shadow-sm">
+              一括追加
+            </Link>
+          </div>
         </header>
 
         {error && (
