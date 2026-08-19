@@ -49,7 +49,7 @@ export async function generateMetadata(): Promise<Metadata> {
         { url: isTabireco ? '/tabireco-192.png' : '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
       ],
     },
-    manifest: '/api/manifest',
+    manifest: `/api/manifest?appType=${isTabireco ? 'tabireco' : 'tabereco'}`,
   };
 }
 
