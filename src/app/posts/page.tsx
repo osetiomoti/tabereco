@@ -16,6 +16,7 @@ import { ja } from 'date-fns/locale';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useRef } from 'react';
+import { useAppType } from '@/contexts/AppTypeContext';
 
 function CalendarView({ posts }: { posts: any[] }) {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -133,6 +134,7 @@ function CalendarView({ posts }: { posts: any[] }) {
 
 export default function PostsPage() {
   useScrollRestore('posts_list');
+  const { appType } = useAppType();
   const { filterState, updateFilter } = useSharedFilter();
   const { activeTab, keyword, searchMode, activeGroups, advancedFilters } = filterState;
   
@@ -389,6 +391,7 @@ export default function PostsPage() {
           status: activeTab,
           filterMode: filterState.filterMode || 'group',
         } as any}
+        showHotSpringFilter={appType === 'tabireco'}
       />
       <FloatingActionButton />
     </>

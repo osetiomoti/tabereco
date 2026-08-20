@@ -175,7 +175,11 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   return withAuth(request, async (auth) => {
     try {
-      const { title, store_name, comment, rating, image_url, image_urls, visited_at, status, address, google_place_id, latitude, longitude, is_mine_only, price_min, price_max, temperature_min, temperature_max, tagNames } = await request.json();
+      const { 
+        title, store_name, comment, rating, image_url, image_urls, visited_at, status, address, google_place_id, latitude, longitude, is_mine_only, price_min, price_max, temperature_min, temperature_max, tagNames,
+        spring_temp_type, spring_temp_custom, spring_temp_min, spring_temp_max, cold_bath_temp, is_source_fed, bath_count, spring_quality, stay_type, bath_type, hidden_spring_rating, has_amenities, other_memo,
+        spring_qualities, bath_types, source_managements, shampoo_type, facility_type, bath_temperatures
+      } = await request.json();
 
       // Cookieからapp_typeを取得（tabereco / tabireco）
       const appType = request.cookies.get('app_type')?.value === 'tabireco' ? 'tabireco' : 'tabereco';
@@ -201,6 +205,25 @@ export async function POST(request: NextRequest) {
           temperature_min: temperature_min ?? null,
           temperature_max: temperature_max ?? null,
           app_type: appType,
+          spring_temp_type: spring_temp_type ?? '標準温泉',
+          spring_temp_custom: spring_temp_custom ?? null,
+          spring_temp_min: spring_temp_min ?? null,
+          spring_temp_max: spring_temp_max ?? null,
+          cold_bath_temp: cold_bath_temp ?? null,
+          is_source_fed: is_source_fed ?? null,
+          bath_count: bath_count ?? null,
+          spring_quality: spring_quality ?? null,
+          stay_type: stay_type ?? null,
+          bath_type: bath_type ?? null,
+          hidden_spring_rating: hidden_spring_rating ?? null,
+          has_amenities: has_amenities ?? null,
+          other_memo: other_memo ?? null,
+          spring_qualities: spring_qualities ?? [],
+          bath_types: bath_types ?? [],
+          source_managements: source_managements ?? [],
+          shampoo_type: shampoo_type ?? null,
+          facility_type: facility_type ?? null,
+          bath_temperatures: bath_temperatures ?? null,
         },
       });
 

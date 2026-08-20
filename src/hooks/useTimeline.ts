@@ -79,6 +79,24 @@ export function useTimeline(options: UseTimelineOptions = {}) {
         params.append('selected_tags', tags.join(','));
         params.append('tag_match_mode', tagMatchMode);
       }
+
+      if ((advancedFilters as any)?.is_hot_spring_mode) {
+        params.append('is_hot_spring_mode', 'true');
+        if ((advancedFilters as any).spring_temp_min != null) params.append('spring_temp_min', String((advancedFilters as any).spring_temp_min));
+        if ((advancedFilters as any).spring_temp_max != null) params.append('spring_temp_max', String((advancedFilters as any).spring_temp_max));
+        if ((advancedFilters as any).is_source_fed) params.append('is_source_fed', (advancedFilters as any).is_source_fed);
+        if ((advancedFilters as any).bath_type) params.append('bath_type', (advancedFilters as any).bath_type);
+        if ((advancedFilters as any).stay_type) params.append('stay_type', (advancedFilters as any).stay_type);
+        
+        // V2 Array fields (comma separated)
+        if ((advancedFilters as any).spring_qualities?.length > 0) params.append('spring_qualities', (advancedFilters as any).spring_qualities.join(','));
+        if ((advancedFilters as any).bath_types?.length > 0) params.append('bath_types', (advancedFilters as any).bath_types.join(','));
+        if ((advancedFilters as any).source_managements?.length > 0) params.append('source_managements', (advancedFilters as any).source_managements.join(','));
+        
+        // V2 String fields
+        if ((advancedFilters as any).shampoo_type) params.append('shampoo_type', (advancedFilters as any).shampoo_type);
+        if ((advancedFilters as any).facility_type) params.append('facility_type', (advancedFilters as any).facility_type);
+      }
       
       if (filters.sortField) params.append('sort_field', filters.sortField);
       if (filters.sortOrder) params.append('sort_order', filters.sortOrder);

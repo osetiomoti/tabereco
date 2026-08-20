@@ -10,6 +10,7 @@ import { MapPin, Search, Navigation, Filter } from 'lucide-react';
 import { useFilteredPosts } from '@/hooks/useFilteredPosts';
 import { FilterModal } from '@/components/FilterModal';
 import { FilterChips } from '@/components/PostCard';
+import { useAppType } from '@/contexts/AppTypeContext';
 
 // Leaflet は `window` を使うため、SSR をオフにして動的インポートする
 const MapView = dynamic(() => import('@/components/MapView'), {
@@ -22,6 +23,7 @@ const MapView = dynamic(() => import('@/components/MapView'), {
 });
 
 function MapPageInner() {
+  const { appType } = useAppType();
   const { posts, loading, filterState, updateFilter, activeFilterCount, removeFilter, memberUsers, joinedGroups } = useFilteredPosts();
   const { activeTab, keyword, activeGroups, advancedFilters, activeMapTag } = filterState;
 
@@ -141,6 +143,7 @@ function MapPageInner() {
           filterMode: filterState.filterMode || 'group',
           activeGroups: activeGroups,
         } as any}
+        showHotSpringFilter={appType === 'tabireco'}
       />
     </>
   );

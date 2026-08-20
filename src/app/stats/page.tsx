@@ -12,6 +12,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useTimeline } from '@/hooks/useTimeline';
 import type { Post } from '@/lib/types';
+import { useAppType } from '@/contexts/AppTypeContext';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface StatsData {
@@ -194,8 +195,8 @@ function LineChart({ data }: { data: { month: string; count: number }[] }) {
   );
 }
 
-// ─── Vertical Bar Chart (rating distribution) ─────────────────────────────
-function RatingBarChart({ data }: { data: { label: string; count: number }[] }) {
+// ─── Vertical Bar Chart (rating distribution) ───────────────────────────────────
+function RatingBarChart({ data, activeLabel, onRatingClick }: { data: { label: string; count: number }[], activeLabel?: string, onRatingClick: (label: string) => void }) {
   const maxCount = Math.max(...data.map(d => d.count), 1);
   const ratingColors: Record<string, string> = {
     '★5': '#f97316',
@@ -210,28 +211,38 @@ function RatingBarChart({ data }: { data: { label: string; count: number }[] }) 
     <div className="space-y-2.5">
       {data.map((d, i) => {
         const pct = maxCount > 0 ? (d.count / maxCount) * 100 : 0;
+        const isActive = activeLabel === d.label;
         return (
-          <div key={i} className="flex items-center gap-3">
-            <span className="text-[12px] font-black text-gray-600 w-12 flex-shrink-0">{d.label}</span>
+          <button
+            key={i}
+            onClick={() => onRatingClick(d.label)}
+            className={`w-full flex items-center gap-3 rounded-xl transition-all px-1 py-0.5 ${
+              isActive ? 'ring-2 ring-orange-400 bg-orange-50' : 'hover:bg-gray-50'
+            }`}
+          >
+            <span className="text-[12px] font-black text-gray-600 w-12 flex-shrink-0 text-left">{d.label}</span>
             <div className="flex-1 h-7 bg-gray-50 rounded-lg overflow-hidden">
               <div
                 className="h-full rounded-lg transition-all duration-700 flex items-center px-2"
                 style={{
                   width: `${Math.max(pct, d.count > 0 ? 4 : 0)}%`,
-                  background: ratingColors[d.label] || '#e5e7eb',
+                  background: isActive ? '#ea580c' : (ratingColors[d.label] || '#e5e7eb'),
                 }}
               />
             </div>
             <span className="text-[11px] font-bold text-gray-400 w-8 text-right flex-shrink-0">{d.count}件</span>
-          </div>
+          </button>
         );
       })}
+      {activeLabel && (
+        <p className="text-[11px] text-orange-500 font-bold text-center mt-1">↥ {activeLabel}で絞り込み中（クリアするには再度タップ）</p>
+      )}
     </div>
   );
 }
 
-// ─── Horizontal Bar Chart (prefecture ranking) ────────────────────────────
-function PrefBarChart({ data }: { data: { name: string; count: number }[] }) {
+// ─── Horizontal Bar Chart (prefecture ranking) ────────────────────────────────────
+function PrefBarChart({ data, activePref, onPrefClick }: { data: { name: string; count: number }[], activePref?: string, onPrefClick: (pref: string) => void }) {
   const maxCount = Math.max(...data.map(d => d.count), 1);
   const displayData = data.slice(0, 15);
 
@@ -240,24 +251,34 @@ function PrefBarChart({ data }: { data: { name: string; count: number }[] }) {
       {displayData.map((d, i) => {
         const pct = (d.count / maxCount) * 100;
         const opacity = 1 - (i / displayData.length) * 0.5;
+        const isActive = activePref === d.name;
         return (
-          <div key={i} className="flex items-center gap-2">
+          <button
+            key={i}
+            onClick={() => onPrefClick(d.name)}
+            className={`w-full flex items-center gap-2 rounded-xl transition-all px-1 py-0.5 ${
+              isActive ? 'ring-2 ring-orange-400 bg-orange-50' : 'hover:bg-gray-50'
+            }`}
+          >
             <span className="text-[10px] font-black text-gray-400 w-4 flex-shrink-0">{i + 1}</span>
-            <span className="text-[12px] font-bold text-gray-700 w-14 flex-shrink-0">{d.name}</span>
+            <span className={`text-[12px] font-bold w-14 flex-shrink-0 ${isActive ? 'text-orange-600' : 'text-gray-700'}`}>{d.name}</span>
             <div className="flex-1 h-6 bg-gray-50 rounded-lg overflow-hidden">
               <div
-                className="h-full rounded-lg flex items-center justify-end pr-1.5"
+                className="h-full rounded-lg flex items-center justify-end pr-1.5 transition-all"
                 style={{
                   width: `${Math.max(pct, 4)}%`,
-                  background: `rgba(249, 115, 22, ${opacity})`,
+                  background: isActive ? '#ea580c' : `rgba(249, 115, 22, ${opacity})`,
                 }}
               >
                 <span className="text-white text-[9px] font-black drop-shadow-sm">{d.count}</span>
               </div>
             </div>
-          </div>
+          </button>
         );
       })}
+      {activePref && (
+        <p className="text-[11px] text-orange-500 font-bold text-center mt-1">↥ {activePref}で絞り込み中（クリアするには再度タップ）</p>
+      )}
     </div>
   );
 }
@@ -373,9 +394,12 @@ function StatsPageInner() {
   const searchParams = useSearchParams();
   const mode = searchParams.get('mode');
   const { profile } = useMyProfile();
+  const { appType } = useAppType();
 
   const [showPosts, setShowPosts] = useState(false);
   const [lastQueryString, setLastQueryString] = useState('');
+  const [activePref, setActivePref] = useState<string | undefined>(undefined);
+  const [activeRatingLabel, setActiveRatingLabel] = useState<string | undefined>(undefined);
 
   const [inputValue, setInputValue] = useState(filterState.keyword || '');
   const [debouncedKeyword, setDebouncedKeyword] = useState(filterState.keyword || '');
@@ -401,6 +425,19 @@ function StatsPageInner() {
       params.append('keyword', debouncedKeyword);
       params.append('search_mode', searchMode);
     }
+
+    if (activePref) params.append('pref', activePref);
+    if (activeRatingLabel) {
+      if (activeRatingLabel === '未評価') {
+        params.append('rating_unrated', 'true');
+      } else {
+        const star = parseInt(activeRatingLabel.replace('★', ''), 10);
+        if (!isNaN(star)) {
+          params.append('rating_min', String(star - 1));
+          params.append('rating_max', String(star));
+        }
+      }
+    }
     
     if (tags.length > 0) {
       params.append('selected_tags', tags.join(','));
@@ -408,6 +445,16 @@ function StatsPageInner() {
     }
     if (filterState.activeTab && filterState.activeTab !== 'all') params.append('status', filterState.activeTab);
     
+    // Hot spring filters
+    if (advanced.is_hot_spring_mode) {
+      params.append('is_hot_spring_mode', 'true');
+      if (advanced.spring_temp_min != null) params.append('spring_temp_min', String(advanced.spring_temp_min));
+      if (advanced.spring_temp_max != null) params.append('spring_temp_max', String(advanced.spring_temp_max));
+      if (advanced.is_source_fed) params.append('is_source_fed', advanced.is_source_fed);
+      if (advanced.bath_type) params.append('bath_type', advanced.bath_type);
+      if (advanced.stay_type) params.append('stay_type', advanced.stay_type);
+    }
+
     const filterMode = advanced.filterMode || 'registrant';
     if (filterMode === 'group') {
       if (filterState.activeGroups.length > 0 && !filterState.activeGroups.includes('all')) {
@@ -427,7 +474,7 @@ function StatsPageInner() {
     }
 
     return params.toString();
-  }, [filterState, mode, profile]);
+  }, [filterState, mode, profile, debouncedKeyword, searchMode, activePref, activeRatingLabel]);
 
   useEffect(() => {
     if (queryString !== lastQueryString) {
@@ -447,7 +494,8 @@ function StatsPageInner() {
   // マイページモードのときは、グループや他の人のフィルターを隠す
   const isMyPageMode = mode === 'mypage';
   const hasActiveFilters = (filterState.advancedFilters?.tags?.length > 0) || 
-                           (filterState.activeTab !== 'all' && filterState.activeTab !== 'visited'); // Default is usually visited or all depending on user logic
+                           (filterState.activeTab !== 'all' && filterState.activeTab !== 'visited') ||
+                           !!activePref || !!activeRatingLabel;
 
   const handleTagClick = (tag: string) => {
     if (tag === 'その他') return;
@@ -473,6 +521,8 @@ function StatsPageInner() {
   };
 
   const clearFilters = () => {
+    setActivePref(undefined);
+    setActiveRatingLabel(undefined);
     updateFilter({
       activeTab: 'all',
       advancedFilters: {
@@ -481,6 +531,16 @@ function StatsPageInner() {
         tagMatchMode: 'AND'
       }
     });
+  };
+
+  const handlePrefClick = (pref: string) => {
+    setActivePref(prev => prev === pref ? undefined : pref);
+    setShowPosts(false);
+  };
+
+  const handleRatingClick = (label: string) => {
+    setActiveRatingLabel(prev => prev === label ? undefined : label);
+    setShowPosts(false);
   };
 
   const activeTags = filterState.advancedFilters?.tags || [];
@@ -559,6 +619,18 @@ function StatsPageInner() {
                 状態: {filterState.activeTab === 'visited' ? '行った' : '行きたい'}
               </span>
             )}
+            {activePref && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-bold border border-green-100">
+                📍 {activePref}
+                <button onClick={() => setActivePref(undefined)} className="hover:bg-green-200 rounded-full p-0.5 transition-colors"><X size={10} /></button>
+              </span>
+            )}
+            {activeRatingLabel && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-50 text-yellow-600 rounded-full text-[10px] font-bold border border-yellow-100">
+                ⭐ {activeRatingLabel}
+                <button onClick={() => setActiveRatingLabel(undefined)} className="hover:bg-yellow-200 rounded-full p-0.5 transition-colors"><X size={10} /></button>
+              </span>
+            )}
             <button onClick={clearFilters} className="text-[10px] font-bold text-gray-400 hover:text-gray-600 underline ml-auto">
               クリア
             </button>
@@ -611,14 +683,14 @@ function StatsPageInner() {
 
             {/* ③ 評価分布 */}
             <StatCard title="③ 評価分布">
-              <RatingBarChart data={stats.ratingData} />
+              <RatingBarChart data={stats.ratingData} activeLabel={activeRatingLabel} onRatingClick={handleRatingClick} />
             </StatCard>
 
             {/* ④ 都道府県ランキング */}
             <StatCard title="④ 都道府県ランキング">
               {stats.prefData.filter(d => d.name !== 'その他').length === 0
                 ? <p className="text-gray-300 text-sm text-center py-8">住所が設定された投稿がありません</p>
-                : <PrefBarChart data={stats.prefData} />
+                : <PrefBarChart data={stats.prefData} activePref={activePref} onPrefClick={handlePrefClick} />
               }
             </StatCard>
           </>
@@ -650,6 +722,12 @@ function StatsPageInner() {
           registrantUserIds: filterState.advancedFilters?.registrantUserIds || [],
           filterMode: filterState.advancedFilters?.filterMode || 'group',
           tagMatchMode: filterState.advancedFilters?.tagMatchMode || filterState.tagMatchMode || 'AND',
+          is_hot_spring_mode: filterState.advancedFilters?.is_hot_spring_mode || false,
+          spring_temp_min: filterState.advancedFilters?.spring_temp_min,
+          spring_temp_max: filterState.advancedFilters?.spring_temp_max,
+          is_source_fed: filterState.advancedFilters?.is_source_fed,
+          bath_type: filterState.advancedFilters?.bath_type,
+          stay_type: filterState.advancedFilters?.stay_type,
         }}
         onApply={(newFilters) => {
           updateFilter({
@@ -660,12 +738,19 @@ function StatsPageInner() {
               registrantUserIds: newFilters.registrantUserIds,
               filterMode: newFilters.filterMode,
               tagMatchMode: newFilters.tagMatchMode,
+              is_hot_spring_mode: newFilters.is_hot_spring_mode,
+              spring_temp_min: newFilters.spring_temp_min,
+              spring_temp_max: newFilters.spring_temp_max,
+              is_source_fed: newFilters.is_source_fed,
+              bath_type: newFilters.bath_type,
+              stay_type: newFilters.stay_type,
             },
             tagMatchMode: newFilters.tagMatchMode,
           });
           setIsFilterModalOpen(false);
         }}
         hideGroupAndRegistrant={isMyPageMode}
+        showHotSpringFilter={appType === 'tabireco'}
       />
     </div>
   );

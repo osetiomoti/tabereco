@@ -9,7 +9,7 @@ import { createPost, updatePost } from '@/lib/api/posts';
 import { useUpload } from '@/hooks/useUpload';
 import { todayString } from '@/lib/utils';
 import { getExifGPS } from '@/lib/exif';
-import type { Post, PostFormValues, PostStatus } from '@/lib/types';
+import type { Post, PostFormValues, PostStatus, BathTemperatureInfo } from '@/lib/types';
 import { Loader2, MapPin, Globe, Hash, Check, Tag as TagIcon, Plus, X, Heart, ChevronDown, Lock } from 'lucide-react';
 import { useAppType } from '@/contexts/AppTypeContext';
 
@@ -40,6 +40,14 @@ export function PostForm({ post }: Props) {
   const cleanAddress = (addr: string) =>
     (addr || '').replace(/^日本、\s*/, '').replace(/^〒\d{3}-\d{4}\s*/, '');
 
+  // Helper for bath_temperatures initial value
+  const initBathTemps = (): BathTemperatureInfo[] => {
+    if (post?.bath_temperatures && Array.isArray(post.bath_temperatures) && post.bath_temperatures.length > 0) {
+      return post.bath_temperatures as BathTemperatureInfo[];
+    }
+    return [{ id: crypto.randomUUID(), name: '', min: 38, max: 38 }];
+  };
+
   const [values, setValues] = useState<PostFormValues>({
     title: post?.title ?? '',
     store_name: post?.store_name ?? queryName,
@@ -65,8 +73,27 @@ export function PostForm({ post }: Props) {
     is_mine_only: post?.is_mine_only ?? false,
     price_min: post?.price_min ?? 1000,
     price_max: post?.price_max ?? 2000,
-    temperature_min: post ? post.temperature_min : 37,
-    temperature_max: post ? post.temperature_max : 38,
+    temperature_min: post ? post.temperature_min : null,
+    temperature_max: post ? post.temperature_max : null,
+    spring_temp_type: post?.spring_temp_type ?? null,
+    spring_temp_custom: post?.spring_temp_custom ?? null,
+    spring_temp_min: post?.spring_temp_min ?? null,
+    spring_temp_max: post?.spring_temp_max ?? null,
+    cold_bath_temp: post?.cold_bath_temp ?? null,
+    is_source_fed: post?.is_source_fed ?? null,
+    bath_count: post?.bath_count ?? null,
+    spring_quality: post?.spring_quality ?? null,
+    stay_type: post?.stay_type ?? null,
+    bath_type: post?.bath_type ?? null,
+    hidden_spring_rating: post?.hidden_spring_rating ?? null,
+    has_amenities: post?.has_amenities ?? null,
+    other_memo: post?.other_memo ?? null,
+    spring_qualities: (post?.spring_qualities as string[]) ?? [],
+    bath_types: (post?.bath_types as string[]) ?? [],
+    source_managements: (post?.source_managements as string[]) ?? [],
+    shampoo_type: post?.shampoo_type ?? null,
+    facility_type: post?.facility_type ?? null,
+    bath_temperatures: initBathTemps(),
   });
 
   const isCustomTemp = post && post.tags?.some(t => t.name === '温泉') ? 
@@ -246,6 +273,27 @@ export function PostForm({ post }: Props) {
         price_max: values.price_max,
         temperature_min: values.tags.includes('温泉') ? values.temperature_min : null,
         temperature_max: values.tags.includes('温泉') ? values.temperature_max : null,
+        // 旅レコ（温泉）専用フィールド (legacy)
+        spring_temp_type: values.tags.includes('温泉') ? values.spring_temp_type : null,
+        spring_temp_custom: values.tags.includes('温泉') ? values.spring_temp_custom : null,
+        spring_temp_min: values.tags.includes('温泉') ? values.spring_temp_min : null,
+        spring_temp_max: values.tags.includes('温泉') ? values.spring_temp_max : null,
+        cold_bath_temp: values.tags.includes('温泉') ? values.cold_bath_temp : null,
+        is_source_fed: values.tags.includes('温泉') ? values.is_source_fed : null,
+        bath_count: values.tags.includes('温泉') ? values.bath_count : null,
+        spring_quality: values.tags.includes('温泉') ? values.spring_quality : null,
+        stay_type: values.tags.includes('温泉') ? values.stay_type : null,
+        bath_type: values.tags.includes('温泉') ? values.bath_type : null,
+        hidden_spring_rating: values.tags.includes('温泉') ? values.hidden_spring_rating : null,
+        has_amenities: values.tags.includes('温泉') ? values.has_amenities : null,
+        other_memo: values.tags.includes('温泉') ? values.other_memo : null,
+        // V2 hot spring fields
+        spring_qualities: values.tags.includes('温泉') ? values.spring_qualities : [],
+        bath_types: values.tags.includes('温泉') ? values.bath_types : [],
+        source_managements: values.tags.includes('温泉') ? values.source_managements : [],
+        shampoo_type: values.tags.includes('温泉') ? values.shampoo_type : null,
+        facility_type: values.tags.includes('温泉') ? values.facility_type : null,
+        bath_temperatures: values.tags.includes('温泉') ? values.bath_temperatures : null,
       };
 
       let result;
@@ -503,95 +551,205 @@ export function PostForm({ post }: Props) {
           </div>
         </div>
 
-        {/* 温泉の温度設定 */}
+        {/* 温泉 V2 詳細フィールド */}
         {values.tags.includes('温泉') && (
-          <div className="space-y-2.5 animate-in slide-in-from-top-2 fade-in duration-300">
-            <label className="text-[12px] font-black text-gray-500 tracking-widest ml-1 block">温度帯</label>
-            <div className="p-4 bg-gray-50/50 border border-gray-100 rounded-[1.5rem] shadow-inner space-y-4">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl">🌡️</span>
-                <span className="text-sm font-bold text-gray-700">お湯の温度</span>
+          <div className="space-y-5 animate-in slide-in-from-top-2 fade-in duration-300 border border-orange-100 rounded-[1.5rem] p-5 bg-orange-50/30">
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-xl">♨️</span>
+              <span className="text-sm font-black text-orange-700 tracking-wider">温泉詳細情報</span>
+            </div>
+
+            {/* 施設タイプ: 温泉/銭湯/カスタム */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-black text-gray-500 tracking-widest flex items-center justify-between">
+                🏠 施設タイプ
+                {values.facility_type && (
+                  <button type="button" onClick={() => set('facility_type', null)} className="text-gray-300 hover:text-red-400 transition-colors"><X size={12} /></button>
+                )}
+              </label>
+              <div className="flex gap-2">
+                {['温泉', '銭湯', 'スパ'].map(opt => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => set('facility_type', values.facility_type === opt ? null : opt)}
+                    className={`flex-1 py-2.5 text-[12px] font-black rounded-xl border transition-all ${
+                      values.facility_type === opt
+                        ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
+                        : 'bg-white text-gray-500 border-gray-200 hover:border-orange-300'
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                ))}
+                <input
+                  type="text"
+                  placeholder="カスタム..."
+                  value={['温泉', '銭湯', 'スパ', '', null].includes(values.facility_type) ? '' : (values.facility_type ?? '')}
+                  onChange={e => set('facility_type', e.target.value || null)}
+                  className="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-2 text-[12px] font-bold focus:outline-none focus:ring-2 focus:ring-orange-200"
+                />
               </div>
-              
-              <div className="flex bg-gray-200/50 p-1 rounded-xl">
+            </div>
+
+            {/* 泉質（複数選択） */}
+            <HotSpringMultiSelect
+              label="💧 泉質"
+              options={['単純温泉', '塩化物泉', '炭酸水素塩泉', '硫酸塩泉', '二酸化炭素泉', '含鉄泉', '硫黄泉', 'アルカリ性単純温泉', '酸性泉', '放射能泉']}
+              selected={values.spring_qualities}
+              onChange={v => set('spring_qualities', v)}
+            />
+
+            {/* 浴槽情報（複数選択） */}
+            <HotSpringMultiSelect
+              label="🛁 浴槽情報"
+              options={['内湯', '露天風呂', '混浴内湯', '混浴露天', '家族風呂', '水風呂', 'サウナ', 'ジャグジー', '洞窟風呂', '展望風呂']}
+              selected={values.bath_types}
+              onChange={v => set('bath_types', v)}
+            />
+
+            {/* 源泉・加水加温（複数選択） */}
+            <HotSpringMultiSelect
+              label="🌊 源泉・管理方法"
+              options={['源泉掛け流し', '加水あり', '加温あり', '循環あり', '消毒あり', '塩素不使用']}
+              selected={values.source_managements}
+              onChange={v => set('source_managements', v)}
+            />
+
+            {/* シャンプー */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-black text-gray-500 tracking-widest flex items-center justify-between">
+                🧴 シャンプー・石鹸
+                {values.shampoo_type && (
+                  <button type="button" onClick={() => set('shampoo_type', null)} className="text-gray-300 hover:text-red-400 transition-colors"><X size={12} /></button>
+                )}
+              </label>
+              <div className="flex gap-2">
+                {['あり', 'なし'].map(opt => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => set('shampoo_type', values.shampoo_type === opt ? null : opt)}
+                    className={`flex-1 py-2.5 text-[12px] font-black rounded-xl border transition-all ${
+                      values.shampoo_type === opt
+                        ? 'bg-teal-500 text-white border-teal-500 shadow-sm'
+                        : 'bg-white text-gray-500 border-gray-200 hover:border-teal-300'
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                ))}
+                <input
+                  type="text"
+                  placeholder="カスタム..."
+                  value={['あり', 'なし', '', null].includes(values.shampoo_type) ? '' : (values.shampoo_type ?? '')}
+                  onChange={e => set('shampoo_type', e.target.value || null)}
+                  className="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-2 text-[12px] font-bold focus:outline-none focus:ring-2 focus:ring-teal-200"
+                />
+              </div>
+            </div>
+
+            {/* 宿泊 or 日帰り */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-black text-gray-500 tracking-widest flex items-center justify-between">
+                🏨 宿泊タイプ
+                {values.stay_type && (
+                  <button type="button" onClick={() => set('stay_type', null)} className="text-gray-300 hover:text-red-400 transition-colors"><X size={12} /></button>
+                )}
+              </label>
+              <div className="flex gap-2">
+                {(['日帰り', '宿泊'] as const).map(opt => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => set('stay_type', values.stay_type === opt ? null : opt)}
+                    className={`flex-1 py-2.5 text-[13px] font-black rounded-xl border transition-all ${
+                      values.stay_type === opt
+                        ? 'bg-purple-500 text-white border-purple-500 shadow-sm'
+                        : 'bg-white text-gray-500 border-gray-200 hover:border-purple-300'
+                    }`}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 秘湯感（星評価） */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-black text-gray-500 tracking-widest flex items-center justify-between">
+                🏔️ 秘湯感
+                {values.hidden_spring_rating != null && (
+                  <button type="button" onClick={() => set('hidden_spring_rating', null)} className="text-gray-300 hover:text-red-400 transition-colors"><X size={12} /></button>
+                )}
+              </label>
+              <div className="flex items-center gap-1">
+                {[1, 2, 3, 4, 5].map(star => (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => set('hidden_spring_rating', values.hidden_spring_rating === star ? null : star)}
+                    className={`text-2xl transition-transform hover:scale-110 ${
+                      (values.hidden_spring_rating ?? 0) >= star ? 'text-amber-400' : 'text-gray-200'
+                    }`}
+                  >
+                    ★
+                  </button>
+                ))}
+                {values.hidden_spring_rating != null && (
+                  <span className="text-xs text-amber-600 font-bold ml-2">{values.hidden_spring_rating}/5</span>
+                )}
+              </div>
+            </div>
+
+            {/* メモ */}
+            <div className="space-y-2">
+              <label className="text-[11px] font-black text-gray-500 tracking-widest">📝 その他メモ</label>
+              <textarea
+                value={values.other_memo ?? ''}
+                onChange={e => set('other_memo', e.target.value || null)}
+                placeholder="泉質、雰囲気など..."
+                rows={2}
+                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-200 font-bold resize-none text-sm"
+              />
+            </div>
+
+            {/* 浴槽ごとの温度設定 */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-black text-gray-500 tracking-widest">🌡️ 浴槽ごとの温度</label>
                 <button
                   type="button"
                   onClick={() => {
-                    setTempMode('preset');
-                    set('temperature_min', null);
-                    set('temperature_max', null);
+                    const newBath: BathTemperatureInfo = { id: crypto.randomUUID(), name: '', min: 38, max: 38 };
+                    set('bath_temperatures', [...values.bath_temperatures, newBath]);
                   }}
-                  className={`flex-1 py-2 text-[12px] font-bold rounded-lg transition-all ${
-                    tempMode === 'preset' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                  }`}
+                  className="flex items-center gap-1 px-3 py-1.5 bg-orange-100 text-orange-600 rounded-xl text-[11px] font-black hover:bg-orange-200 transition-all"
                 >
-                  選択
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setTempMode('custom');
-                  }}
-                  className={`flex-1 py-2 text-[12px] font-bold rounded-lg transition-all ${
-                    tempMode === 'custom' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  カスタム入力
+                  <Plus size={12} strokeWidth={3} /> 浴槽を追加
                 </button>
               </div>
 
-              {tempMode === 'preset' ? (
-                <select
-                  value={`${values.temperature_min}-${values.temperature_max}`}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    if (val === 'unknown') {
-                      set('temperature_min', null);
-                      set('temperature_max', null);
-                    } else {
-                      const [minStr, maxStr] = val.split('-');
-                      set('temperature_min', minStr === 'null' ? null : parseFloat(minStr));
-                      set('temperature_max', maxStr === 'null' ? null : parseFloat(maxStr));
-                    }
-                  }}
-                  className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-shadow)] font-bold appearance-none cursor-pointer"
-                >
-                  <option value="unknown">わからない</option>
-                  <option value="null-34">〜34℃</option>
-                  <option value="35-36">35〜36℃</option>
-                  <option value="37-38">37〜38℃</option>
-                  <option value="39-40">39〜40℃</option>
-                  <option value="41-42">41〜42℃</option>
-                  <option value="43-null">43℃〜</option>
-                </select>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={values.temperature_min ?? ''}
-                    onChange={(e) => set('temperature_min', e.target.value ? parseFloat(e.target.value) : null)}
-                    placeholder="下限"
-                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-shadow)] font-bold text-center"
+              <div className="space-y-3">
+                {values.bath_temperatures.map((bath, idx) => (
+                  <BathTemperatureCard
+                    key={bath.id}
+                    bath={bath}
+                    onUpdate={(updated) => {
+                      const newArr = [...values.bath_temperatures];
+                      newArr[idx] = updated;
+                      set('bath_temperatures', newArr);
+                    }}
+                    onRemove={values.bath_temperatures.length > 1 ? () => {
+                      set('bath_temperatures', values.bath_temperatures.filter((_, i) => i !== idx));
+                    } : undefined}
                   />
-                  <span className="text-gray-400 font-bold">〜</span>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={values.temperature_max ?? ''}
-                    onChange={(e) => set('temperature_max', e.target.value ? parseFloat(e.target.value) : null)}
-                    placeholder="上限"
-                    className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-shadow)] font-bold text-center"
-                  />
-                  <span className="text-gray-400 font-bold shrink-0">℃</span>
-                </div>
-              )}
+                ))}
+              </div>
             </div>
-            {tempMode === 'custom' && values.temperature_min !== null && values.temperature_max !== null && values.temperature_min > values.temperature_max && (
-              <p className="text-red-500 text-xs font-bold px-2">左の数字は右の数字より小さくしてください。</p>
-            )}
           </div>
         )}
+
       </section>
 
       {/* 4. プライバシー */}
@@ -702,5 +860,245 @@ export function PostForm({ post }: Props) {
         initialCenter={values.latitude && values.longitude ? { lat: values.latitude, lng: values.longitude } : undefined}
       />
     </form>
+  );
+}
+
+// ─── 温泉用サブコンポーネント ───────────────────────────────────
+
+type HotSpringMultiSelectProps = {
+  label: string;
+  options: string[];
+  selected: string[];
+  onChange: (val: string[]) => void;
+};
+
+function HotSpringMultiSelect({ label, options, selected, onChange }: HotSpringMultiSelectProps) {
+  const [customInput, setCustomInput] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const toggle = (opt: string) => {
+    if (selected.includes(opt)) {
+      onChange(selected.filter(s => s !== opt));
+    } else {
+      onChange([...selected, opt]);
+    }
+  };
+
+  const addCustom = () => {
+    const v = customInput.trim();
+    if (v && !selected.includes(v)) {
+      onChange([...selected, v]);
+      setCustomInput('');
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="text-[11px] font-black text-gray-500 tracking-widest flex items-center justify-between">
+        {label}
+        {selected.length > 0 && (
+          <button type="button" onClick={() => onChange([])} className="text-gray-300 hover:text-red-400 transition-colors text-[10px] font-bold">すべてクリア</button>
+        )}
+      </label>
+
+      {/* Selected tags */}
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selected.map(s => (
+            <span key={s} className="inline-flex items-center gap-1 px-2.5 py-1 bg-orange-100 text-orange-700 rounded-lg text-[11px] font-black">
+              {s}
+              <button type="button" onClick={() => toggle(s)} className="text-orange-400 hover:text-red-500 transition-colors">
+                <X size={10} strokeWidth={3} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Dropdown trigger */}
+      <button
+        type="button"
+        onClick={() => setShowDropdown(!showDropdown)}
+        className="w-full flex items-center justify-between px-4 py-2.5 bg-white border border-gray-200 rounded-xl text-[12px] text-gray-500 font-bold hover:border-orange-300 transition-all"
+      >
+        <span>{selected.length === 0 ? '選択してください...' : `${selected.length}件選択中`}</span>
+        <ChevronDown size={14} className={`transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+      </button>
+
+      {showDropdown && (
+        <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
+          {options.map(opt => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => toggle(opt)}
+              className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-[12px] font-bold transition-all ${
+                selected.includes(opt)
+                  ? 'bg-orange-50 text-orange-700'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {opt}
+              {selected.includes(opt) && <Check size={12} strokeWidth={3} className="text-orange-500" />}
+            </button>
+          ))}
+          <div className="border-t border-gray-100 pt-2 mt-1 flex gap-2">
+            <input
+              type="text"
+              value={customInput}
+              onChange={e => setCustomInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustom())}
+              placeholder="カスタム..."
+              className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-[11px] font-bold focus:outline-none focus:ring-2 focus:ring-orange-200"
+            />
+            <button
+              type="button"
+              onClick={addCustom}
+              className="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-[11px] font-black hover:bg-orange-600 transition-colors"
+            >
+              追加
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── 浴槽温度カード ───────────────────────────────────
+
+const TEMP_PRESETS = [
+  { label: 'サウナ', min: 80, max: null, color: '#7c3aed' },
+  { label: '熱め', min: 43, max: null, color: '#dc2626' },
+  { label: '高め', min: 41, max: 42, color: '#ea580c' },
+  { label: '適温', min: 39, max: 40, color: '#f59e0b' },
+  { label: '標準', min: 37, max: 38, color: '#22c55e' },
+  { label: 'ぬるめ', min: 35, max: 36, color: '#06b6d4' },
+  { label: '低め', min: 25, max: 34, color: '#3b82f6' },
+  { label: '水風呂', min: null, max: 24, color: '#0ea5e9' },
+];
+
+function getColorForTemp(temp: number | null): string {
+  if (temp === null) return '#94a3b8';
+  if (temp >= 80) return '#7c3aed';
+  if (temp >= 43) return '#dc2626';
+  if (temp >= 41) return '#ea580c';
+  if (temp >= 39) return '#f59e0b';
+  if (temp >= 37) return '#22c55e';
+  if (temp >= 35) return '#06b6d4';
+  if (temp >= 25) return '#3b82f6';
+  return '#0ea5e9';
+}
+
+type BathTemperatureCardProps = {
+  bath: BathTemperatureInfo;
+  onUpdate: (updated: BathTemperatureInfo) => void;
+  onRemove?: () => void;
+};
+
+function BathTemperatureCard({ bath, onUpdate, onRemove }: BathTemperatureCardProps) {
+  const displayTemp = bath.min !== null ? bath.min : bath.max;
+  const tempColor = getColorForTemp(displayTemp);
+
+  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value);
+    onUpdate({ ...bath, min: val, max: val });
+  };
+
+  return (
+    <div className="bg-white border border-gray-100 rounded-2xl p-4 space-y-3 shadow-sm">
+      <div className="flex items-center gap-2">
+        <div
+          className="w-3 h-3 rounded-full flex-shrink-0"
+          style={{ backgroundColor: tempColor }}
+        />
+        <input
+          type="text"
+          value={bath.name}
+          onChange={e => onUpdate({ ...bath, name: e.target.value })}
+          placeholder="浴槽名（例: 内湯、露天、水風呂）"
+          className="flex-1 text-[13px] font-bold text-gray-700 border-none outline-none bg-transparent placeholder-gray-300"
+        />
+        {onRemove && (
+          <button type="button" onClick={onRemove} className="text-gray-200 hover:text-red-400 transition-colors">
+            <X size={16} strokeWidth={2.5} />
+          </button>
+        )}
+      </div>
+
+      {/* Quick presets */}
+      <div className="flex gap-1.5 flex-wrap">
+        {TEMP_PRESETS.map(p => {
+          const isActive = bath.min === p.min && bath.max === p.max;
+          return (
+            <button
+              key={p.label}
+              type="button"
+              onClick={() => onUpdate({ ...bath, min: p.min, max: p.max })}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all ${
+                isActive ? 'text-white shadow-sm' : 'bg-gray-50 text-gray-500 border border-gray-100 hover:border-gray-300'
+              }`}
+              style={isActive ? { backgroundColor: p.color } : {}}
+            >
+              {p.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Range slider */}
+      <div className="space-y-1">
+        <div className="flex items-center justify-between text-[10px] font-bold text-gray-400">
+          <span>10℃</span>
+          <span
+            className="text-sm font-black px-2 py-0.5 rounded-lg text-white transition-all"
+            style={{ backgroundColor: tempColor }}
+          >
+            {displayTemp !== null ? `${displayTemp}℃` : '未設定'}
+          </span>
+          <span>100℃</span>
+        </div>
+        <input
+          type="range"
+          min={10}
+          max={100}
+          step={1}
+          value={displayTemp ?? 38}
+          onChange={handleSliderChange}
+          className="w-full h-2 rounded-full appearance-none cursor-pointer"
+          style={{
+            background: `linear-gradient(to right, ${tempColor} 0%, ${tempColor} ${((displayTemp ?? 38) - 10) / 90 * 100}%, #e5e7eb ${((displayTemp ?? 38) - 10) / 90 * 100}%, #e5e7eb 100%)`
+          }}
+        />
+      </div>
+
+      {/* Custom range input */}
+      <div className="flex items-center gap-2 text-[11px]">
+        <span className="text-gray-400 font-bold shrink-0">カスタム:</span>
+        <input
+          type="number"
+          step="0.5"
+          value={bath.min ?? ''}
+          onChange={e => onUpdate({ ...bath, min: e.target.value ? parseFloat(e.target.value) : null })}
+          placeholder="下限"
+          className="w-16 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-center font-bold focus:outline-none focus:ring-1 focus:ring-orange-200"
+        />
+        <span className="text-gray-400">〜</span>
+        <input
+          type="number"
+          step="0.5"
+          value={bath.max ?? ''}
+          onChange={e => onUpdate({ ...bath, max: e.target.value ? parseFloat(e.target.value) : null })}
+          placeholder="上限"
+          className="w-16 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-center font-bold focus:outline-none focus:ring-1 focus:ring-orange-200"
+        />
+        <span className="text-gray-400">℃</span>
+        <span className="text-gray-300 text-[10px] ml-1">
+          {bath.min !== null && bath.max === null ? `${bath.min}℃以上` :
+           bath.min === null && bath.max !== null ? `${bath.max}℃以下` :
+           bath.min !== null && bath.max !== null && bath.min !== bath.max ? `${bath.min}〜${bath.max}℃` : ''}
+        </span>
+      </div>
+    </div>
   );
 }

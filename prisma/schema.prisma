@@ -85,6 +85,30 @@ model Post {
   temperature_min Float?
   temperature_max Float?
   app_type    String      @default("tabereco") @db.VarChar(20)
+
+  // 旅レコ（温泉）専用フィールド
+  spring_temp_type     String?   @default("標準温泉")
+  spring_temp_custom   String?
+  spring_temp_min      Float?
+  spring_temp_max      Float?
+  cold_bath_temp       Float?
+  is_source_fed        String?
+  bath_count           Int?
+  spring_quality       String?
+  stay_type            String?
+  bath_type            String?
+  hidden_spring_rating Int?
+  has_amenities        Boolean?
+  other_memo           String?
+
+  // V2 新しい温泉フィールド
+  spring_qualities     String[] @default([])
+  bath_types           String[] @default([])
+  source_managements   String[] @default([])
+  shampoo_type         String?
+  facility_type        String?
+  bath_temperatures    Json?
+
   user        User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
   tags        PostTag[]
   groups      PostGroup[]

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { X, Heart, ChevronDown, Plus, Hash, Search, Users, User } from 'lucide-react';
+import { X, Heart, ChevronDown, Plus, Hash, Search, Users, User, Check } from 'lucide-react';
 import { useMyTags, useGroups, useMyProfile, useFriends } from '@/hooks/useAppData';
 import type { Tag } from '@/lib/types';
 import { TagSelector } from './TagSelector';
@@ -31,12 +31,28 @@ type Group  = { id: string; name: string };
 type Props = {
   isOpen: boolean;
   onClose: () => void;
-  onApply: (filters: FilterState) => void;
-  initialFilters?: Partial<FilterState>;
+  onApply: (filters: FilterState & HotSpringFilters) => void;
+  initialFilters?: Partial<FilterState & HotSpringFilters>;
   initialTags?: Tag[];
   hideGroupAndRegistrant?: boolean;
   hideStatus?: boolean;
   hideTags?: boolean;
+  showHotSpringFilter?: boolean;
+};
+
+type HotSpringFilters = {
+  is_hot_spring_mode?: boolean;
+  spring_temp_min?: number | null;
+  spring_temp_max?: number | null;
+  is_source_fed?: string;
+  bath_type?: string;
+  stay_type?: string;
+  // V2
+  spring_qualities?: string[];
+  bath_types?: string[];
+  source_managements?: string[];
+  shampoo_type?: string;
+  facility_type?: string;
 };
 
 const PERIOD_OPTIONS = [
@@ -65,8 +81,21 @@ const DEFAULT: FilterState = {
   tagMatchMode: 'AND',
 };
 
-export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialTags, hideGroupAndRegistrant = false, hideStatus = false, hideTags = false }: Props) {
-  const [filters, setFilters] = useState<FilterState>({ ...DEFAULT, ...(initialFilters || {}) });
+export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialTags, hideGroupAndRegistrant = false, hideStatus = false, hideTags = false, showHotSpringFilter = false }: Props) {
+  const [filters, setFilters] = useState<FilterState & HotSpringFilters>({ ...DEFAULT, ...(initialFilters || {}) });
+  const [hotSpringMode, setHotSpringMode] = useState<boolean>(initialFilters?.is_hot_spring_mode || false);
+  const [hsTempMin, setHsTempMin] = useState<string>(initialFilters?.spring_temp_min != null ? String(initialFilters.spring_temp_min) : '');
+  const [hsTempMax, setHsTempMax] = useState<string>(initialFilters?.spring_temp_max != null ? String(initialFilters.spring_temp_max) : '');
+  const [hsSourceFed, setHsSourceFed] = useState<string>(initialFilters?.is_source_fed || '');
+  const [hsBathType, setHsBathType] = useState<string>(initialFilters?.bath_type || '');
+  const [hsStayType, setHsStayType] = useState<string>(initialFilters?.stay_type || '');
+  // V2 multi-select
+  const [hsSpringQualities, setHsSpringQualities] = useState<string[]>(initialFilters?.spring_qualities || []);
+  const [hsBathTypes, setHsBathTypes] = useState<string[]>(initialFilters?.bath_types || []);
+  const [hsSourceMgmts, setHsSourceMgmts] = useState<string[]>(initialFilters?.source_managements || []);
+  const [hsShampooType, setHsShampooType] = useState<string>(initialFilters?.shampoo_type || '');
+  const [hsFacilityType, setHsFacilityType] = useState<string>(initialFilters?.facility_type || '');
+  const [hsTempSlider, setHsTempSlider] = useState<number>(38);
   const { tags: swrTags } = useMyTags();
   const { groups: swrGroups } = useGroups();
   const { friends: swrFriends } = useFriends();
@@ -678,6 +707,168 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
                 </button>
               </div>
 
+              {/* ── Hot Spring Filter (Tabireco かつ 温泉タグが含まれている時に表示) ── */}
+              {showHotSpringFilter && (() => {
+                const hasOnsen = filters.tags.includes('温泉');
+                return (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">♥ 温泉専用フィルター</label>
+                        {!hasOnsen && (
+                          <span className="text-[10px] text-gray-400">
+                            「温泉」タグを選択すると有効になります
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        disabled={!hasOnsen}
+                        onClick={() => hasOnsen && setHotSpringMode(v => !v)}
+                        className={`relative w-11 h-6 rounded-full transition-colors ${
+                          !hasOnsen ? 'bg-gray-100 cursor-not-allowed' : hotSpringMode ? 'bg-orange-500' : 'bg-gray-200'
+                        }`}
+                      >
+                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                          hotSpringMode && hasOnsen ? 'translate-x-5' : 'translate-x-0'
+                        }`} />
+                      </button>
+                    </div>
+
+                  {hotSpringMode && hasOnsen && (
+                    <div className="bg-orange-50 rounded-2xl p-4 space-y-4 border border-orange-100">
+
+                      {/* 施設タイプ */}
+                      <div>
+                        <p className="text-[11px] font-black text-gray-500 mb-1.5 flex items-center justify-between">
+                          🏠 施設タイプ
+                          {hsFacilityType && <button onClick={() => setHsFacilityType('')} className="text-gray-300 hover:text-red-400"><X size={10} /></button>}
+                        </p>
+                        <div className="flex gap-2">
+                          {['温泉', '銭湯', 'スパ'].map(opt => (
+                            <button
+                              key={opt}
+                              onClick={() => setHsFacilityType(hsFacilityType === opt ? '' : opt)}
+                              className={`flex-1 py-2 text-[11px] font-black rounded-xl border transition-all ${
+                                hsFacilityType === opt ? 'bg-orange-500 text-white border-orange-500' : 'bg-white border-gray-200 text-gray-600 hover:border-orange-300'
+                              }`}
+                            >{opt}</button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 泉質（複数選択 OR） */}
+                      <FilterMultiSelect
+                        label="💧 泉質"
+                        options={['単純温泉','塩化物泉','炭酸水素塩泉','硫酸塩泉','二酸化炭素泉','含鉄泉','硫黄泉','アルカリ性単純温泉','酸性泉']}
+                        selected={hsSpringQualities}
+                        onChange={setHsSpringQualities}
+                      />
+
+                      {/* 浴槽情報（複数選択 OR） */}
+                      <FilterMultiSelect
+                        label="🛁 浴槽情報"
+                        options={['内湯','露天風呂','混浴内湯','混浴露天','家族風呂','水風呂','サウナ','ジャグジー','洞窟風呂','展望風呂']}
+                        selected={hsBathTypes}
+                        onChange={setHsBathTypes}
+                      />
+
+                      {/* 源泉・管理方法（複数選択 OR） */}
+                      <FilterMultiSelect
+                        label="🌊 源泉・管理方法"
+                        options={['源泉掛け流し','加水あり','加温あり','循環あり','消毒あり','塩素不使用']}
+                        selected={hsSourceMgmts}
+                        onChange={setHsSourceMgmts}
+                      />
+
+                      {/* シャンプー */}
+                      <div>
+                        <p className="text-[11px] font-black text-gray-500 mb-1.5 flex items-center justify-between">
+                          🧴 シャンプー・石鹸
+                          {hsShampooType && <button onClick={() => setHsShampooType('')} className="text-gray-300 hover:text-red-400"><X size={10} /></button>}
+                        </p>
+                        <div className="flex gap-2">
+                          {[{ label: '指定なし', val: '' }, { label: 'あり', val: 'あり' }, { label: 'なし', val: 'なし' }].map(({ label, val }) => (
+                            <button
+                              key={val}
+                              onClick={() => setHsShampooType(val)}
+                              className={`flex-1 py-1.5 rounded-full text-[11px] font-bold transition-all ${
+                                hsShampooType === val ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200 text-gray-600'
+                              }`}
+                            >{label}</button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 温度帯 – range slider + custom inputs */}
+                      <div>
+                        <p className="text-[11px] font-black text-gray-500 mb-2">☕ 温度帯（℃）</p>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-[10px] font-bold text-gray-400">
+                            <span>10℃</span>
+                            <span className="text-sm font-black px-2 py-0.5 rounded-lg text-white bg-orange-400">
+                              {hsTempMin || hsTempMax ? `${hsTempMin || '〜'}〜${hsTempMax || '〜'}℃` : '指定なし'}
+                            </span>
+                            <span>100℃</span>
+                          </div>
+                          <input
+                            type="range" min={10} max={100} step={1}
+                            value={hsTempSlider}
+                            onChange={e => {
+                              const v = Number(e.target.value);
+                              setHsTempSlider(v);
+                              setHsTempMin(String(v - 2 > 10 ? v - 2 : 10));
+                              setHsTempMax(String(v + 2 < 100 ? v + 2 : 100));
+                            }}
+                            className="w-full h-2 rounded-full appearance-none cursor-pointer"
+                            style={{ background: `linear-gradient(to right, #f97316 0%, #f97316 ${(hsTempSlider - 10) / 90 * 100}%, #e5e7eb ${(hsTempSlider - 10) / 90 * 100}%, #e5e7eb 100%)` }}
+                          />
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="number" placeholder="下限"
+                              value={hsTempMin}
+                              onChange={e => setHsTempMin(e.target.value)}
+                              className="w-20 bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-[12px] text-gray-800 focus:outline-none focus:border-orange-400 text-center"
+                            />
+                            <span className="text-gray-400 text-[12px]">〜</span>
+                            <input
+                              type="number" placeholder="上限"
+                              value={hsTempMax}
+                              onChange={e => setHsTempMax(e.target.value)}
+                              className="w-20 bg-white border border-gray-200 rounded-xl px-3 py-1.5 text-[12px] text-gray-800 focus:outline-none focus:border-orange-400 text-center"
+                            />
+                            <span className="text-gray-400 text-[12px]">℃</span>
+                            {(hsTempMin || hsTempMax) && (
+                              <button onClick={() => { setHsTempMin(''); setHsTempMax(''); }} className="text-gray-300 hover:text-red-400"><X size={12} /></button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* 宿泊 / 日帰り */}
+                      <div>
+                        <p className="text-[11px] font-black text-gray-500 mb-1.5 flex items-center justify-between">
+                          🏨 宿泊 / 日帰り
+                          {hsStayType && <button onClick={() => setHsStayType('')} className="text-gray-300 hover:text-red-400"><X size={10} /></button>}
+                        </p>
+                        <div className="flex gap-2">
+                          {[{ label: '指定なし', val: '' }, { label: '宿泊', val: '宿泊' }, { label: '日帰り', val: '日帰り' }, { label: '両方', val: '両方' }].map(({ label, val }) => (
+                            <button
+                              key={val}
+                              onClick={() => setHsStayType(val)}
+                              className={`px-3 py-1.5 rounded-full text-[11px] font-bold transition-all ${
+                                hsStayType === val ? 'bg-orange-500 text-white' : 'bg-white border border-gray-200 text-gray-600'
+                              }`}
+                            >{label}</button>
+                          ))}
+                        </div>
+                      </div>
+
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
             </div>{/* end vertical flex */}
         </div>
 
@@ -694,7 +885,20 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
               if (allMembersSelected) {
                 finalFilters.registrantUserIds = [];
               }
-              onApply(finalFilters);
+              onApply({
+                ...finalFilters,
+                is_hot_spring_mode: hotSpringMode,
+                spring_temp_min: hsTempMin ? parseFloat(hsTempMin) : null,
+                spring_temp_max: hsTempMax ? parseFloat(hsTempMax) : null,
+                is_source_fed: hsSourceFed,
+                bath_type: hsBathType,
+                stay_type: hsStayType,
+                spring_qualities: hsSpringQualities,
+                bath_types: hsBathTypes,
+                source_managements: hsSourceMgmts,
+                shampoo_type: hsShampooType,
+                facility_type: hsFacilityType,
+              });
               onClose();
             }}
             className="w-full py-3.5 bg-orange-500 hover:bg-orange-600 text-white rounded-xl font-bold text-[15px] active:scale-98 transition-all shadow-sm"
@@ -703,6 +907,108 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─── 温泉用サブコンポーネント ───────────────────────────────────
+
+type FilterMultiSelectProps = {
+  label: string;
+  options: string[];
+  selected: string[];
+  onChange: (val: string[]) => void;
+};
+
+function FilterMultiSelect({ label, options, selected, onChange }: FilterMultiSelectProps) {
+  const [customInput, setCustomInput] = useState('');
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  const toggle = (opt: string) => {
+    if (selected.includes(opt)) {
+      onChange(selected.filter(s => s !== opt));
+    } else {
+      onChange([...selected, opt]);
+    }
+  };
+
+  const addCustom = () => {
+    const v = customInput.trim();
+    if (v && !selected.includes(v)) {
+      onChange([...selected, v]);
+      setCustomInput('');
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <label className="text-[11px] font-black text-gray-500 tracking-widest flex items-center justify-between">
+        {label}
+        {selected.length > 0 && (
+          <button type="button" onClick={() => onChange([])} className="text-gray-300 hover:text-red-400 transition-colors text-[10px] font-bold">すべてクリア</button>
+        )}
+      </label>
+
+      {/* Selected tags */}
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selected.map(s => (
+            <span key={s} className="inline-flex items-center gap-1 px-2.5 py-1 bg-orange-100 text-orange-700 rounded-lg text-[11px] font-black">
+              {s}
+              <button type="button" onClick={() => toggle(s)} className="text-orange-400 hover:text-red-500 transition-colors">
+                <X size={10} strokeWidth={3} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Dropdown trigger */}
+      <button
+        type="button"
+        onClick={() => setShowDropdown(!showDropdown)}
+        className="w-full flex items-center justify-between px-4 py-2 bg-white border border-gray-200 rounded-xl text-[11px] text-gray-500 font-bold hover:border-orange-300 transition-all"
+      >
+        <span>{selected.length === 0 ? '選択してください...' : `${selected.length}件選択中`}</span>
+        <ChevronDown size={14} className={`transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+      </button>
+
+      {showDropdown && (
+        <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
+          {options.map(opt => (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => toggle(opt)}
+              className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-[11px] font-bold transition-all ${
+                selected.includes(opt)
+                  ? 'bg-orange-50 text-orange-700'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {opt}
+              {selected.includes(opt) && <Check size={12} strokeWidth={3} className="text-orange-500" />}
+            </button>
+          ))}
+          <div className="border-t border-gray-100 pt-2 mt-1 flex gap-2">
+            <input
+              type="text"
+              value={customInput}
+              onChange={e => setCustomInput(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addCustom())}
+              placeholder="カスタム..."
+              className="flex-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-1.5 text-[10px] font-bold focus:outline-none focus:ring-2 focus:ring-orange-200"
+            />
+            <button
+              type="button"
+              onClick={addCustom}
+              className="px-3 py-1.5 bg-orange-500 text-white rounded-lg text-[10px] font-black hover:bg-orange-600 transition-colors"
+            >
+              追加
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation';
 import { useSharedFilter } from '@/hooks/useSharedFilter';
 import { useScrollRestore } from '@/hooks/useScrollRestore';
 import { useMyProfile } from '@/hooks/useAppData';
+import { useAppType } from '@/contexts/AppTypeContext';
 
 function MiniNoImageMap({ post }: { post: Post }) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
@@ -63,17 +64,18 @@ function StarRating({ rating }: { rating: number }) {
 }
 
 export default function MyPage() {
+  const { appType } = useAppType();
+  const [targetUserId, setTargetUserId] = useState<string | null>(null);
+  
   useScrollRestore('mypage');
   const router = useRouter();
   const { filterState, updateFilter } = useSharedFilter();
   const [activeTab, setActiveTab] = useState<'visited' | 'want_to_go' | 'liked'>('visited');
 
-  const [targetUserId, setTargetUserId] = useState<string | null>(null);
-
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
-      setTargetUserId(params.get('userId'));
+      setTargetUserId(params.get('userId') || params.get('user_id'));
     }
   }, []);
 
@@ -209,6 +211,23 @@ export default function MyPage() {
     }
     if (myPageAdvancedFilters.isFavorite) {
       result = result.filter(p => p.is_favorite);
+    }
+    if (myPageAdvancedFilters.is_hot_spring_mode) {
+      if (myPageAdvancedFilters.spring_temp_min != null) {
+        result = result.filter(p => p.spring_temp_min != null && p.spring_temp_min >= myPageAdvancedFilters.spring_temp_min);
+      }
+      if (myPageAdvancedFilters.spring_temp_max != null) {
+        result = result.filter(p => p.spring_temp_max != null && p.spring_temp_max <= myPageAdvancedFilters.spring_temp_max);
+      }
+      if (myPageAdvancedFilters.is_source_fed) {
+        result = result.filter(p => p.is_source_fed === myPageAdvancedFilters.is_source_fed);
+      }
+      if (myPageAdvancedFilters.bath_type) {
+        result = result.filter(p => p.bath_type === myPageAdvancedFilters.bath_type);
+      }
+      if (myPageAdvancedFilters.stay_type) {
+        result = result.filter(p => p.stay_type === myPageAdvancedFilters.stay_type);
+      }
     }
     result.sort((a, b) => {
       if (sortField === 'visited') {
@@ -754,6 +773,12 @@ export default function MyPage() {
             dateTo: f.period_end,
             isFavorite: f.is_favorite,
             tagMatchMode: f.tagMatchMode,
+            is_hot_spring_mode: (f as any).is_hot_spring_mode,
+            spring_temp_min: (f as any).spring_temp_min,
+            spring_temp_max: (f as any).spring_temp_max,
+            is_source_fed: (f as any).is_source_fed,
+            bath_type: (f as any).bath_type,
+            stay_type: (f as any).stay_type,
           });
         }}
         initialFilters={{
@@ -761,7 +786,14 @@ export default function MyPage() {
           tags: selectedTags,
           tagMatchMode: myPageAdvancedFilters.tagMatchMode || 'AND',
           sort_order: sortField === 'created' ? 'created_desc' : sortField === 'visited' ? 'visited_desc' : sortField,
+          is_hot_spring_mode: myPageAdvancedFilters.is_hot_spring_mode,
+          spring_temp_min: myPageAdvancedFilters.spring_temp_min,
+          spring_temp_max: myPageAdvancedFilters.spring_temp_max,
+          is_source_fed: myPageAdvancedFilters.is_source_fed,
+          bath_type: myPageAdvancedFilters.bath_type,
+          stay_type: myPageAdvancedFilters.stay_type,
         }}
+        showHotSpringFilter={appType === 'tabireco'}
       />
     </div>
   );

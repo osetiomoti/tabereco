@@ -58,7 +58,11 @@ export async function PATCH(
       const ALLOWED = ['title','store_name','comment','rating','image_url','image_urls',
         'visited_at','status','address','google_place_id','latitude','longitude',
         'is_favorite','is_mine_only','price_min','price_max','visit_count',
-        'temperature_min','temperature_max'];
+        'temperature_min','temperature_max', 'spring_temp_type', 'spring_temp_custom',
+        'spring_temp_min', 'spring_temp_max', 'cold_bath_temp', 'is_source_fed',
+        'bath_count', 'spring_quality', 'stay_type', 'bath_type', 'hidden_spring_rating',
+        'has_amenities', 'other_memo', 'spring_qualities', 'bath_types', 'source_managements',
+        'shampoo_type', 'facility_type', 'bath_temperatures'];
       const values: Record<string, any> = {};
       for (const key of ALLOWED) {
         if (key in rawValues) values[key] = rawValues[key];

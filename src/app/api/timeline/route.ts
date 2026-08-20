@@ -106,6 +106,57 @@ export async function GET(request: NextRequest) {
         }
       }
 
+      const ratingMin = searchParams.get('rating_min');
+      const ratingMax = searchParams.get('rating_max');
+      const ratingUnrated = searchParams.get('rating_unrated') === 'true';
+
+      if (ratingUnrated) {
+        where.rating = null;
+      } else if (ratingMin != null || ratingMax != null) {
+        where.rating = {};
+        if (ratingMin != null) where.rating.gte = parseFloat(ratingMin);
+        if (ratingMax != null) where.rating.lte = parseFloat(ratingMax);
+      }
+
+      // Hot Spring filters
+      const isHotSpringMode = searchParams.get('is_hot_spring_mode') === 'true';
+      if (isHotSpringMode) {
+        const springTempMin = searchParams.get('spring_temp_min');
+        const springTempMax = searchParams.get('spring_temp_max');
+        const isSourceFed = searchParams.get('is_source_fed');
+        const bathType = searchParams.get('bath_type');
+        const stayType = searchParams.get('stay_type');
+        // V2 Array fields (comma separated)
+        const springQualities = searchParams.get('spring_qualities');
+        const bathTypes = searchParams.get('bath_types');
+        const sourceMgmts = searchParams.get('source_managements');
+        // V2 String fields
+        const shampooType = searchParams.get('shampoo_type');
+        const facilityType = searchParams.get('facility_type');
+
+        if (springTempMin || springTempMax) {
+          if (!where.AND) where.AND = [];
+          
+          const tempConditions: any[] = [];
+          if (springTempMin) tempConditions.push({ spring_temp_max: { gte: parseFloat(springTempMin) } });
+          if (springTempMax) tempConditions.push({ spring_temp_min: { lte: parseFloat(springTempMax) } });
+          
+          if (tempConditions.length > 0) {
+            where.AND.push({ AND: tempConditions });
+          }
+        }
+
+        if (isSourceFed && isSourceFed !== 'all') where.is_source_fed = isSourceFed;
+        if (bathType && bathType !== 'all') where.bath_type = bathType;
+        if (stayType && stayType !== 'all') where.stay_type = stayType;
+
+        if (springQualities) where.spring_qualities = { hasSome: springQualities.split(',').filter(Boolean) };
+        if (bathTypes) where.bath_types = { hasSome: bathTypes.split(',').filter(Boolean) };
+        if (sourceMgmts) where.source_managements = { hasSome: sourceMgmts.split(',').filter(Boolean) };
+        if (shampooType) where.shampoo_type = shampooType;
+        if (facilityType) where.facility_type = facilityType;
+      }
+
       if (registrantIdsParam) {
         const ids = registrantIdsParam.split(',').filter(Boolean);
         if (ids.length > 0) {

@@ -206,6 +206,89 @@ export default async function PostDetailPage({ params }: Props) {
         </div>
       </div>
 
+      {/* 温泉情報セクション（温泉タグがある場合のみ表示） */}
+      {post.tags && post.tags.some((t: any) => t.tag.name === '温泉') && (
+        <div className="mt-2">
+          <div className="bg-gradient-to-r from-cyan-600 to-teal-500 text-white px-5 py-3 font-bold text-sm tracking-widest flex items-center gap-2">
+            ♨️ 温泉情報
+          </div>
+          <div className="divide-y divide-gray-100/50">
+            {/* 温度帯 */}
+            {(post.spring_temp_min != null || post.spring_temp_max != null) && (
+              <div className="px-5 py-4 flex items-center justify-between bg-gray-50/20">
+                <span className="font-bold text-[14px] text-gray-700 flex items-center gap-2">🌡️ お湯の温度帯</span>
+                <span className="text-teal-700 font-black text-[14px]">
+                  {post.spring_temp_min != null && post.spring_temp_max == null ? `${post.spring_temp_min}℃〜` : ''}
+                  {post.spring_temp_min == null && post.spring_temp_max != null ? `〜${post.spring_temp_max}℃` : ''}
+                  {post.spring_temp_min != null && post.spring_temp_max != null ? `${post.spring_temp_min}〜${post.spring_temp_max}℃` : ''}
+                  {post.spring_temp_custom && <span className="ml-1 text-xs text-gray-500 font-normal">({post.spring_temp_custom})</span>}
+                </span>
+              </div>
+            )}
+            {/* 水風呂 */}
+            {post.cold_bath_temp != null && (
+              <div className="px-5 py-4 flex items-center justify-between bg-gray-50/20">
+                <span className="font-bold text-[14px] text-gray-700 flex items-center gap-2">🧊 水風呂</span>
+                <span className="text-blue-600 font-black text-[14px]">{post.cold_bath_temp}℃</span>
+              </div>
+            )}
+            {/* 源泉掛け流し */}
+            {post.is_source_fed && (
+              <div className="px-5 py-4 flex items-center justify-between bg-gray-50/20">
+                <span className="font-bold text-[14px] text-gray-700 flex items-center gap-2">💧 源泉掛け流し</span>
+                <span className={`px-3 py-1 rounded-full text-xs font-black ${
+                  post.is_source_fed === 'はい' ? 'bg-green-100 text-green-700' :
+                  post.is_source_fed === 'いいえ' ? 'bg-red-100 text-red-600' :
+                  'bg-gray-100 text-gray-500'
+                }`}>{post.is_source_fed}</span>
+              </div>
+            )}
+            {/* 秘湯感 */}
+            {post.hidden_spring_rating != null && (
+              <div className="px-5 py-4 flex items-center justify-between bg-gray-50/20">
+                <span className="font-bold text-[14px] text-gray-700 flex items-center gap-2">🏔️ 秘湯感</span>
+                <div className="flex items-center gap-1">
+                  {[1,2,3,4,5].map(s => (
+                    <span key={s} className={`text-lg ${(post.hidden_spring_rating ?? 0) >= s ? 'text-amber-400' : 'text-gray-200'}`}>★</span>
+                  ))}
+                  <span className="text-xs text-amber-600 font-bold ml-1">{post.hidden_spring_rating}/5</span>
+                </div>
+              </div>
+            )}
+            {/* 浴槽タイプ */}
+            {post.bath_type && (
+              <div className="px-5 py-4 flex items-center justify-between bg-gray-50/20">
+                <span className="font-bold text-[14px] text-gray-700 flex items-center gap-2">🛁 浴槽タイプ</span>
+                <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-black">{post.bath_type}</span>
+              </div>
+            )}
+            {/* 宿泊タイプ */}
+            {post.stay_type && (
+              <div className="px-5 py-4 flex items-center justify-between bg-gray-50/20">
+                <span className="font-bold text-[14px] text-gray-700 flex items-center gap-2">🏨 宿泊タイプ</span>
+                <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-black">{post.stay_type}</span>
+              </div>
+            )}
+            {/* アメニティ */}
+            {post.has_amenities != null && (
+              <div className="px-5 py-4 flex items-center justify-between bg-gray-50/20">
+                <span className="font-bold text-[14px] text-gray-700 flex items-center gap-2">🧴 アメニティ</span>
+                <span className={`px-3 py-1 rounded-full text-xs font-black ${post.has_amenities ? 'bg-teal-100 text-teal-700' : 'bg-gray-100 text-gray-500'}`}>
+                  {post.has_amenities ? 'あり' : 'なし'}
+                </span>
+              </div>
+            )}
+            {/* その他メモ */}
+            {post.other_memo && (
+              <div className="px-5 py-4 bg-gray-50/20">
+                <span className="font-bold text-[14px] text-gray-700 flex items-center gap-2 mb-2">📝 その他メモ</span>
+                <p className="text-gray-500 text-[13px] leading-relaxed">{post.other_memo}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* 5. 店舗情報 */}
       <div className="mt-2">
         <div className="bg-[#a68c7e] text-white px-5 py-3 font-bold text-sm tracking-widest">
