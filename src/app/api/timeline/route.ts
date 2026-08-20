@@ -134,6 +134,11 @@ export async function GET(request: NextRequest) {
         const shampooType = searchParams.get('shampoo_type');
         const facilityType = searchParams.get('facility_type');
 
+        // V3 Array fields
+        const stayTypes = searchParams.get('stay_types');
+        const facilityTypes = searchParams.get('facility_types');
+        const shampooTypes = searchParams.get('shampoo_types');
+
         if (springTempMin || springTempMax) {
           if (!where.AND) where.AND = [];
           
@@ -155,6 +160,10 @@ export async function GET(request: NextRequest) {
         if (sourceMgmts) where.source_managements = { hasSome: sourceMgmts.split(',').filter(Boolean) };
         if (shampooType) where.shampoo_type = shampooType;
         if (facilityType) where.facility_type = facilityType;
+        
+        if (stayTypes) where.stay_types = { hasSome: stayTypes.split(',').filter(Boolean) };
+        if (facilityTypes) where.facility_types = { hasSome: facilityTypes.split(',').filter(Boolean) };
+        if (shampooTypes) where.shampoo_types = { hasSome: shampooTypes.split(',').filter(Boolean) };
       }
 
       if (registrantIdsParam) {

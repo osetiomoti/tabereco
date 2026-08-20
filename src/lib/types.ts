@@ -44,9 +44,10 @@ export type Post = {
   spring_qualities: string[];
   bath_types: string[];
   source_managements: string[];
-  shampoo_type?: string | null;
-  facility_type?: string | null;
   bath_temperatures?: any | null; // Json
+  stay_types: string[];
+  facility_types: string[];
+  shampoo_types: string[];
 
   _avgRating?: number | null;
   _ratingCount?: number;
@@ -84,9 +85,10 @@ export type PostInsert = {
   spring_qualities?: string[];
   bath_types?: string[];
   source_managements?: string[];
-  shampoo_type?: string | null;
-  facility_type?: string | null;
   bath_temperatures?: any | null;
+  stay_types?: string[];
+  facility_types?: string[];
+  shampoo_types?: string[];
 };
 
 export type PostUpdate = {
@@ -114,9 +116,10 @@ export type PostUpdate = {
   spring_qualities?: string[];
   bath_types?: string[];
   source_managements?: string[];
-  shampoo_type?: string | null;
-  facility_type?: string | null;
   bath_temperatures?: any | null;
+  stay_types?: string[];
+  facility_types?: string[];
+  shampoo_types?: string[];
 };
 
 export type BathTemperatureInfo = {
@@ -155,18 +158,18 @@ export type PostFormValues = {
   is_source_fed: string | null;
   bath_count: number | null;
   spring_quality: string | null;
-  stay_type: string | null;
   bath_type: string | null;
   hidden_spring_rating: number | null;
   has_amenities: boolean | null;
-  other_memo: string | null;
 
   spring_qualities: string[];
   bath_types: string[];
   source_managements: string[];
-  shampoo_type: string | null;
-  facility_type: string | null;
   bath_temperatures: BathTemperatureInfo[];
+  
+  stay_types: string[];
+  facility_types: string[];
+  shampoo_types: string[];
 };
 
 export type Tag = {

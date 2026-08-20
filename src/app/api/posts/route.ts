@@ -178,7 +178,8 @@ export async function POST(request: NextRequest) {
       const { 
         title, store_name, comment, rating, image_url, image_urls, visited_at, status, address, google_place_id, latitude, longitude, is_mine_only, price_min, price_max, temperature_min, temperature_max, tagNames,
         spring_temp_type, spring_temp_custom, spring_temp_min, spring_temp_max, cold_bath_temp, is_source_fed, bath_count, spring_quality, stay_type, bath_type, hidden_spring_rating, has_amenities, other_memo,
-        spring_qualities, bath_types, source_managements, shampoo_type, facility_type, bath_temperatures
+        spring_qualities, bath_types, source_managements, shampoo_type, facility_type, bath_temperatures,
+        stay_types, facility_types, shampoo_types
       } = await request.json();
 
       // Cookieからapp_typeを取得（tabereco / tabireco）
@@ -224,6 +225,9 @@ export async function POST(request: NextRequest) {
           shampoo_type: shampoo_type ?? null,
           facility_type: facility_type ?? null,
           bath_temperatures: bath_temperatures ?? null,
+          stay_types: stay_types ?? [],
+          facility_types: facility_types ?? [],
+          shampoo_types: shampoo_types ?? [],
         },
       });
 

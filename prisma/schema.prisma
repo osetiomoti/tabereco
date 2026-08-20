@@ -108,6 +108,11 @@ model Post {
   shampoo_type         String?
   facility_type        String?
   bath_temperatures    Json?
+  
+  // V3 新規配列フィールド
+  stay_types           String[] @default([])
+  facility_types       String[] @default([])
+  shampoo_types        String[] @default([])
 
   user        User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
   tags        PostTag[]

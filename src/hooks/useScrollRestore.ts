@@ -1,42 +1,57 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { usePathname } from 'next/navigation';
 
 const SCROLL_DEBOUNCE_MS = 200;
+// どれだけ待ってから復元を試みるか（データ取得・レイアウト安定化のため）
+const RESTORE_DELAY_MS = 80;
 
 export function useScrollRestore(key: string) {
-  const pathname = usePathname();
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
+  const hasRestoredRef = useRef(false);
+  const hasScrolledRef = useRef(false);
 
-  // Load and apply saved scroll position on mount
+  // Load and apply saved scroll position on mount (once only)
   useEffect(() => {
-    // Only attempt to restore once on mount for the specific route
+    hasRestoredRef.current = false;
+    hasScrolledRef.current = false;
+
     const savedPos = sessionStorage.getItem(`scroll_${key}`);
-    if (savedPos) {
-      // Use requestAnimationFrame and slight delay to ensure DOM is ready
-      const restore = () => {
-        window.scrollTo({
-          top: parseInt(savedPos, 10),
-          behavior: 'instant'
-        });
-      };
-      
-      // Try restoring immediately, and then again after a short delay
-      // to handle cases where data fetches or layout shifts occur
-      requestAnimationFrame(restore);
-      const timer = setTimeout(restore, 100);
-      const timer2 = setTimeout(restore, 300);
-      return () => {
-        clearTimeout(timer);
-        clearTimeout(timer2);
-      };
-    }
+    if (!savedPos || parseInt(savedPos, 10) === 0) return;
+
+    const target = parseInt(savedPos, 10);
+
+    const tryRestore = () => {
+      // ユーザーがすでにスクロールしていたら復元しない
+      if (hasScrolledRef.current) return;
+      if (hasRestoredRef.current) return;
+
+      // ページの高さがターゲット位置に届いていない場合はまだ待つ
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      if (maxScroll < target - 50) {
+        // コンテンツがまだ描画されていないので少し待つ
+        restoreTimer = setTimeout(tryRestore, 100);
+        return;
+      }
+
+      hasRestoredRef.current = true;
+      window.scrollTo({ top: target, behavior: 'instant' });
+    };
+
+    let restoreTimer = setTimeout(tryRestore, RESTORE_DELAY_MS);
+
+    return () => {
+      clearTimeout(restoreTimer);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
   // Save scroll position when it changes
   useEffect(() => {
     const handleScroll = () => {
+      // ユーザーが自分でスクロールしたことを記録
+      hasScrolledRef.current = true;
+
       if (scrollTimeout.current) {
         clearTimeout(scrollTimeout.current);
       }

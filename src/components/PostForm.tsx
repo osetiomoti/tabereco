@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import useSWR, { mutate } from 'swr';
 import { useRouter } from 'next/navigation';
-import { mutate } from 'swr';
 import { ImageUpload } from './ImageUpload';
 import { StarInput } from './StarRating';
 import { createPost, updatePost } from '@/lib/api/posts';
@@ -83,17 +83,16 @@ export function PostForm({ post }: Props) {
     is_source_fed: post?.is_source_fed ?? null,
     bath_count: post?.bath_count ?? null,
     spring_quality: post?.spring_quality ?? null,
-    stay_type: post?.stay_type ?? null,
     bath_type: post?.bath_type ?? null,
     hidden_spring_rating: post?.hidden_spring_rating ?? null,
     has_amenities: post?.has_amenities ?? null,
-    other_memo: post?.other_memo ?? null,
     spring_qualities: (post?.spring_qualities as string[]) ?? [],
     bath_types: (post?.bath_types as string[]) ?? [],
     source_managements: (post?.source_managements as string[]) ?? [],
-    shampoo_type: post?.shampoo_type ?? null,
-    facility_type: post?.facility_type ?? null,
     bath_temperatures: initBathTemps(),
+    stay_types: (post?.stay_types as string[]) ?? [],
+    facility_types: post?.facility_types && (post.facility_types as string[]).length > 0 ? (post.facility_types as string[]) : ['温泉'],
+    shampoo_types: (post?.shampoo_types as string[]) ?? [],
   });
 
   const isCustomTemp = post && post.tags?.some(t => t.name === '温泉') ? 
@@ -282,18 +281,17 @@ export function PostForm({ post }: Props) {
         is_source_fed: values.tags.includes('温泉') ? values.is_source_fed : null,
         bath_count: values.tags.includes('温泉') ? values.bath_count : null,
         spring_quality: values.tags.includes('温泉') ? values.spring_quality : null,
-        stay_type: values.tags.includes('温泉') ? values.stay_type : null,
         bath_type: values.tags.includes('温泉') ? values.bath_type : null,
         hidden_spring_rating: values.tags.includes('温泉') ? values.hidden_spring_rating : null,
         has_amenities: values.tags.includes('温泉') ? values.has_amenities : null,
-        other_memo: values.tags.includes('温泉') ? values.other_memo : null,
-        // V2 hot spring fields
+        // V2/V3 hot spring fields
         spring_qualities: values.tags.includes('温泉') ? values.spring_qualities : [],
         bath_types: values.tags.includes('温泉') ? values.bath_types : [],
         source_managements: values.tags.includes('温泉') ? values.source_managements : [],
-        shampoo_type: values.tags.includes('温泉') ? values.shampoo_type : null,
-        facility_type: values.tags.includes('温泉') ? values.facility_type : null,
         bath_temperatures: values.tags.includes('温泉') ? values.bath_temperatures : null,
+        stay_types: values.tags.includes('温泉') ? values.stay_types : [],
+        facility_types: values.tags.includes('温泉') ? values.facility_types : [],
+        shampoo_types: values.tags.includes('温泉') ? values.shampoo_types : [],
       };
 
       let result;
@@ -559,38 +557,14 @@ export function PostForm({ post }: Props) {
               <span className="text-sm font-black text-orange-700 tracking-wider">温泉詳細情報</span>
             </div>
 
-            {/* 施設タイプ: 温泉/銭湯/カスタム */}
-            <div className="space-y-2">
-              <label className="text-[11px] font-black text-gray-500 tracking-widest flex items-center justify-between">
-                🏠 施設タイプ
-                {values.facility_type && (
-                  <button type="button" onClick={() => set('facility_type', null)} className="text-gray-300 hover:text-red-400 transition-colors"><X size={12} /></button>
-                )}
-              </label>
-              <div className="flex gap-2">
-                {['温泉', '銭湯', 'スパ'].map(opt => (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => set('facility_type', values.facility_type === opt ? null : opt)}
-                    className={`flex-1 py-2.5 text-[12px] font-black rounded-xl border transition-all ${
-                      values.facility_type === opt
-                        ? 'bg-orange-500 text-white border-orange-500 shadow-sm'
-                        : 'bg-white text-gray-500 border-gray-200 hover:border-orange-300'
-                    }`}
-                  >
-                    {opt}
-                  </button>
-                ))}
-                <input
-                  type="text"
-                  placeholder="カスタム..."
-                  value={['温泉', '銭湯', 'スパ', '', null].includes(values.facility_type) ? '' : (values.facility_type ?? '')}
-                  onChange={e => set('facility_type', e.target.value || null)}
-                  className="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-2 text-[12px] font-bold focus:outline-none focus:ring-2 focus:ring-orange-200"
-                />
-              </div>
-            </div>
+            {/* 施設タイプ（複数選択） */}
+            <HotSpringMultiSelect
+              label="🏠 施設タイプ"
+              options={['温泉', '銭湯', 'スパ']}
+              selected={values.facility_types}
+              onChange={v => set('facility_types', v)}
+              historyKey="facility_types"
+            />
 
             {/* 泉質（複数選択） */}
             <HotSpringMultiSelect
@@ -598,6 +572,7 @@ export function PostForm({ post }: Props) {
               options={['単純温泉', '塩化物泉', '炭酸水素塩泉', '硫酸塩泉', '二酸化炭素泉', '含鉄泉', '硫黄泉', 'アルカリ性単純温泉', '酸性泉', '放射能泉']}
               selected={values.spring_qualities}
               onChange={v => set('spring_qualities', v)}
+              historyKey="spring_qualities"
             />
 
             {/* 浴槽情報（複数選択） */}
@@ -606,74 +581,35 @@ export function PostForm({ post }: Props) {
               options={['内湯', '露天風呂', '混浴内湯', '混浴露天', '家族風呂', '水風呂', 'サウナ', 'ジャグジー', '洞窟風呂', '展望風呂']}
               selected={values.bath_types}
               onChange={v => set('bath_types', v)}
+              historyKey="bath_types"
             />
 
-            {/* 源泉・加水加温（複数選択） */}
+            {/* 源泉・管理方法（複数選択） */}
             <HotSpringMultiSelect
               label="🌊 源泉・管理方法"
               options={['源泉掛け流し', '加水あり', '加温あり', '循環あり', '消毒あり', '塩素不使用']}
               selected={values.source_managements}
               onChange={v => set('source_managements', v)}
+              historyKey="source_managements"
             />
 
-            {/* シャンプー */}
-            <div className="space-y-2">
-              <label className="text-[11px] font-black text-gray-500 tracking-widest flex items-center justify-between">
-                🧴 シャンプー・石鹸
-                {values.shampoo_type && (
-                  <button type="button" onClick={() => set('shampoo_type', null)} className="text-gray-300 hover:text-red-400 transition-colors"><X size={12} /></button>
-                )}
-              </label>
-              <div className="flex gap-2">
-                {['あり', 'なし'].map(opt => (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => set('shampoo_type', values.shampoo_type === opt ? null : opt)}
-                    className={`flex-1 py-2.5 text-[12px] font-black rounded-xl border transition-all ${
-                      values.shampoo_type === opt
-                        ? 'bg-teal-500 text-white border-teal-500 shadow-sm'
-                        : 'bg-white text-gray-500 border-gray-200 hover:border-teal-300'
-                    }`}
-                  >
-                    {opt}
-                  </button>
-                ))}
-                <input
-                  type="text"
-                  placeholder="カスタム..."
-                  value={['あり', 'なし', '', null].includes(values.shampoo_type) ? '' : (values.shampoo_type ?? '')}
-                  onChange={e => set('shampoo_type', e.target.value || null)}
-                  className="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-2 text-[12px] font-bold focus:outline-none focus:ring-2 focus:ring-teal-200"
-                />
-              </div>
-            </div>
+            {/* シャンプー・石鹸（複数選択） */}
+            <HotSpringMultiSelect
+              label="🧴 シャンプー・石鹸"
+              options={['あり', 'なし']}
+              selected={values.shampoo_types}
+              onChange={v => set('shampoo_types', v)}
+              historyKey="shampoo_types"
+            />
 
-            {/* 宿泊 or 日帰り */}
-            <div className="space-y-2">
-              <label className="text-[11px] font-black text-gray-500 tracking-widest flex items-center justify-between">
-                🏨 宿泊タイプ
-                {values.stay_type && (
-                  <button type="button" onClick={() => set('stay_type', null)} className="text-gray-300 hover:text-red-400 transition-colors"><X size={12} /></button>
-                )}
-              </label>
-              <div className="flex gap-2">
-                {(['日帰り', '宿泊'] as const).map(opt => (
-                  <button
-                    key={opt}
-                    type="button"
-                    onClick={() => set('stay_type', values.stay_type === opt ? null : opt)}
-                    className={`flex-1 py-2.5 text-[13px] font-black rounded-xl border transition-all ${
-                      values.stay_type === opt
-                        ? 'bg-purple-500 text-white border-purple-500 shadow-sm'
-                        : 'bg-white text-gray-500 border-gray-200 hover:border-purple-300'
-                    }`}
-                  >
-                    {opt}
-                  </button>
-                ))}
-              </div>
-            </div>
+            {/* 利用タイプ（複数選択） */}
+            <HotSpringMultiSelect
+              label="🏨 利用タイプ"
+              options={['日帰り専用', '宿泊専用', '日帰り (時間帯指定)/宿泊']}
+              selected={values.stay_types}
+              onChange={v => set('stay_types', v)}
+              historyKey="stay_types"
+            />
 
             {/* 秘湯感（星評価） */}
             <div className="space-y-2">
@@ -700,18 +636,6 @@ export function PostForm({ post }: Props) {
                   <span className="text-xs text-amber-600 font-bold ml-2">{values.hidden_spring_rating}/5</span>
                 )}
               </div>
-            </div>
-
-            {/* メモ */}
-            <div className="space-y-2">
-              <label className="text-[11px] font-black text-gray-500 tracking-widest">📝 その他メモ</label>
-              <textarea
-                value={values.other_memo ?? ''}
-                onChange={e => set('other_memo', e.target.value || null)}
-                placeholder="泉質、雰囲気など..."
-                rows={2}
-                className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-200 font-bold resize-none text-sm"
-              />
             </div>
 
             {/* 浴槽ごとの温度設定 */}
@@ -864,17 +788,22 @@ export function PostForm({ post }: Props) {
 }
 
 // ─── 温泉用サブコンポーネント ───────────────────────────────────
-
 type HotSpringMultiSelectProps = {
   label: string;
   options: string[];
   selected: string[];
   onChange: (val: string[]) => void;
+  historyKey?: 'spring_qualities' | 'bath_types' | 'source_managements' | 'stay_types' | 'facility_types' | 'shampoo_types';
 };
 
-function HotSpringMultiSelect({ label, options, selected, onChange }: HotSpringMultiSelectProps) {
+function HotSpringMultiSelect({ label, options: baseOptions, selected, onChange, historyKey }: HotSpringMultiSelectProps) {
   const [customInput, setCustomInput] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
+
+  const { data: historyData } = useSWR(historyKey ? '/api/user/hot-spring-history' : null, (url: string) => fetch(url).then(r => r.json()));
+  const historyOptions = historyKey && historyData?.data?.[historyKey] ? historyData.data[historyKey] : [];
+  
+  const options = Array.from(new Set([...baseOptions, ...historyOptions]));
 
   const toggle = (opt: string) => {
     if (selected.includes(opt)) {
@@ -997,20 +926,48 @@ type BathTemperatureCardProps = {
 };
 
 function BathTemperatureCard({ bath, onUpdate, onRemove }: BathTemperatureCardProps) {
-  const displayTemp = bath.min !== null ? bath.min : bath.max;
-  const tempColor = getColorForTemp(displayTemp);
+  const TEMP_MIN = 10;
+  const TEMP_MAX = 100;
 
-  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const minVal = bath.min ?? 38;
+  const maxVal = bath.max ?? 38;
+  const isSamePoint = minVal === maxVal;
+  const colorMin = getColorForTemp(minVal);
+  const displayColor = isSamePoint ? colorMin : getColorForTemp((minVal + maxVal) / 2);
+
+  const toPercent = (v: number) => ((v - TEMP_MIN) / (TEMP_MAX - TEMP_MIN)) * 100;
+
+  const handleMinSlider = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = parseFloat(e.target.value);
-    onUpdate({ ...bath, min: val, max: val });
+    onUpdate({ ...bath, min: val, max: Math.max(val, maxVal) });
   };
+
+  const handleMaxSlider = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = parseFloat(e.target.value);
+    onUpdate({ ...bath, min: Math.min(val, minVal), max: val });
+  };
+
+  const handleCustomMin = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value === '' ? null : parseFloat(e.target.value);
+    if (val !== null && bath.max !== null && val > bath.max) return;
+    onUpdate({ ...bath, min: val });
+  };
+
+  const handleCustomMax = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value === '' ? null : parseFloat(e.target.value);
+    if (val !== null && bath.min !== null && val < bath.min) return;
+    onUpdate({ ...bath, max: val });
+  };
+
+  const leftPct = toPercent(minVal);
+  const rightPct = toPercent(maxVal);
 
   return (
     <div className="bg-white border border-gray-100 rounded-2xl p-4 space-y-3 shadow-sm">
       <div className="flex items-center gap-2">
         <div
           className="w-3 h-3 rounded-full flex-shrink-0"
-          style={{ backgroundColor: tempColor }}
+          style={{ backgroundColor: displayColor }}
         />
         <input
           type="text"
@@ -1046,30 +1003,55 @@ function BathTemperatureCard({ bath, onUpdate, onRemove }: BathTemperatureCardPr
         })}
       </div>
 
-      {/* Range slider */}
-      <div className="space-y-1">
+      {/* Dual-handle range slider */}
+      <div className="space-y-2">
         <div className="flex items-center justify-between text-[10px] font-bold text-gray-400">
-          <span>10℃</span>
+          <span>{TEMP_MIN}℃</span>
           <span
             className="text-sm font-black px-2 py-0.5 rounded-lg text-white transition-all"
-            style={{ backgroundColor: tempColor }}
+            style={{ backgroundColor: displayColor }}
           >
-            {displayTemp !== null ? `${displayTemp}℃` : '未設定'}
+            {isSamePoint
+              ? `${minVal}℃`
+              : `${bath.min !== null ? bath.min : '?'}〜${bath.max !== null ? bath.max : '?'}℃`}
           </span>
-          <span>100℃</span>
+          <span>{TEMP_MAX}℃</span>
         </div>
-        <input
-          type="range"
-          min={10}
-          max={100}
-          step={1}
-          value={displayTemp ?? 38}
-          onChange={handleSliderChange}
-          className="w-full h-2 rounded-full appearance-none cursor-pointer"
-          style={{
-            background: `linear-gradient(to right, ${tempColor} 0%, ${tempColor} ${((displayTemp ?? 38) - 10) / 90 * 100}%, #e5e7eb ${((displayTemp ?? 38) - 10) / 90 * 100}%, #e5e7eb 100%)`
-          }}
-        />
+        <div className="relative h-6 flex items-center">
+          {/* Track background */}
+          <div className="absolute w-full h-2 rounded-full bg-gray-200" />
+          {/* Active range fill */}
+          <div
+            className="absolute h-2 rounded-full transition-all"
+            style={{
+              left: `${leftPct}%`,
+              width: `${rightPct - leftPct}%`,
+              backgroundColor: displayColor,
+            }}
+          />
+          {/* Min handle */}
+          <input
+            type="range"
+            min={TEMP_MIN}
+            max={TEMP_MAX}
+            step={1}
+            value={minVal}
+            onChange={handleMinSlider}
+            className="absolute w-full h-2 appearance-none bg-transparent cursor-pointer"
+            style={{ zIndex: minVal > TEMP_MAX - 5 ? 5 : 4 }}
+          />
+          {/* Max handle */}
+          <input
+            type="range"
+            min={TEMP_MIN}
+            max={TEMP_MAX}
+            step={1}
+            value={maxVal}
+            onChange={handleMaxSlider}
+            className="absolute w-full h-2 appearance-none bg-transparent cursor-pointer"
+            style={{ zIndex: 3 }}
+          />
+        </div>
       </div>
 
       {/* Custom range input */}
@@ -1079,7 +1061,7 @@ function BathTemperatureCard({ bath, onUpdate, onRemove }: BathTemperatureCardPr
           type="number"
           step="0.5"
           value={bath.min ?? ''}
-          onChange={e => onUpdate({ ...bath, min: e.target.value ? parseFloat(e.target.value) : null })}
+          onChange={handleCustomMin}
           placeholder="下限"
           className="w-16 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-center font-bold focus:outline-none focus:ring-1 focus:ring-orange-200"
         />
@@ -1088,7 +1070,7 @@ function BathTemperatureCard({ bath, onUpdate, onRemove }: BathTemperatureCardPr
           type="number"
           step="0.5"
           value={bath.max ?? ''}
-          onChange={e => onUpdate({ ...bath, max: e.target.value ? parseFloat(e.target.value) : null })}
+          onChange={handleCustomMax}
           placeholder="上限"
           className="w-16 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-center font-bold focus:outline-none focus:ring-1 focus:ring-orange-200"
         />
@@ -1102,3 +1084,4 @@ function BathTemperatureCard({ bath, onUpdate, onRemove }: BathTemperatureCardPr
     </div>
   );
 }
+

@@ -62,7 +62,7 @@ export async function PATCH(
         'spring_temp_min', 'spring_temp_max', 'cold_bath_temp', 'is_source_fed',
         'bath_count', 'spring_quality', 'stay_type', 'bath_type', 'hidden_spring_rating',
         'has_amenities', 'other_memo', 'spring_qualities', 'bath_types', 'source_managements',
-        'shampoo_type', 'facility_type', 'bath_temperatures'];
+        'shampoo_type', 'facility_type', 'bath_temperatures', 'stay_types', 'facility_types', 'shampoo_types'];
       const values: Record<string, any> = {};
       for (const key of ALLOWED) {
         if (key in rawValues) values[key] = rawValues[key];
