@@ -115,6 +115,8 @@ export function useTimeline(options: UseTimelineOptions = {}) {
     {
       revalidateOnFocus: false,
       revalidateFirstPage: false,
+      // フィルター変更時に前のデータを保持してスクロール位置のジャンプを防ぐ
+      keepPreviousData: true,
     }
   );
 

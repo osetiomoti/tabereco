@@ -158,12 +158,20 @@ export default function PostsPage() {
   const memberUsers = [] as any[]; 
 
   const loadMoreRef = useRef<HTMLDivElement>(null);
+  // isLoadingMore/isReachingEnd/loadMore を ref で持ち observer 内から参照することで
+  // 依存値が変わるたびに observer が disconnect→reconnect するのを防ぐ
+  const isLoadingMoreRef = useRef(isLoadingMore);
+  const isReachingEndRef = useRef(isReachingEnd);
+  const loadMoreFnRef = useRef(loadMore);
+  useEffect(() => { isLoadingMoreRef.current = isLoadingMore; }, [isLoadingMore]);
+  useEffect(() => { isReachingEndRef.current = isReachingEnd; }, [isReachingEnd]);
+  useEffect(() => { loadMoreFnRef.current = loadMore; }, [loadMore]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && !isLoadingMore && !isReachingEnd) {
-          loadMore();
+        if (entries[0].isIntersecting && !isLoadingMoreRef.current && !isReachingEndRef.current) {
+          loadMoreFnRef.current();
         }
       },
       { rootMargin: '400px' }
@@ -172,7 +180,9 @@ export default function PostsPage() {
       observer.observe(loadMoreRef.current);
     }
     return () => observer.disconnect();
-  }, [isLoadingMore, isReachingEnd, loadMore]);
+  // マウント時に1度だけ設定。loadMoreRef が変わることはないので deps は空
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // いいね管理（オプティミスティックUI）
   const [likedPosts, setLikedPosts] = useState<Record<string, boolean>>({});
@@ -327,13 +337,14 @@ export default function PostsPage() {
           )
         ) : (
           <div>
-            {isLoading ? (
+            {/* 初回ロード時のみスケルトン表示（ポストありの場合は既存リストを使い続ける） */}
+            {isLoading && posts.length === 0 ? (
               <div className="space-y-1">
                 <PostCardSkeleton />
                 <PostCardSkeleton />
                 <PostCardSkeleton />
               </div>
-            ) : posts.length === 0 ? (
+            ) : posts.length === 0 && !isLoading ? (
               <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
                 <div className="w-20 h-20 bg-gray-50 rounded-[2rem] flex items-center justify-center text-gray-200">
                   <UtensilsCrossed size={40} />
