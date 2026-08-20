@@ -9,7 +9,7 @@ import { withAuth } from '@/lib/auth';
 export async function POST(request: NextRequest) {
   return withAuth(request, async (auth) => {
     try {
-      const { endpoint, keys } = await request.json();
+      const { endpoint, keys, app_type } = await request.json();
 
       if (!endpoint || !keys?.p256dh || !keys?.auth) {
         return NextResponse.json({ success: false, error: 'Invalid subscription data' }, { status: 400 });
@@ -22,12 +22,14 @@ export async function POST(request: NextRequest) {
           user_id: auth.userId,
           p256dh: keys.p256dh,
           auth: keys.auth,
+          app_type: app_type || 'tabereco',
         },
         create: {
           user_id: auth.userId,
           endpoint,
           p256dh: keys.p256dh,
           auth: keys.auth,
+          app_type: app_type || 'tabereco',
         },
       });
 

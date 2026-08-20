@@ -265,6 +265,7 @@ model PushSubscription {
   endpoint   String   @unique
   p256dh     String
   auth       String
+  app_type   String   @default("tabereco") @db.VarChar(20)
   created_at DateTime @default(now())
   user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 

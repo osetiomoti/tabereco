@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
         url: '/settings',
         tag: 'test-notification',
         icon: isTabireco ? '/tabireco-192.png' : '/icon-192.png',
-      });
+      }, appType);
       return NextResponse.json({ success: true });
     } catch (e: any) {
       console.error('[POST /api/push/test] Error:', e);

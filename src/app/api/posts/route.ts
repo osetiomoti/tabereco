@@ -283,7 +283,7 @@ export async function POST(request: NextRequest) {
                 url: `/posts/${post.id}`,
                 tag: `new-post-${post.id}`,
                 icon: isTabireco ? '/tabireco-192.png' : '/icon-192.png',
-              })
+              }, appType)
             )
           );
         }

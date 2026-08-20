@@ -25,13 +25,17 @@ export interface PushNotificationPayload {
 }
 
 /**
- * Send a push notification to all subscriptions of a given user.
+ * Send a push notification to all subscriptions of a given user for a specific app type.
  * Silently removes invalid/expired subscriptions.
  */
-export async function sendPushNotification(userId: string, payload: PushNotificationPayload) {
+export async function sendPushNotification(
+  userId: string,
+  payload: PushNotificationPayload,
+  appType: 'tabereco' | 'tabireco' = 'tabereco'
+) {
   try {
     const subscriptions = await prisma.pushSubscription.findMany({
-      where: { user_id: userId },
+      where: { user_id: userId, app_type: appType },
     });
 
     if (subscriptions.length === 0) return;

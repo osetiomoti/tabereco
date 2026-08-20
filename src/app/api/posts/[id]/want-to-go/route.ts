@@ -54,7 +54,7 @@ export async function POST(
             url: `/posts/${postId}`,
             tag: `want-to-go-${postId}`,
             icon: isTabireco ? '/tabireco-192.png' : '/icon-192.png',
-          });
+          }, post.app_type as 'tabereco' | 'tabireco');
         }
 
         return NextResponse.json({ success: true, marked: true });

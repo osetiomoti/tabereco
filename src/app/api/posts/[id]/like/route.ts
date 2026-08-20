@@ -100,7 +100,7 @@ export async function POST(
           url: `/posts/${id}`,
           tag: `like-${id}`,
           icon: isTabireco ? '/tabireco-192.png' : '/icon-192.png',
-        });
+        }, post.app_type as 'tabereco' | 'tabireco');
       }
 
       return NextResponse.json({ success: true, action: 'added' });

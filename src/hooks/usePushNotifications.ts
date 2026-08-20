@@ -58,6 +58,9 @@ export function usePushNotifications() {
         applicationServerKey: convertedKey as any,
       });
 
+      // Get appType from data-app-type attribute (added in layout) or default to tabereco
+      const appType = document.documentElement.getAttribute('data-app-type') || 'tabereco';
+
       // Send subscription to backend
       const subJson = subscription.toJSON();
       await fetch('/api/push/subscribe', {
@@ -66,6 +69,7 @@ export function usePushNotifications() {
         body: JSON.stringify({
           endpoint: subJson.endpoint,
           keys: subJson.keys,
+          app_type: appType,
         }),
       });
 
