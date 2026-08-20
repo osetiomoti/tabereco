@@ -15,7 +15,7 @@ import { format, startOfMonth, endOfMonth, isSameDay, addMonths, subMonths, getD
 import { ja } from 'date-fns/locale';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import { useAppType } from '@/contexts/AppTypeContext';
 
 function CalendarView({ posts }: { posts: any[] }) {
@@ -157,7 +157,6 @@ export default function PostsPage() {
   const joinedGroups = groupsData?.data || [];
   const memberUsers = [] as any[]; 
 
-  const loadMoreRef = useRef<HTMLDivElement>(null);
   // isLoadingMore/isReachingEnd/loadMore を ref で持ち observer 内から参照することで
   // 依存値が変わるたびに observer が disconnect→reconnect するのを防ぐ
   const isLoadingMoreRef = useRef(isLoadingMore);
@@ -167,21 +166,23 @@ export default function PostsPage() {
   useEffect(() => { isReachingEndRef.current = isReachingEnd; }, [isReachingEnd]);
   useEffect(() => { loadMoreFnRef.current = loadMore; }, [loadMore]);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting && !isLoadingMoreRef.current && !isReachingEndRef.current) {
-          loadMoreFnRef.current();
-        }
-      },
-      { rootMargin: '400px' }
-    );
-    if (loadMoreRef.current) {
-      observer.observe(loadMoreRef.current);
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  
+  // Callback ref: 要素がマウント・アンマウントされるたびに呼ばれる
+  const loadMoreRef = useCallback((node: HTMLDivElement | null) => {
+    if (observerRef.current) observerRef.current.disconnect();
+    
+    if (node) {
+      observerRef.current = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting && !isLoadingMoreRef.current && !isReachingEndRef.current) {
+            loadMoreFnRef.current();
+          }
+        },
+        { rootMargin: '400px' }
+      );
+      observerRef.current.observe(node);
     }
-    return () => observer.disconnect();
-  // マウント時に1度だけ設定。loadMoreRef が変わることはないので deps は空
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // いいね管理（オプティミスティックUI）
