@@ -175,7 +175,7 @@ export default function PostsPage() {
     if (node) {
       observerRef.current = new IntersectionObserver(
         (entries) => {
-          if (entries[0].isIntersecting && !isLoadingMoreRef.current && !isReachingEndRef.current) {
+          if (entries[0]?.isIntersecting && !isLoadingMoreRef.current && !isReachingEndRef.current) {
             loadMoreFnRef.current();
           }
         },
