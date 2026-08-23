@@ -21,6 +21,7 @@ type FilterState = {
   price_min?: number;
   price_max?: number;
   rating_min?: number;
+  rating_max?: number;
   sort_order: 'created_desc' | 'visited_desc' | 'rating_asc' | 'rating_desc' | 'price_asc' | 'price_desc';
   tagMatchMode: 'AND' | 'OR';
 };
@@ -53,6 +54,9 @@ type HotSpringFilters = {
   source_managements?: string[];
   shampoo_type?: string;
   facility_type?: string;
+  // 秘湯感
+  hidden_spring_rating_min?: number | null;
+  hidden_spring_rating_max?: number | null;
 };
 
 const PERIOD_OPTIONS = [
@@ -96,6 +100,9 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
   const [hsShampooType, setHsShampooType] = useState<string>(initialFilters?.shampoo_type || '');
   const [hsFacilityType, setHsFacilityType] = useState<string>(initialFilters?.facility_type || '');
   const [hsTempSlider, setHsTempSlider] = useState<number>(38);
+  // 秘湯感フィルター
+  const [hsHiddenRatingMin, setHsHiddenRatingMin] = useState<number | null>(initialFilters?.hidden_spring_rating_min ?? null);
+  const [hsHiddenRatingMax, setHsHiddenRatingMax] = useState<number | null>(initialFilters?.hidden_spring_rating_max ?? null);
   const { tags: swrTags } = useMyTags();
   const { groups: swrGroups } = useGroups();
   const { friends: swrFriends } = useFriends();
@@ -210,6 +217,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
       registrantUserIds: allIds,
     });
     setGroupSearch(''); setMemberSearch('');
+    setHsHiddenRatingMin(null); setHsHiddenRatingMax(null);
   };
 
   /* ── group options ── */
@@ -626,19 +634,43 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
 
               {/* ── Rating card ── */}
               <div className="space-y-2">
-                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">評価（以上）</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    min="0"
-                    max="5"
-                    step="0.1"
-                    value={filters.rating_min ?? ''}
-                    onChange={e => set('rating_min', e.target.value ? parseFloat(e.target.value) : undefined)}
-                    placeholder="例: 4.0"
-                    className="flex-1 bg-white border border-gray-200 rounded-xl px-3 py-3 text-[13px] text-gray-800 focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 transition-all font-medium"
-                  />
-                  <span className="text-[12px] font-bold text-gray-500 shrink-0">以上</span>
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">評価</label>
+                  {(filters.rating_min != null || filters.rating_max != null) && (
+                    <button type="button" onClick={() => { set('rating_min', undefined); set('rating_max', undefined); }} className="text-gray-300 hover:text-red-400 text-[10px] font-bold">クリア</button>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  {/* 以上 */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-gray-400 w-7 shrink-0">以上</span>
+                    <div className="flex gap-1">
+                      {[1,2,3,4,5].map(s => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => set('rating_min', filters.rating_min === s ? undefined : s)}
+                          className={`text-xl transition-transform hover:scale-110 ${(filters.rating_min ?? 0) >= s ? 'text-orange-400' : 'text-gray-200'}`}
+                        >★</button>
+                      ))}
+                    </div>
+                    {filters.rating_min != null && <span className="text-[10px] font-bold text-orange-500">★{filters.rating_min}以上</span>}
+                  </div>
+                  {/* 以下 */}
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-bold text-gray-400 w-7 shrink-0">以下</span>
+                    <div className="flex gap-1">
+                      {[1,2,3,4,5].map(s => (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => set('rating_max', filters.rating_max === s ? undefined : s)}
+                          className={`text-xl transition-transform hover:scale-110 ${(filters.rating_max ?? 6) >= s ? 'text-orange-400' : 'text-gray-200'}`}
+                        >★</button>
+                      ))}
+                    </div>
+                    {filters.rating_max != null && <span className="text-[10px] font-bold text-orange-500">★{filters.rating_max}以下</span>}
+                  </div>
                 </div>
               </div>
 
@@ -863,6 +895,46 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
                         </div>
                       </div>
 
+                      {/* 秘湯感（星評価フィルター） */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[11px] font-black text-gray-500">🏔️ 秘湯感</p>
+                          {(hsHiddenRatingMin != null || hsHiddenRatingMax != null) && (
+                            <button type="button" onClick={() => { setHsHiddenRatingMin(null); setHsHiddenRatingMax(null); }} className="text-gray-300 hover:text-red-400 text-[10px] font-bold">クリア</button>
+                          )}
+                        </div>
+                        {/* 以上 */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-gray-400 w-7 shrink-0">以上</span>
+                          <div className="flex gap-0.5">
+                            {[1,2,3,4,5].map(s => (
+                              <button
+                                key={s}
+                                type="button"
+                                onClick={() => setHsHiddenRatingMin(hsHiddenRatingMin === s ? null : s)}
+                                className={`text-xl transition-transform hover:scale-110 ${(hsHiddenRatingMin ?? 0) >= s ? 'text-amber-400' : 'text-gray-200'}`}
+                              >★</button>
+                            ))}
+                          </div>
+                          {hsHiddenRatingMin != null && <span className="text-[10px] font-bold text-amber-600">★{hsHiddenRatingMin}以上</span>}
+                        </div>
+                        {/* 以下 */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-bold text-gray-400 w-7 shrink-0">以下</span>
+                          <div className="flex gap-0.5">
+                            {[1,2,3,4,5].map(s => (
+                              <button
+                                key={s}
+                                type="button"
+                                onClick={() => setHsHiddenRatingMax(hsHiddenRatingMax === s ? null : s)}
+                                className={`text-xl transition-transform hover:scale-110 ${(hsHiddenRatingMax ?? 6) >= s ? 'text-amber-400' : 'text-gray-200'}`}
+                              >★</button>
+                            ))}
+                          </div>
+                          {hsHiddenRatingMax != null && <span className="text-[10px] font-bold text-amber-600">★{hsHiddenRatingMax}以下</span>}
+                        </div>
+                      </div>
+
                     </div>
                   )}
                 </div>
@@ -898,6 +970,8 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
                 source_managements: hsSourceMgmts,
                 shampoo_type: hsShampooType,
                 facility_type: hsFacilityType,
+                hidden_spring_rating_min: hsHiddenRatingMin,
+                hidden_spring_rating_max: hsHiddenRatingMax,
               });
               onClose();
             }}

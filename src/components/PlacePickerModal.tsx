@@ -67,6 +67,32 @@ export function PlacePickerModal({ isOpen, onClose, onSelect, initialCenter }: P
     if (!isLoaded) return;
     setLoading(true);
 
+    const fallbackGeocode = () => {
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+        if (status === 'OK' && results && results[0]) {
+          const poi = results[0].address_components.find(
+            c => c.types.includes('point_of_interest') || c.types.includes('establishment')
+          );
+          setMarker({
+            lat,
+            lng,
+            name: poi?.long_name || results[0].address_components[0].long_name,
+            address: results[0].formatted_address.replace(/^日本、\s*/, '').replace(/^〒\d{3}-\d{4}\s*/, ''),
+          });
+        } else {
+          // 取得失敗時は座標を名前にするか、一般的な名前にする
+          setMarker({
+            lat,
+            lng,
+            name: '地図上の場所',
+            address: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+          });
+        }
+        setLoading(false);
+      });
+    };
+
     if (placeId && mapRef.current) {
       const service = new window.google.maps.places.PlacesService(mapRef.current);
       service.getDetails(
@@ -80,26 +106,14 @@ export function PlacePickerModal({ isOpen, onClose, onSelect, initialCenter }: P
               address: (place.formatted_address || '').replace(/^日本、\s*/, '').replace(/^〒\d{3}-\d{4}\s*/, ''),
               placeId: place.place_id,
             });
+            setLoading(false);
+          } else {
+            fallbackGeocode();
           }
-          setLoading(false);
         }
       );
     } else {
-      const geocoder = new window.google.maps.Geocoder();
-      geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-        if (status === 'OK' && results && results[0]) {
-          const poi = results[0].address_components.find(
-            c => c.types.includes('point_of_interest') || c.types.includes('establishment')
-          );
-          setMarker({
-            lat,
-            lng,
-            name: poi?.long_name || results[0].address_components[0].long_name,
-            address: results[0].formatted_address.replace(/^日本、\s*/, '').replace(/^〒\d{3}-\d{4}\s*/, ''),
-          });
-        }
-        setLoading(false);
-      });
+      fallbackGeocode();
     }
   }, [isLoaded]);
 
@@ -162,9 +176,9 @@ export function PlacePickerModal({ isOpen, onClose, onSelect, initialCenter }: P
         <button
           type="button"
           onClick={handleConfirm}
-          disabled={!marker}
+          disabled={!marker || loading}
           style={{ minWidth: 60, textAlign: 'right' }}
-          className={`text-sm font-black ${marker ? 'text-pink-500' : 'text-gray-300'}`}
+          className={`text-sm font-black ${marker && !loading ? 'text-pink-500' : 'text-gray-300'}`}
         >
           決定
         </button>
@@ -289,7 +303,10 @@ export function PlacePickerModal({ isOpen, onClose, onSelect, initialCenter }: P
             <button
               type="button"
               onClick={handleConfirm}
-              className="mt-2 w-full py-4 bg-gradient-to-r from-pink-500 to-rose-400 text-white text-[15px] font-black rounded-2xl shadow-lg active:scale-[0.98] transition-all"
+              disabled={loading}
+              className={`mt-2 w-full py-4 text-white text-[15px] font-black rounded-2xl shadow-lg transition-all ${
+                loading ? 'bg-gray-300 cursor-not-allowed' : 'bg-gradient-to-r from-pink-500 to-rose-400 active:scale-[0.98]'
+              }`}
             >
               この場所を選択
             </button>

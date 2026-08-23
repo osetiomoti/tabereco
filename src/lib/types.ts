@@ -127,6 +127,7 @@ export type BathTemperatureInfo = {
   name: string;
   min: number | null;
   max: number | null;
+  labels?: string[]; // 体感ラベル（複数選択可、温度とは独立）
 };
 
 export type PostFormValues = {

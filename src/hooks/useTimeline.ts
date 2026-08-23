@@ -96,7 +96,14 @@ export function useTimeline(options: UseTimelineOptions = {}) {
         // V2 String fields
         if ((advancedFilters as any).shampoo_type) params.append('shampoo_type', (advancedFilters as any).shampoo_type);
         if ((advancedFilters as any).facility_type) params.append('facility_type', (advancedFilters as any).facility_type);
+        // 秘湯感フィルター
+        if ((advancedFilters as any).hidden_spring_rating_min != null) params.append('hidden_spring_rating_min', String((advancedFilters as any).hidden_spring_rating_min));
+        if ((advancedFilters as any).hidden_spring_rating_max != null) params.append('hidden_spring_rating_max', String((advancedFilters as any).hidden_spring_rating_max));
       }
+      
+      // 評価フィルター（温泉モードに限らず適用）
+      if ((advancedFilters as any)?.rating_min != null) params.append('rating_min', String((advancedFilters as any).rating_min));
+      if ((advancedFilters as any)?.rating_max != null) params.append('rating_max', String((advancedFilters as any).rating_max));
       
       if (filters.sortField) params.append('sort_field', filters.sortField);
       if (filters.sortOrder) params.append('sort_order', filters.sortOrder);

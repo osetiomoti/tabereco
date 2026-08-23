@@ -896,15 +896,14 @@ function HotSpringMultiSelect({ label, options: baseOptions, selected, onChange,
 
 // ─── 浴槽温度カード ───────────────────────────────────
 
+// サウナ・水風呂は bath_types で別途選択可能なのでここでは除外
 const TEMP_PRESETS = [
-  { label: 'サウナ', min: 80, max: null, color: '#7c3aed' },
-  { label: '熱め', min: 43, max: null, color: '#dc2626' },
-  { label: '高め', min: 41, max: 42, color: '#ea580c' },
-  { label: '適温', min: 39, max: 40, color: '#f59e0b' },
-  { label: '標準', min: 37, max: 38, color: '#22c55e' },
-  { label: 'ぬるめ', min: 35, max: 36, color: '#06b6d4' },
-  { label: '低め', min: 25, max: 34, color: '#3b82f6' },
-  { label: '水風呂', min: null, max: 24, color: '#0ea5e9' },
+  { label: '熱め',   color: '#dc2626' },
+  { label: '高め',   color: '#ea580c' },
+  { label: '適温',   color: '#f59e0b' },
+  { label: '標準',   color: '#22c55e' },
+  { label: 'ぬるめ', color: '#06b6d4' },
+  { label: '低め',   color: '#3b82f6' },
 ];
 
 function getColorForTemp(temp: number | null): string {
@@ -929,41 +928,72 @@ function BathTemperatureCard({ bath, onUpdate, onRemove }: BathTemperatureCardPr
   const TEMP_MIN = 10;
   const TEMP_MAX = 100;
 
-  const minVal = bath.min ?? 38;
-  const maxVal = bath.max ?? 38;
-  const isSamePoint = minVal === maxVal;
-  const colorMin = getColorForTemp(minVal);
-  const displayColor = isSamePoint ? colorMin : getColorForTemp((minVal + maxVal) / 2);
+  // ④ カスタム入力：文字列ステートで管理することで入力中の消去・修正を可能にする
+  const [localMin, setLocalMin] = useState(bath.min !== null ? String(bath.min) : '');
+  const [localMax, setLocalMax] = useState(bath.max !== null ? String(bath.max) : '');
 
-  const toPercent = (v: number) => ((v - TEMP_MIN) / (TEMP_MAX - TEMP_MIN)) * 100;
+  // スライダー操作で外部 bath が変わったとき localMin/Max に反映
+  const prevMin = useRef(bath.min);
+  const prevMax = useRef(bath.max);
+  useEffect(() => {
+    if (bath.min !== prevMin.current) {
+      prevMin.current = bath.min;
+      setLocalMin(bath.min !== null ? String(bath.min) : '');
+    }
+  }, [bath.min]);
+  useEffect(() => {
+    if (bath.max !== prevMax.current) {
+      prevMax.current = bath.max;
+      setLocalMax(bath.max !== null ? String(bath.max) : '');
+    }
+  }, [bath.max]);
 
-  const handleMinSlider = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseFloat(e.target.value);
-    onUpdate({ ...bath, min: val, max: Math.max(val, maxVal) });
-  };
+  const displayMin = bath.min ?? 38;
+  const displayMax = bath.max ?? 38;
+  const displayColor = getColorForTemp(displayMin);
 
-  const handleMaxSlider = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseFloat(e.target.value);
-    onUpdate({ ...bath, min: Math.min(val, minVal), max: val });
-  };
-
+  // ④ カスタム入力
   const handleCustomMin = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value === '' ? null : parseFloat(e.target.value);
-    if (val !== null && bath.max !== null && val > bath.max) return;
+    const raw = e.target.value;
+    setLocalMin(raw);
+    if (raw === '' || raw === '-') return;
+    const val = parseFloat(raw);
+    if (isNaN(val)) return;
     onUpdate({ ...bath, min: val });
   };
 
   const handleCustomMax = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = e.target.value === '' ? null : parseFloat(e.target.value);
-    if (val !== null && bath.min !== null && val < bath.min) return;
+    const raw = e.target.value;
+    setLocalMax(raw);
+    if (raw === '' || raw === '-') return;
+    const val = parseFloat(raw);
+    if (isNaN(val)) return;
     onUpdate({ ...bath, max: val });
   };
 
-  const leftPct = toPercent(minVal);
-  const rightPct = toPercent(maxVal);
+  // blur 時、未確定の文字列があれば前の値に戻す
+  const handleCustomMinBlur = () => {
+    const val = parseFloat(localMin);
+    if (isNaN(val)) setLocalMin(bath.min !== null ? String(bath.min) : '');
+  };
+
+  const handleCustomMaxBlur = () => {
+    const val = parseFloat(localMax);
+    if (isNaN(val)) setLocalMax(bath.max !== null ? String(bath.max) : '');
+  };
+
+  // ② 体感ラベルのトグル（温度とは独立した複数選択）
+  const toggleLabel = (label: string) => {
+    const current = bath.labels ?? [];
+    const next = current.includes(label)
+      ? current.filter(l => l !== label)
+      : [...current, label];
+    onUpdate({ ...bath, labels: next });
+  };
 
   return (
     <div className="bg-white border border-gray-100 rounded-2xl p-4 space-y-3 shadow-sm">
+      {/* ① 浴槽名 */}
       <div className="flex items-center gap-2">
         <div
           className="w-3 h-3 rounded-full flex-shrink-0"
@@ -983,15 +1013,15 @@ function BathTemperatureCard({ bath, onUpdate, onRemove }: BathTemperatureCardPr
         )}
       </div>
 
-      {/* Quick presets */}
+      {/* ② 体感プリセット（複数選択可・温度とは独立） */}
       <div className="flex gap-1.5 flex-wrap">
         {TEMP_PRESETS.map(p => {
-          const isActive = bath.min === p.min && bath.max === p.max;
+          const isActive = (bath.labels ?? []).includes(p.label);
           return (
             <button
               key={p.label}
               type="button"
-              onClick={() => onUpdate({ ...bath, min: p.min, max: p.max })}
+              onClick={() => toggleLabel(p.label)}
               className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all ${
                 isActive ? 'text-white shadow-sm' : 'bg-gray-50 text-gray-500 border border-gray-100 hover:border-gray-300'
               }`}
@@ -1003,65 +1033,15 @@ function BathTemperatureCard({ bath, onUpdate, onRemove }: BathTemperatureCardPr
         })}
       </div>
 
-      {/* Dual-handle range slider */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between text-[10px] font-bold text-gray-400">
-          <span>{TEMP_MIN}℃</span>
-          <span
-            className="text-sm font-black px-2 py-0.5 rounded-lg text-white transition-all"
-            style={{ backgroundColor: displayColor }}
-          >
-            {isSamePoint
-              ? `${minVal}℃`
-              : `${bath.min !== null ? bath.min : '?'}〜${bath.max !== null ? bath.max : '?'}℃`}
-          </span>
-          <span>{TEMP_MAX}℃</span>
-        </div>
-        <div className="relative h-6 flex items-center">
-          {/* Track background */}
-          <div className="absolute w-full h-2 rounded-full bg-gray-200" />
-          {/* Active range fill */}
-          <div
-            className="absolute h-2 rounded-full transition-all"
-            style={{
-              left: `${leftPct}%`,
-              width: `${rightPct - leftPct}%`,
-              backgroundColor: displayColor,
-            }}
-          />
-          {/* Min handle */}
-          <input
-            type="range"
-            min={TEMP_MIN}
-            max={TEMP_MAX}
-            step={1}
-            value={minVal}
-            onChange={handleMinSlider}
-            className="absolute w-full h-2 appearance-none bg-transparent cursor-pointer"
-            style={{ zIndex: minVal > TEMP_MAX - 5 ? 5 : 4 }}
-          />
-          {/* Max handle */}
-          <input
-            type="range"
-            min={TEMP_MIN}
-            max={TEMP_MAX}
-            step={1}
-            value={maxVal}
-            onChange={handleMaxSlider}
-            className="absolute w-full h-2 appearance-none bg-transparent cursor-pointer"
-            style={{ zIndex: 3 }}
-          />
-        </div>
-      </div>
-
-      {/* Custom range input */}
+      {/* ③ カスタム数値入力（min〜max） */}
       <div className="flex items-center gap-2 text-[11px]">
         <span className="text-gray-400 font-bold shrink-0">カスタム:</span>
         <input
           type="number"
           step="0.5"
-          value={bath.min ?? ''}
+          value={localMin}
           onChange={handleCustomMin}
+          onBlur={handleCustomMinBlur}
           placeholder="下限"
           className="w-16 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-center font-bold focus:outline-none focus:ring-1 focus:ring-orange-200"
         />
@@ -1069,17 +1049,16 @@ function BathTemperatureCard({ bath, onUpdate, onRemove }: BathTemperatureCardPr
         <input
           type="number"
           step="0.5"
-          value={bath.max ?? ''}
+          value={localMax}
           onChange={handleCustomMax}
+          onBlur={handleCustomMaxBlur}
           placeholder="上限"
           className="w-16 bg-gray-50 border border-gray-200 rounded-lg px-2 py-1 text-center font-bold focus:outline-none focus:ring-1 focus:ring-orange-200"
         />
         <span className="text-gray-400">℃</span>
-        <span className="text-gray-300 text-[10px] ml-1">
-          {bath.min !== null && bath.max === null ? `${bath.min}℃以上` :
-           bath.min === null && bath.max !== null ? `${bath.max}℃以下` :
-           bath.min !== null && bath.max !== null && bath.min !== bath.max ? `${bath.min}〜${bath.max}℃` : ''}
-        </span>
+        {localMin !== localMax && localMin !== '' && localMax !== '' && (
+          <span className="text-gray-300 text-[10px] ml-1">{localMin}〜{localMax}℃</span>
+        )}
       </div>
     </div>
   );
