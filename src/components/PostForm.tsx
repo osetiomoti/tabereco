@@ -119,6 +119,8 @@ export function PostForm({ post }: Props) {
   const [uploadCurrent, setUploadCurrent] = useState(0);
   const [uploadTotal, setUploadTotal] = useState(0);
 
+  // 温泉詳細の表示トグル
+  const [showHotSpringDetails, setShowHotSpringDetails] = useState(true);
 
   const set = <K extends keyof PostFormValues>(key: K, val: PostFormValues[K]) =>
     setValues((prev) => ({ ...prev, [key]: val }));
@@ -552,125 +554,140 @@ export function PostForm({ post }: Props) {
         {/* 温泉 V2 詳細フィールド */}
         {values.tags.includes('温泉') && (
           <div className="space-y-5 animate-in slide-in-from-top-2 fade-in duration-300 border border-orange-100 rounded-[1.5rem] p-5 bg-orange-50/30">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-xl">♨️</span>
-              <span className="text-sm font-black text-orange-700 tracking-wider">温泉詳細情報</span>
-            </div>
-
-            {/* 施設タイプ（複数選択） */}
-            <HotSpringMultiSelect
-              label="🏠 施設タイプ"
-              options={['温泉', '銭湯', 'スパ']}
-              selected={values.facility_types}
-              onChange={v => set('facility_types', v)}
-              historyKey="facility_types"
-            />
-
-            {/* 泉質（複数選択） */}
-            <HotSpringMultiSelect
-              label="💧 泉質"
-              options={['単純温泉', '塩化物泉', '炭酸水素塩泉', '硫酸塩泉', '二酸化炭素泉', '含鉄泉', '硫黄泉', 'アルカリ性単純温泉', '酸性泉', '放射能泉']}
-              selected={values.spring_qualities}
-              onChange={v => set('spring_qualities', v)}
-              historyKey="spring_qualities"
-            />
-
-            {/* 浴槽情報（複数選択） */}
-            <HotSpringMultiSelect
-              label="🛁 浴槽情報"
-              options={['内湯', '露天風呂', '混浴内湯', '混浴露天', '家族風呂', '水風呂', 'サウナ', 'ジャグジー', '洞窟風呂', '展望風呂']}
-              selected={values.bath_types}
-              onChange={v => set('bath_types', v)}
-              historyKey="bath_types"
-            />
-
-            {/* 源泉・管理方法（複数選択） */}
-            <HotSpringMultiSelect
-              label="🌊 源泉・管理方法"
-              options={['源泉掛け流し', '加水あり', '加温あり', '循環あり', '消毒あり', '塩素不使用']}
-              selected={values.source_managements}
-              onChange={v => set('source_managements', v)}
-              historyKey="source_managements"
-            />
-
-            {/* シャンプー・石鹸（複数選択） */}
-            <HotSpringMultiSelect
-              label="🧴 シャンプー・石鹸"
-              options={['あり', 'なし']}
-              selected={values.shampoo_types}
-              onChange={v => set('shampoo_types', v)}
-              historyKey="shampoo_types"
-            />
-
-            {/* 利用タイプ（複数選択） */}
-            <HotSpringMultiSelect
-              label="🏨 利用タイプ"
-              options={['日帰り専用', '宿泊専用', '日帰り (時間帯指定)/宿泊']}
-              selected={values.stay_types}
-              onChange={v => set('stay_types', v)}
-              historyKey="stay_types"
-            />
-
-            {/* 秘湯感（星評価） */}
-            <div className="space-y-2">
-              <label className="text-[11px] font-black text-gray-500 tracking-widest flex items-center justify-between">
-                🏔️ 秘湯感
-                {values.hidden_spring_rating != null && (
-                  <button type="button" onClick={() => set('hidden_spring_rating', null)} className="text-gray-300 hover:text-red-400 transition-colors"><X size={12} /></button>
-                )}
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">♨️</span>
+                <span className="text-sm font-black text-orange-700 tracking-wider">温泉詳細情報</span>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={showHotSpringDetails}
+                  onChange={(e) => setShowHotSpringDetails(e.target.checked)}
+                  className="peer sr-only"
+                />
+                <div className="w-10 h-6 bg-orange-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-orange-500 shadow-inner"></div>
               </label>
-              <div className="flex items-center gap-1">
-                {[1, 2, 3, 4, 5].map(star => (
-                  <button
-                    key={star}
-                    type="button"
-                    onClick={() => set('hidden_spring_rating', values.hidden_spring_rating === star ? null : star)}
-                    className={`text-2xl transition-transform hover:scale-110 ${
-                      (values.hidden_spring_rating ?? 0) >= star ? 'text-amber-400' : 'text-gray-200'
-                    }`}
-                  >
-                    ★
-                  </button>
-                ))}
-                {values.hidden_spring_rating != null && (
-                  <span className="text-xs text-amber-600 font-bold ml-2">{values.hidden_spring_rating}/5</span>
-                )}
-              </div>
             </div>
 
-            {/* 浴槽ごとの温度設定 */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-[11px] font-black text-gray-500 tracking-widest">🌡️ 浴槽ごとの温度</label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const newBath: BathTemperatureInfo = { id: crypto.randomUUID(), name: '', min: 38, max: 38 };
-                    set('bath_temperatures', [...values.bath_temperatures, newBath]);
-                  }}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-orange-100 text-orange-600 rounded-xl text-[11px] font-black hover:bg-orange-200 transition-all"
-                >
-                  <Plus size={12} strokeWidth={3} /> 浴槽を追加
-                </button>
-              </div>
+            {showHotSpringDetails && (
+              <div className="space-y-5">
+                {/* 施設タイプ（複数選択） */}
+                <HotSpringMultiSelect
+                  label="🏠 施設タイプ (任意)"
+                  options={['温泉', '銭湯', 'スパ']}
+                  selected={values.facility_types}
+                  onChange={v => set('facility_types', v)}
+                  historyKey="facility_types"
+                />
 
-              <div className="space-y-3">
-                {values.bath_temperatures.map((bath, idx) => (
-                  <BathTemperatureCard
-                    key={bath.id}
-                    bath={bath}
-                    onUpdate={(updated) => {
-                      const newArr = [...values.bath_temperatures];
-                      newArr[idx] = updated;
-                      set('bath_temperatures', newArr);
-                    }}
-                    onRemove={values.bath_temperatures.length > 1 ? () => {
-                      set('bath_temperatures', values.bath_temperatures.filter((_, i) => i !== idx));
-                    } : undefined}
-                  />
-                ))}
+                {/* 泉質（複数選択） */}
+                <HotSpringMultiSelect
+                  label="💧 泉質 (任意)"
+                  options={['単純温泉', '塩化物泉', '炭酸水素塩泉', '硫酸塩泉', '二酸化炭素泉', '含鉄泉', '硫黄泉', 'アルカリ性単純温泉', '酸性泉', '放射能泉']}
+                  selected={values.spring_qualities}
+                  onChange={v => set('spring_qualities', v)}
+                  historyKey="spring_qualities"
+                />
+
+                {/* 浴槽情報（複数選択） */}
+                <HotSpringMultiSelect
+                  label="🛁 浴槽情報 (任意)"
+                  options={['内湯', '露天風呂', '混浴内湯', '混浴露天', '家族風呂', '水風呂', 'サウナ', 'ジャグジー', '洞窟風呂', '展望風呂']}
+                  selected={values.bath_types}
+                  onChange={v => set('bath_types', v)}
+                  historyKey="bath_types"
+                />
+
+                {/* 源泉・管理方法（複数選択） */}
+                <HotSpringMultiSelect
+                  label="🌊 源泉・管理方法 (任意)"
+                  options={['源泉掛け流し', '加水あり', '加温あり', '循環あり', '消毒あり', '塩素不使用']}
+                  selected={values.source_managements}
+                  onChange={v => set('source_managements', v)}
+                  historyKey="source_managements"
+                />
+
+                {/* シャンプー・石鹸（複数選択） */}
+                <HotSpringMultiSelect
+                  label="🧴 シャンプー・石鹸 (任意)"
+                  options={['あり', 'なし']}
+                  selected={values.shampoo_types}
+                  onChange={v => set('shampoo_types', v)}
+                  historyKey="shampoo_types"
+                />
+
+                {/* 利用タイプ（複数選択） */}
+                <HotSpringMultiSelect
+                  label="🏨 利用タイプ (任意)"
+                  options={['日帰り専用', '宿泊専用', '日帰り (時間帯指定)/宿泊']}
+                  selected={values.stay_types}
+                  onChange={v => set('stay_types', v)}
+                  historyKey="stay_types"
+                />
+
+                {/* 秘湯感（星評価） */}
+                <div className="space-y-2">
+                  <label className="text-[11px] font-black text-gray-500 tracking-widest flex items-center justify-between">
+                    🏔️ 秘湯感 (任意)
+                    {values.hidden_spring_rating != null && (
+                      <button type="button" onClick={() => set('hidden_spring_rating', null)} className="text-gray-300 hover:text-red-400 transition-colors"><X size={12} /></button>
+                    )}
+                  </label>
+                  <div className="flex items-center gap-1">
+                    {[1, 2, 3, 4, 5].map(star => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => set('hidden_spring_rating', values.hidden_spring_rating === star ? null : star)}
+                        className={`text-2xl transition-transform hover:scale-110 ${
+                          (values.hidden_spring_rating ?? 0) >= star ? 'text-amber-400' : 'text-gray-200'
+                        }`}
+                      >
+                        ★
+                      </button>
+                    ))}
+                    {values.hidden_spring_rating != null && (
+                      <span className="text-xs text-amber-600 font-bold ml-2">{values.hidden_spring_rating}/5</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 浴槽ごとの温度設定 */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-black text-gray-500 tracking-widest">🌡️ 浴槽ごとの温度 (任意)</label>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const newBath: BathTemperatureInfo = { id: crypto.randomUUID(), name: '', min: 38, max: 38 };
+                        set('bath_temperatures', [...values.bath_temperatures, newBath]);
+                      }}
+                      className="flex items-center gap-1 px-3 py-1.5 bg-orange-100 text-orange-600 rounded-xl text-[11px] font-black hover:bg-orange-200 transition-all"
+                    >
+                      <Plus size={12} strokeWidth={3} /> 浴槽を追加
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {values.bath_temperatures.map((bath, idx) => (
+                      <BathTemperatureCard
+                        key={bath.id}
+                        bath={bath}
+                        onUpdate={(updated) => {
+                          const newArr = [...values.bath_temperatures];
+                          newArr[idx] = updated;
+                          set('bath_temperatures', newArr);
+                        }}
+                        onRemove={() => {
+                          set('bath_temperatures', values.bath_temperatures.filter((_, i) => i !== idx));
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
           </div>
         )}
 
@@ -799,6 +816,19 @@ type HotSpringMultiSelectProps = {
 function HotSpringMultiSelect({ label, options: baseOptions, selected, onChange, historyKey }: HotSpringMultiSelectProps) {
   const [customInput, setCustomInput] = useState('');
   const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setShowDropdown(false);
+      }
+    };
+    if (showDropdown) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showDropdown]);
 
   const { data: historyData } = useSWR(historyKey ? '/api/user/hot-spring-history' : null, (url: string) => fetch(url).then(r => r.json()));
   const historyOptions = historyKey && historyData?.data?.[historyKey] ? historyData.data[historyKey] : [];
@@ -822,7 +852,7 @@ function HotSpringMultiSelect({ label, options: baseOptions, selected, onChange,
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-2 relative" ref={dropdownRef}>
       <label className="text-[11px] font-black text-gray-500 tracking-widest flex items-center justify-between">
         {label}
         {selected.length > 0 && (
@@ -855,7 +885,7 @@ function HotSpringMultiSelect({ label, options: baseOptions, selected, onChange,
       </button>
 
       {showDropdown && (
-        <div className="bg-white border border-gray-200 rounded-xl shadow-lg p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg p-2 space-y-1 animate-in fade-in slide-in-from-top-2 duration-200">
           {options.map(opt => (
             <button
               key={opt}
