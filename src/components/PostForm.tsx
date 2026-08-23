@@ -298,13 +298,13 @@ export function PostForm({ post }: Props) {
       if (isEdit && post) {
         result = await updatePost(post.id, postData, values.tags);
         if (result) {
-          mutate('/api/posts');
+          mutate((key: any) => typeof key === 'string' && key.includes('/api/posts'));
           router.push(`/posts/${post.id}`);
         }
       } else {
         result = await createPost(postData, values.tags);
         if (result?.id) {
-          mutate('/api/posts');
+          mutate((key: any) => typeof key === 'string' && key.includes('/api/posts'));
           router.push(`/posts/${result.id}`);
         }
       }

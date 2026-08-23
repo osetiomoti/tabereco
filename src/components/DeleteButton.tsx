@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { mutate } from 'swr';
 import { deletePost } from '@/lib/api/posts';
 import { Trash2, Loader2 } from 'lucide-react';
 
@@ -18,6 +19,7 @@ export function DeleteButton({ postId }: Props) {
     setLoading(true);
     try {
       await deletePost(postId);
+      mutate((key: any) => typeof key === 'string' && key.includes('/api/posts'));
       router.push('/posts');
       router.refresh();
     } catch {
