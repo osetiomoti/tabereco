@@ -12,6 +12,7 @@ export async function GET(request: NextRequest) {
   return withAuth(request, async (auth) => {
     try {
       const scope = request.nextUrl.searchParams.get('scope') ?? 'all';
+      const registrantId = request.nextUrl.searchParams.get('registrantId');
       const appType = request.cookies.get('app_type')?.value === 'tabireco' ? 'tabireco' : 'tabereco';
 
       // ともだちのIDを取得
@@ -31,6 +32,15 @@ export async function GET(request: NextRequest) {
           f.user_id === auth.userId ? f.friend_id : f.user_id
         );
         targetUserIds = [auth.userId, ...friendIds];
+      }
+
+      // registrantIdが指定されている場合は、そのユーザーのみに絞る
+      if (registrantId) {
+        if (targetUserIds.includes(registrantId)) {
+          targetUserIds = [registrantId];
+        } else {
+          targetUserIds = [];
+        }
       }
 
       // 対象ユーザーが持つ投稿から、タグ名ごとの投稿数を集計

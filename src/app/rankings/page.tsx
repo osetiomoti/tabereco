@@ -447,7 +447,6 @@ function TagSelectorView({
 export default function RankingsPage() {
   const router = useRouter();
 
-  const [scope, setScope] = useState<'all' | 'mine'>('all');
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [rankingFilters, setRankingFilters] = useState<any>({
@@ -460,7 +459,7 @@ export default function RankingsPage() {
 
   // タグ一覧を取得
   const { data: tagsData, isLoading: tagsLoading } = useSWR(
-    `/api/rankings/tags?scope=${scope}`,
+    `/api/rankings/tags?scope=all${rankingFilters.registrant_id ? `&registrantId=${rankingFilters.registrant_id}` : ''}`,
     (url: string) => fetch(url).then(r => r.json()).then(j => (j.data ?? []) as TagInfo[]),
     { dedupingInterval: 60_000, revalidateOnFocus: false }
   );
@@ -476,11 +475,19 @@ export default function RankingsPage() {
   const allUsers = rankingData?.users ?? [];
 
   // フィルターを適用してユーザーごとの投稿を絞り込む
-  const filteredUsers = allUsers.map(user => {
-    let filtered = [...user.posts];
+  const filteredUsers = allUsers
+    .filter(user => {
+      // 投稿者フィルター
+      if (rankingFilters.registrant_id && rankingFilters.registrant_id !== 'all') {
+        if (user.id !== rankingFilters.registrant_id) return false;
+      }
+      return true;
+    })
+    .map(user => {
+      let filtered = [...user.posts];
 
-    // 状態フィルター（visited / want_to_go はランキング対象外なのでスキップ）
-    // 評価フィルター
+      // 状態フィルター（visited / want_to_go はランキング対象外なのでスキップ）
+      // 評価フィルター
     if (rankingFilters.rating_min != null) {
       filtered = filtered.filter(p => p.rating != null && p.rating >= rankingFilters.rating_min);
     }
@@ -556,7 +563,6 @@ export default function RankingsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-[100px]">
-      {/* カスタムヘッダー */}
       {selectedTag ? (
         <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-100/50 h-14">
           <div className="max-w-2xl mx-auto px-4 h-full flex items-center justify-between relative">
@@ -566,12 +572,12 @@ export default function RankingsPage() {
             >
               <ChevronLeft size={20} className="text-gray-900" />
             </button>
-            <div className="absolute inset-0 flex justify-center items-center pointer-events-none">
+            <div className="absolute inset-0 flex justify-center items-center pointer-events-none px-24">
               <h1 className="font-bold text-gray-900 text-[16px] truncate">#{selectedTag}</h1>
             </div>
             <button
               onClick={() => setIsFilterOpen(true)}
-              className="relative w-9 h-9 bg-gray-100/80 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+              className="relative w-9 h-9 bg-gray-100/80 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors z-10"
             >
               <SlidersHorizontal size={18} className="text-gray-600" />
               {activeFilterCount > 0 && (
@@ -586,43 +592,30 @@ export default function RankingsPage() {
           </div>
         </header>
       ) : (
-        <Header title="ランキング" />
+        <Header title="ランキング">
+          <button
+            onClick={() => setIsFilterOpen(true)}
+            className="relative w-9 h-9 bg-gray-100/80 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+          >
+            <SlidersHorizontal size={18} className="text-gray-600" />
+            {activeFilterCount > 0 && (
+              <span
+                className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full text-[9px] font-black text-white flex items-center justify-center"
+                style={{ background: 'var(--color-primary)' }}
+              >
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+        </Header>
       )}
 
       {!selectedTag ? (
         /* ── タグ選択画面 ── */
         <>
-          {/* 全員/自分 トグル */}
-          <div className="px-4 pt-4 pb-2">
-            <div className="flex bg-white border border-gray-100 rounded-2xl p-1 shadow-sm">
-              <button
-                onClick={() => setScope('all')}
-                className={`flex-1 py-2.5 text-[13px] font-black rounded-xl transition-all ${
-                  scope === 'all'
-                    ? 'text-white shadow-sm'
-                    : 'text-gray-400 hover:text-gray-600'
-                }`}
-                style={scope === 'all' ? { background: 'var(--color-primary)' } : undefined}
-              >
-                👥 全員
-              </button>
-              <button
-                onClick={() => setScope('mine')}
-                className={`flex-1 py-2.5 text-[13px] font-black rounded-xl transition-all ${
-                  scope === 'mine'
-                    ? 'text-white shadow-sm'
-                    : 'text-gray-400 hover:text-gray-600'
-                }`}
-                style={scope === 'mine' ? { background: 'var(--color-primary)' } : undefined}
-              >
-                👤 自分のみ
-              </button>
-            </div>
-          </div>
-
-          <div className="px-4 mb-2">
+          <div className="px-4 pt-4 mb-2">
             <p className="text-[11px] text-gray-400 font-bold">
-              {scope === 'all' ? 'ともだち全員の投稿数が多い順' : '自分の投稿数が多い順'}
+              {rankingFilters.registrant_id && rankingFilters.registrant_id !== 'all' ? '選択したユーザーの投稿数が多い順' : 'ともだち全員の投稿数が多い順'}
             </p>
           </div>
 
@@ -716,7 +709,6 @@ export default function RankingsPage() {
         onClose={() => setIsFilterOpen(false)}
         onApply={(f) => setRankingFilters(f)}
         initialFilters={rankingFilters}
-        hideGroupAndRegistrant={true}
         hideStatus={true}
         hideTags={true}
       />
