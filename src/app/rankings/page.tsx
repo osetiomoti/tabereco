@@ -222,6 +222,7 @@ function UserPanel({
   const [localPosts, setLocalPosts] = useState<RankingPost[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
   const posts = localPosts ?? userRanking.posts;
 
   const sensors = useSensors(
@@ -301,10 +302,28 @@ function UserPanel({
           </div>
         </div>
         {userRanking.isMe && (
-          <p className="text-[10px] text-[var(--color-primary)] font-bold mt-2 flex items-center gap-1">
-            <GripVertical size={10} />
-            ドラッグで並び替え可能
-          </p>
+          <div className="flex items-center justify-between mt-2">
+            <p className="text-[10px] text-[var(--color-primary)] font-bold flex items-center gap-1">
+              {isEditing ? (
+                <>
+                  <GripVertical size={10} />
+                  ドラッグで並び替え可能
+                </>
+              ) : (
+                '※ 並び替えは編集モードで可能'
+              )}
+            </p>
+            <button
+              onClick={() => setIsEditing(!isEditing)}
+              className={`px-3 py-1 rounded-full text-[11px] font-black transition-all ${
+                isEditing
+                  ? 'bg-[var(--color-primary)] text-white'
+                  : 'bg-white text-[var(--color-primary)] border border-[var(--color-primary-light)]'
+              }`}
+            >
+              {isEditing ? '完了' : '並び替え'}
+            </button>
+          </div>
         )}
       </div>
 
@@ -312,7 +331,7 @@ function UserPanel({
       <div className="p-3 space-y-2 max-h-[60vh] overflow-y-auto">
         {posts.length === 0 ? (
           <div className="py-8 text-center text-gray-300 text-sm font-bold">記録なし</div>
-        ) : userRanking.isMe ? (
+        ) : userRanking.isMe && isEditing ? (
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
             <SortableContext items={posts.map(p => p.id)} strategy={verticalListSortingStrategy}>
               {posts.map((post, i) => (
