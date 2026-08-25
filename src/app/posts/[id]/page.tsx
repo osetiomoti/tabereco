@@ -213,40 +213,83 @@ export default async function PostDetailPage({ params }: Props) {
             ♨️ 温泉情報
           </div>
           <div className="divide-y divide-gray-100/50">
-            {/* 温度帯 */}
-            {(post.spring_temp_min != null || post.spring_temp_max != null) && (
-              <div className="px-5 py-4 flex items-center justify-between bg-gray-50/20">
-                <span className="font-bold text-[14px] text-gray-700 flex items-center gap-2">🌡️ お湯の温度帯</span>
-                <span className="text-teal-700 font-black text-[14px]">
-                  {post.spring_temp_min != null && post.spring_temp_max == null ? `${post.spring_temp_min}℃〜` : ''}
-                  {post.spring_temp_min == null && post.spring_temp_max != null ? `〜${post.spring_temp_max}℃` : ''}
-                  {post.spring_temp_min != null && post.spring_temp_max != null ? `${post.spring_temp_min}〜${post.spring_temp_max}℃` : ''}
-                  {post.spring_temp_custom && <span className="ml-1 text-xs text-gray-500 font-normal">({post.spring_temp_custom})</span>}
-                </span>
+
+            {/* 施設タイプ */}
+            {post.facility_types && post.facility_types.length > 0 && (
+              <div className="px-5 py-4 bg-gray-50/20">
+                <span className="font-bold text-[13px] text-gray-500 flex items-center gap-2 mb-2">🏠 施設タイプ</span>
+                <div className="flex flex-wrap gap-2">
+                  {post.facility_types.map((v: string) => (
+                    <span key={v} className="px-3 py-1 bg-teal-50 text-teal-700 border border-teal-200 rounded-full text-xs font-black">{v}</span>
+                  ))}
+                </div>
               </div>
             )}
-            {/* 水風呂 */}
-            {post.cold_bath_temp != null && (
-              <div className="px-5 py-4 flex items-center justify-between bg-gray-50/20">
-                <span className="font-bold text-[14px] text-gray-700 flex items-center gap-2">🧊 水風呂</span>
-                <span className="text-blue-600 font-black text-[14px]">{post.cold_bath_temp}℃</span>
+
+            {/* 泉質 */}
+            {post.spring_qualities && post.spring_qualities.length > 0 && (
+              <div className="px-5 py-4 bg-gray-50/20">
+                <span className="font-bold text-[13px] text-gray-500 flex items-center gap-2 mb-2">💧 泉質</span>
+                <div className="flex flex-wrap gap-2">
+                  {post.spring_qualities.map((v: string) => (
+                    <span key={v} className="px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200 rounded-full text-xs font-black">{v}</span>
+                  ))}
+                </div>
               </div>
             )}
-            {/* 源泉掛け流し */}
-            {post.is_source_fed && (
-              <div className="px-5 py-4 flex items-center justify-between bg-gray-50/20">
-                <span className="font-bold text-[14px] text-gray-700 flex items-center gap-2">💧 源泉掛け流し</span>
-                <span className={`px-3 py-1 rounded-full text-xs font-black ${
-                  post.is_source_fed === 'はい' ? 'bg-green-100 text-green-700' :
-                  post.is_source_fed === 'いいえ' ? 'bg-red-100 text-red-600' :
-                  'bg-gray-100 text-gray-500'
-                }`}>{post.is_source_fed}</span>
+
+            {/* 浴槽情報 */}
+            {post.bath_types && post.bath_types.length > 0 && (
+              <div className="px-5 py-4 bg-gray-50/20">
+                <span className="font-bold text-[13px] text-gray-500 flex items-center gap-2 mb-2">🛁 浴槽情報</span>
+                <div className="flex flex-wrap gap-2">
+                  {post.bath_types.map((v: string) => (
+                    <span key={v} className="px-3 py-1 bg-indigo-50 text-indigo-700 border border-indigo-200 rounded-full text-xs font-black">{v}</span>
+                  ))}
+                </div>
               </div>
             )}
+
+            {/* 源泉・管理方法 */}
+            {post.source_managements && post.source_managements.length > 0 && (
+              <div className="px-5 py-4 bg-gray-50/20">
+                <span className="font-bold text-[13px] text-gray-500 flex items-center gap-2 mb-2">🌊 源泉・管理方法</span>
+                <div className="flex flex-wrap gap-2">
+                  {post.source_managements.map((v: string) => (
+                    <span key={v} className="px-3 py-1 bg-cyan-50 text-cyan-700 border border-cyan-200 rounded-full text-xs font-black">{v}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* シャンプー・石鹸 */}
+            {post.shampoo_types && post.shampoo_types.length > 0 && (
+              <div className="px-5 py-4 flex items-center justify-between bg-gray-50/20">
+                <span className="font-bold text-[13px] text-gray-500 flex items-center gap-2">🧴 シャンプー・石鹸</span>
+                <div className="flex gap-1.5">
+                  {post.shampoo_types.map((v: string) => (
+                    <span key={v} className={`px-3 py-1 rounded-full text-xs font-black ${v === 'あり' ? 'bg-teal-100 text-teal-700' : 'bg-gray-100 text-gray-500'}`}>{v}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 利用タイプ */}
+            {post.stay_types && post.stay_types.length > 0 && (
+              <div className="px-5 py-4 bg-gray-50/20">
+                <span className="font-bold text-[13px] text-gray-500 flex items-center gap-2 mb-2">🏨 利用タイプ</span>
+                <div className="flex flex-wrap gap-2">
+                  {post.stay_types.map((v: string) => (
+                    <span key={v} className="px-3 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded-full text-xs font-black">{v}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* 秘湯感 */}
             {post.hidden_spring_rating != null && (
               <div className="px-5 py-4 flex items-center justify-between bg-gray-50/20">
-                <span className="font-bold text-[14px] text-gray-700 flex items-center gap-2">🏔️ 秘湯感</span>
+                <span className="font-bold text-[13px] text-gray-500 flex items-center gap-2">🏔️ 秘湯感</span>
                 <div className="flex items-center gap-1">
                   {[1,2,3,4,5].map(s => (
                     <span key={s} className={`text-lg ${(post.hidden_spring_rating ?? 0) >= s ? 'text-amber-400' : 'text-gray-200'}`}>★</span>
@@ -255,39 +298,34 @@ export default async function PostDetailPage({ params }: Props) {
                 </div>
               </div>
             )}
-            {/* 浴槽タイプ */}
-            {post.bath_type && (
-              <div className="px-5 py-4 flex items-center justify-between bg-gray-50/20">
-                <span className="font-bold text-[14px] text-gray-700 flex items-center gap-2">🛁 浴槽タイプ</span>
-                <span className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-black">{post.bath_type}</span>
-              </div>
-            )}
-            {/* 宿泊タイプ */}
-            {post.stay_type && (
-              <div className="px-5 py-4 flex items-center justify-between bg-gray-50/20">
-                <span className="font-bold text-[14px] text-gray-700 flex items-center gap-2">🏨 宿泊タイプ</span>
-                <span className="px-3 py-1 bg-purple-100 text-purple-700 rounded-full text-xs font-black">{post.stay_type}</span>
-              </div>
-            )}
-            {/* アメニティ */}
-            {post.has_amenities != null && (
-              <div className="px-5 py-4 flex items-center justify-between bg-gray-50/20">
-                <span className="font-bold text-[14px] text-gray-700 flex items-center gap-2">🧴 アメニティ</span>
-                <span className={`px-3 py-1 rounded-full text-xs font-black ${post.has_amenities ? 'bg-teal-100 text-teal-700' : 'bg-gray-100 text-gray-500'}`}>
-                  {post.has_amenities ? 'あり' : 'なし'}
-                </span>
-              </div>
-            )}
-            {/* その他メモ */}
-            {post.other_memo && (
+
+            {/* 浴槽ごとの温度 */}
+            {post.bath_temperatures && Array.isArray(post.bath_temperatures) && post.bath_temperatures.length > 0 && (
               <div className="px-5 py-4 bg-gray-50/20">
-                <span className="font-bold text-[14px] text-gray-700 flex items-center gap-2 mb-2">📝 その他メモ</span>
-                <p className="text-gray-500 text-[13px] leading-relaxed">{post.other_memo}</p>
+                <span className="font-bold text-[13px] text-gray-500 flex items-center gap-2 mb-3">🌡️ 浴槽ごとの温度</span>
+                <div className="space-y-2">
+                  {(post.bath_temperatures as any[]).map((bath: any, i: number) => (
+                    bath && (bath.min != null || bath.max != null) && (
+                      <div key={bath.id || i} className="flex items-center justify-between bg-white rounded-xl px-4 py-2.5 border border-orange-100">
+                        <span className="text-[13px] font-bold text-gray-700">{bath.name || `浴槽${i + 1}`}</span>
+                        <span className="text-[13px] font-black text-orange-600">
+                          {bath.min != null && bath.max != null && bath.min === bath.max
+                            ? `${bath.min}℃`
+                            : bath.min != null && bath.max != null
+                            ? `${bath.min}〜${bath.max}℃`
+                            : bath.min != null ? `${bath.min}℃〜` : `〜${bath.max}℃`}
+                        </span>
+                      </div>
+                    )
+                  ))}
+                </div>
               </div>
             )}
+
           </div>
         </div>
       )}
+
 
       {/* 5. 店舗情報 */}
       <div className="mt-2">

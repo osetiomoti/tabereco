@@ -92,6 +92,7 @@ export function useTimeline(options: UseTimelineOptions = {}) {
         if ((advancedFilters as any).spring_qualities?.length > 0) params.append('spring_qualities', (advancedFilters as any).spring_qualities.join(','));
         if ((advancedFilters as any).bath_types?.length > 0) params.append('bath_types', (advancedFilters as any).bath_types.join(','));
         if ((advancedFilters as any).source_managements?.length > 0) params.append('source_managements', (advancedFilters as any).source_managements.join(','));
+        if ((advancedFilters as any).stay_types?.length > 0) params.append('stay_types', (advancedFilters as any).stay_types.join(','));
         
         // V2 String fields
         if ((advancedFilters as any).shampoo_type) params.append('shampoo_type', (advancedFilters as any).shampoo_type);
