@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { useAppType, type AppType } from '@/contexts/AppTypeContext';
 
 type SharedFilterState = {
   activeTab: 'all' | 'want_to_go' | 'visited' | 'liked';
@@ -13,7 +14,7 @@ type SharedFilterState = {
   tagMatchMode?: 'AND' | 'OR';
 };
 
-const defaultState: SharedFilterState = {
+const defaultTaberecoState: SharedFilterState = {
   activeTab: 'visited',
   keyword: '',
   searchMode: 'store_name',
@@ -22,50 +23,91 @@ const defaultState: SharedFilterState = {
   activeMapTag: null,
 };
 
-const STORAGE_KEY = 'tabereco_shared_filter_v2';
-const EVENT_KEY = 'tabereco_shared_filter_updated';
+const defaultTabirecoState: SharedFilterState = {
+  activeTab: 'visited',
+  keyword: '',
+  searchMode: 'store_name',
+  activeGroups: ['all'],
+  advancedFilters: { include_mine: true, status: 'visited', is_hot_spring_mode: true },
+  activeMapTag: null,
+};
 
-// シンプルなイベントによる状態同期フック
+const getStorageKey = (appType: AppType) => `tabereco_shared_filter_v2_${appType}`;
+const getEventKey = (appType: AppType) => `tabereco_shared_filter_updated_${appType}`;
+
+// シンプルなイベントによる状態同期フック (appType ごとに独立して保持)
 export function useSharedFilter() {
-  const [filterState, setFilterState] = useState<SharedFilterState>(defaultState);
+  const { appType } = useAppType();
+  const defaultState = appType === 'tabireco' ? defaultTabirecoState : defaultTaberecoState;
+  const storageKey = getStorageKey(appType);
+  const eventKey = getEventKey(appType);
+
+  const [filterState, setFilterState] = useState<SharedFilterState>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(storageKey);
+        if (stored) return JSON.parse(stored);
+      } catch (e) {}
+    }
+    return defaultState;
+  });
 
   useEffect(() => {
-    // 初回ロード
-    const stored = localStorage.getItem(STORAGE_KEY);
+    // 初回ロードまたは appType 切り替え時
+    const stored = localStorage.getItem(storageKey);
     if (stored) {
       try {
         setFilterState(JSON.parse(stored));
-      } catch (e) {}
+      } catch (e) {
+        setFilterState(defaultState);
+      }
+    } else {
+      // 移行措置: 旧共通キーがある場合は tabereco 用として一度だけ引き継ぐ
+      if (appType === 'tabereco') {
+        const legacy = localStorage.getItem('tabereco_shared_filter_v2');
+        if (legacy) {
+          try {
+            const parsed = JSON.parse(legacy);
+            localStorage.setItem(storageKey, legacy);
+            setFilterState(parsed);
+            return;
+          } catch (e) {}
+        }
+      }
+      setFilterState(defaultState);
     }
 
     // イベントリスナー
     const handleUpdate = () => {
-      const updated = localStorage.getItem(STORAGE_KEY);
+      const updated = localStorage.getItem(storageKey);
       if (updated) {
         try {
-           setFilterState(JSON.parse(updated));
+          setFilterState(JSON.parse(updated));
         } catch (e) {}
       }
     };
 
-    window.addEventListener(EVENT_KEY, handleUpdate);
+    window.addEventListener(eventKey, handleUpdate);
     // 別タブ対応用
     window.addEventListener('storage', handleUpdate);
 
     return () => {
-      window.removeEventListener(EVENT_KEY, handleUpdate);
+      window.removeEventListener(eventKey, handleUpdate);
       window.removeEventListener('storage', handleUpdate);
     };
-  }, []);
+  }, [appType, storageKey, eventKey]);
 
-  const updateFilter = (updates: Partial<SharedFilterState>) => {
+  const updateFilter = useCallback((updates: Partial<SharedFilterState>) => {
     setFilterState(prev => {
       const next = { ...prev, ...updates };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-      window.dispatchEvent(new Event(EVENT_KEY));
+      try {
+        localStorage.setItem(storageKey, JSON.stringify(next));
+      } catch (e) {}
+      window.dispatchEvent(new Event(eventKey));
       return next;
     });
-  };
+  }, [storageKey, eventKey]);
 
   return { filterState, updateFilter };
 }
+
