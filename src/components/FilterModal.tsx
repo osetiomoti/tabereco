@@ -54,6 +54,7 @@ type HotSpringFilters = {
   source_managements?: string[];
   shampoo_type?: string;
   facility_type?: string;
+  facility_types?: string[];
   stay_types?: string[];
   // 秘湯感
   hidden_spring_rating_min?: number | null;
@@ -93,7 +94,7 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
   const [hsBathTypes, setHsBathTypes] = useState<string[]>(initialFilters?.bath_types || []);
   const [hsSourceMgmts, setHsSourceMgmts] = useState<string[]>(initialFilters?.source_managements || []);
   const [hsShampooType, setHsShampooType] = useState<string>(initialFilters?.shampoo_type || '');
-  const [hsFacilityType, setHsFacilityType] = useState<string>(initialFilters?.facility_type || '');
+  const [hsFacilityTypes, setHsFacilityTypes] = useState<string[]>((initialFilters as any)?.facility_types || []);
   const [hsStayTypes, setHsStayTypes] = useState<string[]>((initialFilters as any)?.stay_types || []);
   // 秘湯感フィルター
   const [hsHiddenRatingMin, setHsHiddenRatingMin] = useState<number | null>(initialFilters?.hidden_spring_rating_min ?? null);
@@ -117,15 +118,6 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
   const memberRef = useRef<HTMLDivElement>(null);
   const [isTagSelectorOpen, setIsTagSelectorOpen] = useState(false);
 
-  const [priceMinMode, setPriceMinMode] = useState<'select' | 'custom'>(() => {
-    if (initialFilters?.price_min === undefined) return 'select';
-    return PRICE_OPTIONS.includes(initialFilters.price_min) ? 'select' : 'custom';
-  });
-  const [priceMaxMode, setPriceMaxMode] = useState<'select' | 'custom'>(() => {
-    if (initialFilters?.price_max === undefined) return 'select';
-    return PRICE_OPTIONS.includes(initialFilters.price_max) ? 'select' : 'custom';
-  });
-
   /* ── load on open ── */
   useEffect(() => {
     if (!isOpen) {
@@ -142,7 +134,18 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
       }
       return base;
     });
-  }, [isOpen, swrGroups]);
+
+    if (initialFilters) {
+      setHsSpringQualities(initialFilters.spring_qualities || []);
+      setHsBathTypes(initialFilters.bath_types || []);
+      setHsSourceMgmts(initialFilters.source_managements || []);
+      setHsShampooType(initialFilters.shampoo_type || '');
+      setHsFacilityTypes((initialFilters as any).facility_types || []);
+      setHsStayTypes((initialFilters as any).stay_types || []);
+      setHsHiddenRatingMin(initialFilters.hidden_spring_rating_min ?? null);
+      setHsHiddenRatingMax(initialFilters.hidden_spring_rating_max ?? null);
+    }
+  }, [isOpen, swrGroups, initialFilters]);
 
   useEffect(() => {
     if (joinedGroups.length > 0) {
@@ -212,7 +215,14 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
       registrantUserIds: allIds,
     });
     setGroupSearch(''); setMemberSearch('');
-    setHsHiddenRatingMin(null); setHsHiddenRatingMax(null);
+    setHsSpringQualities([]);
+    setHsBathTypes([]);
+    setHsSourceMgmts([]);
+    setHsShampooType('');
+    setHsFacilityTypes([]);
+    setHsStayTypes([]);
+    setHsHiddenRatingMin(null);
+    setHsHiddenRatingMax(null);
   };
 
   /* ── group options ── */
@@ -635,113 +645,77 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
                     <button type="button" onClick={() => { set('rating_min', undefined); set('rating_max', undefined); }} className="text-gray-300 hover:text-red-400 text-[10px] font-bold">クリア</button>
                   )}
                 </div>
-                <div className="space-y-2">
-                  {/* 以上 */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-gray-400 w-7 shrink-0">以上</span>
-                    <div className="flex gap-1">
-                      {[1,2,3,4,5].map(s => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => set('rating_min', filters.rating_min === s ? undefined : s)}
-                          className={`text-xl transition-transform hover:scale-110 ${(filters.rating_min ?? 0) >= s ? 'text-orange-400' : 'text-gray-200'}`}
-                        >★</button>
-                      ))}
-                    </div>
-                    {filters.rating_min != null && <span className="text-[10px] font-bold text-orange-500">★{filters.rating_min}以上</span>}
-                  </div>
-                  {/* 以下 */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-[10px] font-bold text-gray-400 w-7 shrink-0">以下</span>
-                    <div className="flex gap-1">
-                      {[1,2,3,4,5].map(s => (
-                        <button
-                          key={s}
-                          type="button"
-                          onClick={() => set('rating_max', filters.rating_max === s ? undefined : s)}
-                          className={`text-xl transition-transform hover:scale-110 ${(filters.rating_max ?? 6) >= s ? 'text-orange-400' : 'text-gray-200'}`}
-                        >★</button>
-                      ))}
-                    </div>
-                    {filters.rating_max != null && <span className="text-[10px] font-bold text-orange-500">★{filters.rating_max}以下</span>}
-                  </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="5"
+                    value={filters.rating_min ?? ''}
+                    onChange={e => set('rating_min', e.target.value ? parseFloat(e.target.value) : undefined)}
+                    placeholder="下限"
+                    className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-[12px] text-gray-800 focus:outline-none focus:border-orange-400 text-center"
+                  />
+                  <span className="text-gray-400 text-[12px] font-bold shrink-0">〜</span>
+                  <input
+                    type="number"
+                    step="0.1"
+                    min="0"
+                    max="5"
+                    value={filters.rating_max ?? ''}
+                    onChange={e => set('rating_max', e.target.value ? parseFloat(e.target.value) : undefined)}
+                    placeholder="上限"
+                    className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-[12px] text-gray-800 focus:outline-none focus:border-orange-400 text-center"
+                  />
                 </div>
               </div>
 
               {/* ── Price card ── */}
               <div className="space-y-2">
-                <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">値段帯</label>
-                <div className="flex flex-col gap-2">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-bold text-gray-400 w-6 shrink-0">下限</span>
-                    <div className="relative flex-1">
-                      <select
-                        value={priceMinMode === 'custom' ? 'custom' : (filters.price_min ?? '')}
-                        onChange={(e) => {
-                          if (e.target.value === 'custom') { setPriceMinMode('custom'); }
-                          else { setPriceMinMode('select'); set('price_min', e.target.value ? parseInt(e.target.value, 10) : undefined); }
-                        }}
-                        className="w-full appearance-none bg-white border border-gray-200 rounded-xl py-2 px-2 text-[12px] text-gray-800 focus:outline-none focus:border-orange-400 transition-all"
-                      >
-                        <option value="">なし</option>
-                        {PRICE_OPTIONS.map(val => <option key={val} value={val}>{val.toLocaleString()}円</option>)}
-                        <option value="custom">自由入力</option>
-                      </select>
-                      <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                    </div>
-                    {priceMinMode === 'custom' && (
-                      <input type="number" value={filters.price_min ?? ''} onChange={e => set('price_min', e.target.value ? parseInt(e.target.value, 10) : undefined)} placeholder="下限" className="w-20 bg-white border border-gray-200 rounded-xl px-2 py-2 text-[12px] text-gray-800 focus:outline-none focus:border-orange-400" />
-                    )}
+                <div className="flex items-center justify-between">
+                  <label className="text-[11px] font-bold text-gray-400 uppercase tracking-wider block">値段帯</label>
+                  {(filters.price_min != null || filters.price_max != null) && (
+                    <button type="button" onClick={() => { set('price_min', undefined); set('price_max', undefined); }} className="text-gray-300 hover:text-red-400 text-[10px] font-bold">クリア</button>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      value={filters.price_min ?? ''}
+                      onChange={e => set('price_min', e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                      placeholder="下限"
+                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-[12px] text-gray-800 focus:outline-none focus:border-orange-400 pr-6 text-center"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-[11px] pointer-events-none">円</span>
                   </div>
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[11px] font-bold text-gray-400 w-6 shrink-0">上限</span>
-                    <div className="relative flex-1">
-                      <select
-                        value={priceMaxMode === 'custom' ? 'custom' : (filters.price_max ?? '')}
-                        onChange={(e) => {
-                          if (e.target.value === 'custom') { setPriceMaxMode('custom'); }
-                          else { setPriceMaxMode('select'); set('price_max', e.target.value ? parseInt(e.target.value, 10) : undefined); }
-                        }}
-                        className="w-full appearance-none bg-white border border-gray-200 rounded-xl py-2 px-2 text-[12px] text-gray-800 focus:outline-none focus:border-orange-400 transition-all"
-                      >
-                        <option value="">なし</option>
-                        {PRICE_OPTIONS.map(val => <option key={val} value={val}>{val.toLocaleString()}円</option>)}
-                        <option value="custom">自由入力</option>
-                      </select>
-                      <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                    </div>
-                    {priceMaxMode === 'custom' && (
-                      <input type="number" value={filters.price_max ?? ''} onChange={e => set('price_max', e.target.value ? parseInt(e.target.value, 10) : undefined)} placeholder="上限" className="w-20 bg-white border border-gray-200 rounded-xl px-2 py-2 text-[12px] text-gray-800 focus:outline-none focus:border-orange-400" />
-                    )}
+                  <span className="text-gray-400 text-[12px] font-bold shrink-0">〜</span>
+                  <div className="relative flex-1">
+                    <input
+                      type="number"
+                      value={filters.price_max ?? ''}
+                      onChange={e => set('price_max', e.target.value ? parseInt(e.target.value, 10) : undefined)}
+                      placeholder="上限"
+                      className="w-full bg-white border border-gray-200 rounded-xl px-3 py-2 text-[12px] text-gray-800 focus:outline-none focus:border-orange-400 pr-6 text-center"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-[11px] pointer-events-none">円</span>
                   </div>
                 </div>
               </div>
-              {/* ── Hot Spring Filter (温泉タグが含まれている時に自動表示) ── */}
-              {showHotSpringFilter && filters.tags.includes('温泉') && (
+              {/* ── Hot Spring Filter (温泉タブまたは温泉タグが含まれている時に表示) ── */}
+              {(showHotSpringFilter || filters.tags.includes('温泉')) && (
                 <div className="space-y-4 bg-orange-50 rounded-2xl p-4 border border-orange-100">
                   <p className="text-[11px] font-bold text-orange-600 uppercase tracking-wider flex items-center gap-1.5">
                     ♨️ 温泉専用フィルター
                   </p>
 
-                  {/* 施設タイプ */}
-                  <div>
-                    <p className="text-[11px] font-black text-gray-500 mb-1.5 flex items-center justify-between">
-                      🏠 施設タイプ
-                      {hsFacilityType && <button onClick={() => setHsFacilityType('')} className="text-gray-300 hover:text-red-400"><X size={10} /></button>}
-                    </p>
-                    <div className="flex gap-2 flex-wrap">
-                      {['温泉', '銭湯', 'スパ'].map(opt => (
-                        <button
-                          key={opt}
-                          onClick={() => setHsFacilityType(hsFacilityType === opt ? '' : opt)}
-                          className={`px-3 py-1.5 text-[11px] font-black rounded-xl border transition-all ${
-                            hsFacilityType === opt ? 'bg-orange-500 text-white border-orange-500' : 'bg-white border-gray-200 text-gray-600 hover:border-orange-300'
-                          }`}
-                        >{opt}</button>
-                      ))}
-                    </div>
-                  </div>
+                  {/* 施設タイプ（複数選択） */}
+                  <FilterMultiSelect
+                    label="🏠 施設タイプ"
+                    options={['温泉','銭湯','スパ','サウナ']}
+                    selected={hsFacilityTypes}
+                    onChange={setHsFacilityTypes}
+                  />
 
                   {/* 泉質（複数選択 OR） */}
                   <FilterMultiSelect
@@ -838,14 +812,23 @@ export function FilterModal({ isOpen, onClose, onApply, initialFilters, initialT
               if (allMembersSelected) {
                 finalFilters.registrantUserIds = [];
               }
+              const hasHotSpringFilters = hsSpringQualities.length > 0 ||
+                hsBathTypes.length > 0 ||
+                hsSourceMgmts.length > 0 ||
+                !!hsShampooType ||
+                hsFacilityTypes.length > 0 ||
+                hsStayTypes.length > 0 ||
+                hsHiddenRatingMin != null ||
+                hsHiddenRatingMax != null;
+
               onApply({
                 ...finalFilters,
-                is_hot_spring_mode: filters.tags.includes('温泉'),
+                is_hot_spring_mode: showHotSpringFilter || filters.tags.includes('温泉') || hasHotSpringFilters,
                 spring_qualities: hsSpringQualities,
                 bath_types: hsBathTypes,
                 source_managements: hsSourceMgmts,
                 shampoo_type: hsShampooType,
-                facility_type: hsFacilityType,
+                facility_types: hsFacilityTypes,
                 stay_types: hsStayTypes,
                 hidden_spring_rating_min: hsHiddenRatingMin,
                 hidden_spring_rating_max: hsHiddenRatingMax,
