@@ -111,11 +111,25 @@ type HeaderProps = {
   title?: string;
   showBackButton?: boolean;
   hideSettings?: boolean;
+  backUrl?: string;
+  onBack?: () => void;
 };
 
-export function Header({ children, title, showBackButton, hideSettings }: HeaderProps) {
+export function Header({ children, title, showBackButton, hideSettings, backUrl, onBack }: HeaderProps) {
   const router = useRouter();
   const { profile: user, isLoading } = useMyProfile();
+
+  const handleBack = () => {
+    if (onBack) {
+      onBack();
+    } else if (backUrl) {
+      router.push(backUrl);
+    } else if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      router.push('/posts');
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-100/50 h-14 transition-all duration-300">
@@ -124,8 +138,9 @@ export function Header({ children, title, showBackButton, hideSettings }: Header
         <div className="flex items-center z-10">
           {showBackButton ? (
             <button
-              onClick={() => router.back()}
+              onClick={handleBack}
               className="w-9 h-9 bg-gray-100/80 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+              aria-label="戻る"
             >
               <ChevronLeft size={20} className="text-gray-900" />
             </button>

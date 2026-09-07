@@ -19,7 +19,7 @@ export function DeleteButton({ postId }: Props) {
     setLoading(true);
     try {
       await deletePost(postId);
-      mutate((key: any) => typeof key === 'string' && key.includes('/api/posts'));
+      mutate((key: any) => typeof key === 'string' && (key.includes('/api/posts') || key.includes('/api/timeline')));
       router.push('/posts');
       router.refresh();
     } catch {

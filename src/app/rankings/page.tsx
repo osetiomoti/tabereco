@@ -12,7 +12,7 @@ import { FilterModal } from '@/components/FilterModal';
 import {
   DndContext,
   closestCenter,
-  PointerSensor,
+  MouseSensor,
   TouchSensor,
   useSensor,
   useSensors,
@@ -81,7 +81,7 @@ function SortableRow({ post, index, onNavigate }: {
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-3 rounded-2xl p-3 transition-all select-none touch-none ${
+      className={`flex items-center gap-3 rounded-2xl p-3 transition-all select-none ${
         isDragging
           ? 'bg-pink-50 border-2 border-pink-200 shadow-xl scale-[1.02]'
           : index === 0
@@ -226,8 +226,8 @@ function UserPanel({
   const posts = localPosts ?? userRanking.posts;
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 8 } })
+    useSensor(MouseSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
   );
 
   const handleDragEnd = useCallback(async (event: DragEndEvent) => {

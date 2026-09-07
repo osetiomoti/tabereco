@@ -126,7 +126,8 @@ export function useTimeline(options: UseTimelineOptions = {}) {
     fetcher,
     {
       revalidateOnFocus: false,
-      revalidateFirstPage: false,
+      revalidateFirstPage: true,
+      revalidateOnMount: true,
       // フィルター変更時に前のデータを保持してスクロール位置のジャンプを防ぐ
       keepPreviousData: true,
     }
