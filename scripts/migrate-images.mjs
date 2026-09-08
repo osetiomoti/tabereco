@@ -33,7 +33,7 @@ const DELETE_OLD = !process.argv.includes('--keep-old'); // デフォルトで�
 const LIMIT_ARG = process.argv.find(a => a.startsWith('--limit='));
 const LIMIT = LIMIT_ARG ? parseInt(LIMIT_ARG.split('=')[1], 10) : Infinity;
 const CONCURRENCY_ARG = process.argv.find(a => a.startsWith('--concurrency='));
-const CONCURRENCY = CONCURRENCY_ARG ? parseInt(CONCURRENCY_ARG.split('=')[1], 10) : 6;
+const CONCURRENCY = CONCURRENCY_ARG ? parseInt(CONCURRENCY_ARG.split('=')[1], 10) : 2; // レートリミット回避のため 2 並列
 
 const TARGET_MAX_PX = 1280;
 const TARGET_QUALITY = 80; // sharp uses 0-100 for webp
@@ -154,25 +154,43 @@ async function processImage(oldUrl, log) {
       // 4. アップロード確認
       await s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: newKey }));
     } else {
-      // バケットポリシー（IP許可）による直接 HTTP PUT
+      // バケットポリシー（IP許可）による直接 HTTP PUT（レートリミット対策のリトライ付き）
       const s3Url = `https://${BUCKET}.s3.${REGION}.amazonaws.com/${newKey}`;
-      const putRes = await fetch(s3Url, {
-        method: 'PUT',
-        body: converted,
-        headers: {
-          'Content-Type': 'image/webp',
-        },
-      });
-
-      if (!putRes.ok) {
-        const errBody = await putRes.text().catch(() => '');
-        throw new Error(`S3 PUT failed (${putRes.status} ${putRes.statusText}): ${errBody.slice(0, 150)}`);
+      let putOk = false;
+      let lastPutErr = '';
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        const putRes = await fetch(s3Url, {
+          method: 'PUT',
+          body: converted,
+          headers: { 'Content-Type': 'image/webp' },
+        });
+        if (putRes.ok) {
+          putOk = true;
+          break;
+        }
+        const errText = await putRes.text().catch(() => '');
+        lastPutErr = `${putRes.status} ${putRes.statusText} (${errText.slice(0, 100)})`;
+        console.error(`  [Attempt ${attempt}/3] PUT ${s3Url} failed: ${lastPutErr}`);
+        if (attempt < 3) await new Promise(r => setTimeout(r, attempt * 500));
+      }
+      if (!putOk) {
+        throw new Error(`S3 PUT failed after 3 retries: ${lastPutErr}`);
       }
 
       // 4. アップロード確認（HEAD）
-      const headRes = await fetch(s3Url, { method: 'HEAD' });
-      if (!headRes.ok) {
-        throw new Error(`S3 HEAD check failed (${headRes.status} ${headRes.statusText})`);
+      let headOk = false;
+      let lastHeadErr = '';
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        const headRes = await fetch(s3Url, { method: 'HEAD' });
+        if (headRes.ok) {
+          headOk = true;
+          break;
+        }
+        lastHeadErr = `${headRes.status} ${headRes.statusText}`;
+        if (attempt < 3) await new Promise(r => setTimeout(r, attempt * 500));
+      }
+      if (!headOk) {
+        throw new Error(`S3 HEAD check failed after 3 retries: ${lastHeadErr}`);
       }
     }
 
@@ -192,10 +210,10 @@ async function deleteS3Object(key) {
     await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }));
   } else {
     const s3Url = `https://${BUCKET}.s3.${REGION}.amazonaws.com/${key}`;
-    const res = await fetch(s3Url, { method: 'DELETE' });
-    if (!res.ok && res.status !== 204 && res.status !== 404) {
-      const errText = await res.text().catch(() => '');
-      throw new Error(`S3 DELETE failed (${res.status}): ${errText.slice(0, 100)}`);
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const res = await fetch(s3Url, { method: 'DELETE' });
+      if (res.ok || res.status === 204 || res.status === 404) return;
+      if (attempt < 3) await new Promise(r => setTimeout(r, attempt * 300));
     }
   }
 }
@@ -254,9 +272,10 @@ async function main() {
     if (group.image_url) addTarget(group.image_url, { type: 'group_image_url', id: group.id });
   }
 
-  const allUrls = Array.from(urlMap.keys());
+  // 既に WebP のもの、または既に処理済みのものは除外して未処理分だけを抽出
+  const allUrls = Array.from(urlMap.keys()).filter(url => !url.endsWith('.webp') && !log.processed[url]);
   const totalUrls = Math.min(allUrls.length, LIMIT);
-  console.log(`📊 Found ${urlMap.size} unique image URLs (processing: ${totalUrls}, concurrency: ${CONCURRENCY})\n`);
+  console.log(`📊 Found ${urlMap.size} unique image URLs (remaining to process: ${totalUrls}, concurrency: ${CONCURRENCY})\n`);
 
   let successCount = 0, skipCount = 0, errorCount = 0;
   let totalSavedBytes = 0;
@@ -266,6 +285,8 @@ async function main() {
     while (true) {
       const idx = currentIndex++;
       if (idx >= totalUrls) break;
+
+      await new Promise(r => setTimeout(r, 100)); // S3 へのバースト負荷軽減
 
       const url = allUrls[idx];
       const targets = urlMap.get(url);
