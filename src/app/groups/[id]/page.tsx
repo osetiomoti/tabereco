@@ -1,18 +1,20 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
+import { use, useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { getJoinedGroups, removeGroupMember, deleteGroup } from '@/lib/api/groups';
 import { getFriends, inviteToGroup } from '@/lib/api/friends';
-import { ChevronLeft, Hash, Copy, CheckCircle, Crown, User, Users, UserPlus, Check, Trash2 } from 'lucide-react';
+import { ChevronLeft, Hash, Copy, CheckCircle, Crown, User, Users, UserPlus, Check, Trash2, Camera, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useUpload } from '@/hooks/useUpload';
 
 type Group = {
   id: string;
   name: string;
   description?: string | null;
+  image_url?: string | null;
   invite_code: string;
   created_by: string;
   member_role?: string;
@@ -46,6 +48,9 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
   const [isEditingGroup, setIsEditingGroup] = useState(false);
   const [editGroupName, setEditGroupName] = useState('');
   const [editGroupDescription, setEditGroupDescription] = useState('');
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const { uploadFile } = useUpload();
 
   const isAdmin = group?.member_role === 'admin';
 
@@ -64,6 +69,29 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
       alert(e.message || 'グループの更新に失敗しました');
     }
   };
+
+  const handleImageUpload = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !isAdmin) return;
+    setIsUploadingImage(true);
+    try {
+      const url = await uploadFile(file, 'groups');
+      if (!url) throw new Error('アップロードに失敗しました');
+      const res = await fetch(`/api/groups/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: group!.name, image_url: url }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error);
+      setGroup(prev => prev ? { ...prev, image_url: url } : null);
+    } catch (e: any) {
+      alert(e.message || '画像のアップロードに失敗しました');
+    } finally {
+      setIsUploadingImage(false);
+      if (imageInputRef.current) imageInputRef.current.value = '';
+    }
+  }, [id, isAdmin, group, uploadFile]);
 
   const handleSendRequest = async (friendId: string) => {
     try {
@@ -205,8 +233,36 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
         <header className="mb-8 p-6 bg-white rounded-[2.5rem] border border-gray-100 shadow-sm relative overflow-hidden">
           <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full -translate-y-16 translate-x-16 blur-3xl" />
           <div className="flex items-center gap-4 mb-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white shadow-xl shadow-orange-500/20">
-              <Hash size={28} strokeWidth={3} />
+            {/* Group icon with upload for admin */}
+            <div className="relative group/icon">
+              <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white shadow-xl shadow-orange-500/20 overflow-hidden relative">
+                {group.image_url ? (
+                  <Image src={group.image_url} alt={group.name} fill className="object-cover" />
+                ) : (
+                  <Hash size={28} strokeWidth={3} />
+                )}
+              </div>
+              {isAdmin && (
+                <>
+                  <button
+                    onClick={() => imageInputRef.current?.click()}
+                    disabled={isUploadingImage}
+                    className="absolute inset-0 rounded-2xl bg-black/40 opacity-0 group-hover/icon:opacity-100 flex items-center justify-center transition-opacity cursor-pointer"
+                    title="グループ画像を変更"
+                  >
+                    {isUploadingImage
+                      ? <Loader2 size={18} className="text-white animate-spin" />
+                      : <Camera size={18} className="text-white" />}
+                  </button>
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleImageUpload}
+                  />
+                </>
+              )}
             </div>
             <div>
               <h1 className="text-2xl font-black text-gray-900 tracking-tight flex items-center gap-2">

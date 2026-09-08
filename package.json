@@ -8,7 +8,9 @@
     "build": "prisma generate && next build",
     "start": "next start",
     "lint": "next lint",
-    "clean": "Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue"
+    "clean": "Remove-Item -Recurse -Force .next -ErrorAction SilentlyContinue",
+    "migrate:images:dry": "node scripts/migrate-images.mjs --dry-run",
+    "migrate:images": "node scripts/migrate-images.mjs"
   },
   "dependencies": {
     "@aws-sdk/client-cognito-identity": "^3.1000.0",
@@ -28,6 +30,7 @@
     "next": "^16.2.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "sharp": "^0.35.4",
     "swr": "^2.4.1",
     "uuid": "^13.0.0",
     "web-push": "^3.6.7"

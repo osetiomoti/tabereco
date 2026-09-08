@@ -4,7 +4,7 @@ import { withAuth } from '@/lib/auth';
 
 /**
  * PUT /api/groups/[id]
- * グループ情報の編集（名前、ひとこと）
+ * グループ情報の編集（名前、ひとこと、画像）
  */
 export async function PUT(
   request: NextRequest,
@@ -13,9 +13,9 @@ export async function PUT(
   const { id } = await params;
   return withAuth(request, async (auth) => {
     try {
-      const { name, description } = await request.json();
+      const { name, description, image_url } = await request.json();
 
-      if (!name) {
+      if (!name && image_url === undefined) {
         return NextResponse.json({ success: false, error: 'グループ名は必須です' }, { status: 400 });
       }
 
@@ -28,9 +28,19 @@ export async function PUT(
         return NextResponse.json({ success: false, error: '権限がありません' }, { status: 403 });
       }
 
+      // 画像更新は管理者のみ
+      if (image_url !== undefined && currentMember.role !== 'admin') {
+        return NextResponse.json({ success: false, error: '画像の変更は管理者のみ可能です' }, { status: 403 });
+      }
+
+      const updateData: Record<string, any> = {};
+      if (name) updateData.name = name.trim().slice(0, 100);
+      if (description !== undefined) updateData.description = description?.trim().slice(0, 200) || null;
+      if (image_url !== undefined) updateData.image_url = image_url || null;
+
       const updated = await prisma.group.update({
         where: { id },
-        data: { name: name.trim().slice(0, 100), description: description?.trim().slice(0, 200) || null },
+        data: updateData,
       });
 
       return NextResponse.json({ success: true, data: updated });

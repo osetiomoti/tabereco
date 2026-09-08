@@ -30,7 +30,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 
 type Friend = { id: string; name: string; avatar_url?: string | null; friendship_id: string };
-type Group = { id: string; name: string; description?: string | null; invite_code: string };
+type Group = { id: string; name: string; description?: string | null; image_url?: string | null; invite_code: string };
 
 // ─── Sortable Friend Row ──────────────────────────────────────────────────
 function SortableFriendRow({ f, handleRemoveFriend }: { f: Friend, handleRemoveFriend: (id: string) => void }) {
@@ -98,8 +98,12 @@ function SortableGroupRow({ group, copyCode, copiedCode }: { group: Group, copyC
       className={`relative group/card transition-all select-none ${isDragging ? 'shadow-lg border-orange-300' : ''}`}
     >
       <Link href={`/groups/${group.id}`} className="flex items-center gap-4 p-5 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-0.5 transition-all duration-300 pr-[88px]">
-        <div className="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center text-orange-500 shadow-inner shrink-0">
-          <Hash size={22} strokeWidth={3} />
+        <div className="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center text-orange-500 shadow-inner shrink-0 overflow-hidden relative">
+          {group.image_url ? (
+            <Image src={group.image_url} alt={group.name} fill className="object-cover" />
+          ) : (
+            <Hash size={22} strokeWidth={3} />
+          )}
         </div>
         <div className="min-w-0 flex-1">
           <h3 className="text-base font-black text-gray-900 leading-tight group-hover/card:text-orange-500 transition-colors truncate">{group.name}</h3>

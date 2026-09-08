@@ -8,8 +8,8 @@ export interface UploadState {
   error: string | null;
 }
 
-/** Canvas-based image resize (max 1920px, quality 0.85 JPEG) */
-async function resizeImage(file: File, maxPx = 1920, quality = 0.85): Promise<File> {
+/** Canvas-based image resize+convert to WebP (max 1280px, quality 0.8) */
+async function resizeImage(file: File, maxPx = 1280, quality = 0.8): Promise<File> {
   if (!file.type.startsWith('image/')) return file;
   return new Promise((resolve) => {
     const img = new Image();
@@ -28,11 +28,11 @@ async function resizeImage(file: File, maxPx = 1920, quality = 0.85): Promise<Fi
       canvas.toBlob(
         (blob) => {
           if (!blob) return resolve(file);
-          // Keep original filename but force jpg extension for resize output
-          const name = file.name.replace(/\.[^.]+$/, '.jpg');
-          resolve(new File([blob], name, { type: 'image/jpeg' }));
+          // Convert to WebP for optimal compression
+          const name = file.name.replace(/\.[^.]+$/, '.webp');
+          resolve(new File([blob], name, { type: 'image/webp' }));
         },
-        'image/jpeg',
+        'image/webp',
         quality
       );
     };
@@ -50,7 +50,7 @@ export function useUpload() {
 
   const uploadFile = useCallback(async (
     file: File,
-    category: 'posts' | 'avatars' = 'posts'
+    category: 'posts' | 'avatars' | 'groups' = 'posts'
   ): Promise<string | null> => {
     setState({ isUploading: true, progress: 0, error: null });
 

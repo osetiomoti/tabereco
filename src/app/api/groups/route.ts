@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   return withAuth(request, async (auth) => {
     try {
-      const { name, description } = await request.json();
+      const { name, description, image_url } = await request.json();
 
       // Simple invite code generation
       const invite_code = Math.random().toString(36).substring(2, 10).toUpperCase();
@@ -45,6 +45,7 @@ export async function POST(request: NextRequest) {
         data: {
           name,
           description,
+          image_url: image_url || null,
           invite_code,
           created_by: auth.userId,
           members: {
