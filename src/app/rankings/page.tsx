@@ -363,38 +363,61 @@ function UserPanel({
 function TagSelectorView({
   tags,
   isLoading,
+  tagScope,
+  onScopeChange,
   onSelect,
 }: {
   tags: TagInfo[];
   isLoading: boolean;
+  tagScope: 'all' | 'mine';
+  onScopeChange: (scope: 'all' | 'mine') => void;
   onSelect: (tag: string) => void;
 }) {
   const [searchQuery, setSearchQuery] = useState('');
-
-  if (isLoading) {
-    return (
-      <div className="px-4 py-8 space-y-3">
-        {[1, 2, 3, 4, 5].map(i => (
-          <div key={i} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />
-        ))}
-      </div>
-    );
-  }
-
-  if (tags.length === 0) {
-    return (
-      <div className="px-4 py-16 text-center">
-        <Trophy size={48} className="mx-auto text-gray-200 mb-4" />
-        <p className="text-gray-400 font-bold">タグがありません</p>
-        <p className="text-gray-300 text-sm mt-1">投稿にタグをつけてランキングを楽しもう！</p>
-      </div>
-    );
-  }
 
   const filteredTags = tags.filter(tag => tag.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   return (
     <div className="px-4 py-4 space-y-4">
+      {/* スコープ切り替えトグル（ともだち全員 / 自分のタグのみ） */}
+      <div className="flex bg-gray-200/70 p-1 rounded-2xl border border-black/5 shadow-inner">
+        <button
+          type="button"
+          onClick={() => onScopeChange('all')}
+          className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 ${
+            tagScope === 'all'
+              ? 'bg-white text-gray-900 shadow-sm'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <span>👥</span>
+          <span>ともだち全員</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => onScopeChange('mine')}
+          className={`flex-1 py-2.5 text-xs font-black rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 ${
+            tagScope === 'mine'
+              ? 'bg-white text-gray-900 shadow-sm'
+              : 'text-gray-500 hover:text-gray-700'
+          }`}
+        >
+          <span>👤</span>
+          <span>自分のタグのみ</span>
+        </button>
+      </div>
+
+      <div className="flex items-center justify-between px-1">
+        <p className="text-[11px] text-gray-400 font-bold">
+          {tagScope === 'mine' ? 'あなたの投稿についたタグ一覧' : 'ともだち全員の投稿数が多い順'}
+        </p>
+        {!isLoading && (
+          <span className="text-[11px] font-bold text-gray-400">
+            {tags.length}件
+          </span>
+        )}
+      </div>
+
       {/* 検索入力欄 */}
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -407,38 +430,55 @@ function TagSelectorView({
           placeholder="タグを検索..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
-          className="block w-full pl-10 pr-3 py-3 border border-gray-100 rounded-2xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[var(--color-primary-light)] focus:border-[var(--color-primary-light)] sm:text-sm transition-all"
+          className="block w-full pl-10 pr-3 py-3 border border-gray-100 rounded-2xl leading-5 bg-white placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[var(--color-primary-light)] focus:border-[var(--color-primary-light)] sm:text-sm transition-all shadow-sm"
         />
       </div>
 
-      <div className="space-y-2">
-        {filteredTags.length === 0 ? (
-          <p className="text-center text-sm text-gray-400 py-8 font-bold">一致するタグがありません</p>
-        ) : (
-          filteredTags.map((tag, i) => (
-            <button
-              key={tag.name}
-              onClick={() => onSelect(tag.name)}
-              className="w-full flex items-center justify-between px-4 py-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:border-[var(--color-primary-light)] hover:bg-[var(--color-primary-50)] active:scale-[0.98] transition-all"
-            >
-              <div className="flex items-center gap-3">
-                <span className="text-[13px] font-black text-gray-300 w-6 text-right flex-shrink-0">
-                  {i + 1}
-                </span>
-                <div className="text-left">
-                  <p className="font-black text-gray-900 text-[15px]">#{tag.name}</p>
-                  <p className="text-[11px] text-gray-400 font-bold mt-0.5">
-                    {tag.user_count}人 · {tag.post_count}件
-                  </p>
+      {/* ローディング表示 */}
+      {isLoading ? (
+        <div className="space-y-3 pt-2">
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />
+          ))}
+        </div>
+      ) : tags.length === 0 ? (
+        <div className="py-16 text-center">
+          <Trophy size={48} className="mx-auto text-gray-200 mb-4" />
+          <p className="text-gray-400 font-bold">
+            {tagScope === 'mine' ? '登録されている自分のタグがありません' : 'タグがありません'}
+          </p>
+          <p className="text-gray-300 text-sm mt-1">投稿にタグをつけてランキングを楽しもう！</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filteredTags.length === 0 ? (
+            <p className="text-center text-sm text-gray-400 py-8 font-bold">一致するタグがありません</p>
+          ) : (
+            filteredTags.map((tag, i) => (
+              <button
+                key={tag.name}
+                onClick={() => onSelect(tag.name)}
+                className="w-full flex items-center justify-between px-4 py-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:border-[var(--color-primary-light)] hover:bg-[var(--color-primary-50)] active:scale-[0.98] transition-all"
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-[13px] font-black text-gray-300 w-6 text-right flex-shrink-0">
+                    {i + 1}
+                  </span>
+                  <div className="text-left">
+                    <p className="font-black text-gray-900 text-[15px]">#{tag.name}</p>
+                    <p className="text-[11px] text-gray-400 font-bold mt-0.5">
+                      {tagScope === 'mine' ? `${tag.post_count}件` : `${tag.user_count}人 · ${tag.post_count}件`}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          ))
-        )}
-      </div>
+                <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            ))
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -448,6 +488,7 @@ export default function RankingsPage() {
   const router = useRouter();
 
   const [selectedTag, setSelectedTag] = useState<string | null>(null);
+  const [tagScope, setTagScope] = useState<'all' | 'mine'>('all');
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [rankingFilters, setRankingFilters] = useState<any>({
     status: 'all',
@@ -459,7 +500,7 @@ export default function RankingsPage() {
 
   // タグ一覧を取得
   const { data: tagsData, isLoading: tagsLoading } = useSWR(
-    `/api/rankings/tags?scope=all${rankingFilters.registrant_id ? `&registrantId=${rankingFilters.registrant_id}` : ''}`,
+    `/api/rankings/tags?scope=${tagScope}${rankingFilters.registrant_id ? `&registrantId=${rankingFilters.registrant_id}` : ''}`,
     (url: string) => fetch(url).then(r => r.json()).then(j => (j.data ?? []) as TagInfo[]),
     { dedupingInterval: 60_000, revalidateOnFocus: false }
   );
@@ -612,19 +653,13 @@ export default function RankingsPage() {
 
       {!selectedTag ? (
         /* ── タグ選択画面 ── */
-        <>
-          <div className="px-4 pt-4 mb-2">
-            <p className="text-[11px] text-gray-400 font-bold">
-              {rankingFilters.registrant_id && rankingFilters.registrant_id !== 'all' ? '選択したユーザーの投稿数が多い順' : 'ともだち全員の投稿数が多い順'}
-            </p>
-          </div>
-
-          <TagSelectorView
-            tags={tags}
-            isLoading={tagsLoading}
-            onSelect={handleTagSelect}
-          />
-        </>
+        <TagSelectorView
+          tags={tags}
+          isLoading={tagsLoading}
+          tagScope={tagScope}
+          onScopeChange={setTagScope}
+          onSelect={handleTagSelect}
+        />
       ) : (
         /* ── ランキング表示画面 ── */
         <>
