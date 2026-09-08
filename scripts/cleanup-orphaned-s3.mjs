@@ -77,12 +77,16 @@ async function listAllS3Keys() {
 // ── DB から全参照 S3 キーを収集 ──────────────────────────
 function urlToKey(url) {
   if (!url) return null;
+  // If already an S3 key without http/https schema
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    return url.split('?')[0];
+  }
   if (CF_DOMAIN && url.includes(CF_DOMAIN)) {
-    return url.replace(`https://${CF_DOMAIN}/`, '');
+    return url.replace(`https://${CF_DOMAIN}/`, '').split('?')[0];
   }
   const s3Base = `https://${BUCKET}.s3.${REGION}.amazonaws.com/`;
   if (url.startsWith(s3Base)) {
-    return url.replace(s3Base, '');
+    return url.replace(s3Base, '').split('?')[0];
   }
   return null;
 }

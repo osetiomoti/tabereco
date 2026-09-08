@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
 import { sendPushNotification } from '@/lib/webpush';
 import { deleteS3Objects } from '@/lib/s3';
+import { toS3Key } from '@/lib/image';
 
 /**
  * GET /api/posts
@@ -186,6 +187,10 @@ export async function POST(request: NextRequest) {
       // Cookieからapp_typeを取得（tabereco / tabireco）
       const appType = request.cookies.get('app_type')?.value === 'tabireco' ? 'tabireco' : 'tabereco';
 
+      const sanitizedImageUrl = toS3Key(image_url);
+      const rawImageUrls: string[] = Array.isArray(image_urls) ? image_urls : (image_url ? [image_url] : []);
+      const sanitizedImageUrls = rawImageUrls.map(toS3Key).filter((k): k is string => Boolean(k));
+
       const post = await prisma.post.create({
         data: {
           user_id: auth.userId,
@@ -193,8 +198,8 @@ export async function POST(request: NextRequest) {
           store_name,
           comment,
           rating,
-          image_url,
-          image_urls: image_urls || [],
+          image_url: sanitizedImageUrl,
+          image_urls: sanitizedImageUrls,
           visited_at: visited_at ? new Date(visited_at) : null,
           status: status || 'visited',
           address,

@@ -7,6 +7,7 @@ import { Star, Check, Plus, Minus, ArrowRight, Loader2, Sparkles } from 'lucide-
 import Image from 'next/image';
 import Link from 'next/link';
 import { mutate } from 'swr';
+import { getImageUrl } from '@/lib/image';
 
 interface RatingBin {
   label: string;
@@ -324,7 +325,7 @@ function RatingsContent() {
                 >
                   {post.image_url ? (
                     <Image
-                      src={post.image_url}
+                      src={getImageUrl(post.image_url)}
                       alt={post.title}
                       fill
                       className={`object-cover transition-transform duration-500 ${

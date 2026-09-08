@@ -17,6 +17,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useEffect, useRef, useCallback } from 'react';
 import { useAppType } from '@/contexts/AppTypeContext';
+import { getImageUrl } from '@/lib/image';
 
 function CalendarView({ posts }: { posts: any[] }) {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -87,7 +88,7 @@ function CalendarView({ posts }: { posts: any[] }) {
                 </div>
                 {hasImage && imgSrc && (
                   <div className="absolute inset-0 -z-10">
-                    <Image src={imgSrc} alt="" fill className="object-cover" />
+                    <Image src={getImageUrl(imgSrc)} alt="" fill className="object-cover" />
                     <div className={`absolute inset-0 ${isSelected ? 'bg-orange-500/40' : 'bg-white/25'}`} />
                   </div>
                 )}
@@ -113,7 +114,7 @@ function CalendarView({ posts }: { posts: any[] }) {
               <Link key={post.id} href={`/posts/${post.id}`} className="flex items-center gap-3 p-3 hover:bg-gray-50 transition-colors">
                 <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
                   {(post.image_url || post.image_urls?.[0]) ? (
-                    <Image src={post.image_url || post.image_urls[0]} alt="" fill className="object-cover" />
+                    <Image src={getImageUrl(post.image_url || post.image_urls[0])} alt="" fill className="object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-200"><UtensilsCrossed size={18} /></div>
                   )}

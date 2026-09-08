@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, ZoomIn } from 'lucide-react';
+import { getImageUrl } from '@/lib/image';
 
 type Props = {
   images: string[];
@@ -9,10 +10,11 @@ type Props = {
 };
 
 export function ImageCarousel({ images, alt = '' }: Props) {
+  const resolvedImages = images.map(getImageUrl);
   const [current, setCurrent] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const startXRef = useRef<number | null>(null);
-  const totalImages = images.length;
+  const totalImages = resolvedImages.length;
 
   // Pinch-to-zoom state for fullscreen
   const [scale, setScale] = useState(1);
@@ -109,7 +111,7 @@ export function ImageCarousel({ images, alt = '' }: Props) {
           className="flex transition-transform duration-300 ease-out"
           style={{ transform: `translateX(-${current * 100}%)` }}
         >
-          {images.map((src, i) => (
+          {resolvedImages.map((src, i) => (
             <div
               key={i}
               className="w-full flex-shrink-0 flex items-center justify-center"
@@ -214,7 +216,7 @@ export function ImageCarousel({ images, alt = '' }: Props) {
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={images[current]}
+                src={resolvedImages[current]}
                 alt={`${alt} ${current + 1}`}
                 className="max-w-full max-h-full object-contain"
                 style={{ userSelect: 'none', WebkitUserSelect: 'none', pointerEvents: 'none' }}

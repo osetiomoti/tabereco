@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
+import { toS3Key } from '@/lib/image';
 
 /**
  * GET /api/groups
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
         data: {
           name,
           description,
-          image_url: image_url || null,
+          image_url: toS3Key(image_url),
           invite_code,
           created_by: auth.userId,
           members: {

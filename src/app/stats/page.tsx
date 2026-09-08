@@ -13,6 +13,7 @@ import Link from 'next/link';
 import { useTimeline } from '@/hooks/useTimeline';
 import type { Post } from '@/lib/types';
 import { useAppType } from '@/contexts/AppTypeContext';
+import { getImageUrl } from '@/lib/image';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 interface StatsData {
@@ -344,7 +345,7 @@ function FilteredPostsList({ keyword, searchMode }: { keyword: string, searchMod
             {posts.map(post => (
               <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
                 {post.image_url ? (
-                  <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
+                  <Image src={getImageUrl(post.image_url)} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
                 ) : activeTab === 'want_to_go' ? (
                   <MiniNoImageMap post={post} />
                 ) : (

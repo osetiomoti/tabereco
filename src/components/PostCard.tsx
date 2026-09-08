@@ -4,6 +4,7 @@ import type { Post } from '@/lib/types';
 import { formatDate } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
+import { getImageUrl } from '@/lib/image';
 import { Heart, CheckCircle2, User, MoreHorizontal, Star, MapPin, X, Bookmark, Utensils, MessageCircle, ThumbsUp, Map, BookmarkCheck, Send, ChevronDown } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -83,7 +84,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
           {post.image_url ? (
             <div className="relative w-24 h-24 sm:w-28 sm:w-28 flex-shrink-0 rounded-[1.5rem] overflow-hidden bg-gray-50 shadow-inner">
               <Image
-                src={post.image_url}
+                src={getImageUrl(post.image_url)}
                 alt={post.title}
                 fill
                 className="object-cover group-hover:scale-110 transition-transform duration-700"
@@ -172,7 +173,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
           <div className="relative aspect-[4/5] overflow-hidden bg-gray-50">
             {post.image_url ? (
               <Image
-                src={post.image_url}
+                src={getImageUrl(post.image_url)}
                 alt={post.title}
                 fill
                 className="object-cover transition-transform duration-700 group-hover:scale-110"
@@ -229,7 +230,8 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
   }
 
   // フィード型レイアウト
-  const images = post.image_urls && post.image_urls.length > 0 ? post.image_urls : (post.image_url ? [post.image_url] : []);
+  const rawImages = post.image_urls && post.image_urls.length > 0 ? post.image_urls : (post.image_url ? [post.image_url] : []);
+  const images = rawImages.map(getImageUrl).filter(Boolean);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isVisitedModalOpen, setIsVisitedModalOpen] = useState(false);
@@ -342,7 +344,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
           >
             {post.user?.avatar_url ? (
               <div className="w-8 h-8 rounded-full overflow-hidden relative shadow-sm border border-gray-50">
-                <Image src={post.user.avatar_url} alt={post.user.name || 'User'} fill className="object-cover" sizes="32px" unoptimized />
+                <Image src={getImageUrl(post.user.avatar_url)} alt={post.user.name || 'User'} fill className="object-cover" sizes="32px" unoptimized />
               </div>
             ) : (
               <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-300">
@@ -734,7 +736,7 @@ function InlineCommentPanel({ postId, onClose }: { postId: string; onClose: () =
           <div key={c.id} className="px-4 py-2.5 flex gap-2">
             <div className="w-6 h-6 rounded-full bg-gray-100 flex-shrink-0 overflow-hidden flex items-center justify-center">
               {c.user?.avatar_url ? (
-                <Image src={c.user.avatar_url} alt={c.user.name} width={24} height={24} className="object-cover" unoptimized />
+                <Image src={getImageUrl(c.user.avatar_url)} alt={c.user.name} width={24} height={24} className="object-cover" unoptimized />
               ) : (
                 <User size={12} className="text-gray-400" />
               )}
@@ -819,7 +821,7 @@ function InlineDetailPanel({ post, refreshTrigger }: { post: Post; refreshTrigge
             <div key={u.id} className="flex items-center gap-1.5 bg-white rounded-full px-2.5 py-1 border border-gray-100 shadow-sm">
               <div className="w-5 h-5 rounded-full bg-gray-100 overflow-hidden flex items-center justify-center flex-shrink-0">
                 {u.avatar_url ? (
-                  <Image src={u.avatar_url} alt={u.name} width={20} height={20} className="object-cover" unoptimized />
+                  <Image src={getImageUrl(u.avatar_url)} alt={u.name} width={20} height={20} className="object-cover" unoptimized />
                 ) : (
                   <User size={10} className="text-gray-400" />
                 )}

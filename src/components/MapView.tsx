@@ -5,6 +5,7 @@ import { GoogleMap, useJsApiLoader, InfoWindow } from '@react-google-maps/api';
 import type { Post } from '@/lib/types';
 import Link from 'next/link';
 import { Star, MapPin, Navigation, Layers, Plus, Minus } from 'lucide-react';
+import { getImageUrl } from '@/lib/image';
 
 const containerStyle = {
   width: '100%',
@@ -266,7 +267,7 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
               <div className="relative w-24 h-24 rounded-2xl overflow-hidden bg-gray-100 flex-shrink-0">
                 {selectedPost.image_url || selectedPost.image_urls?.[0] ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={selectedPost.image_url || selectedPost.image_urls![0]} alt={selectedPost.title} className="object-cover w-full h-full" />
+                  <img src={getImageUrl(selectedPost.image_url || selectedPost.image_urls![0])} alt={selectedPost.title} className="object-cover w-full h-full" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-orange-50 text-2xl">🍽️</div>
                 )}

@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import useSWR, { mutate } from 'swr';
 import { FilterModal } from '@/components/FilterModal';
+import { getImageUrl } from '@/lib/image';
 
 // dnd-kit
 import {
@@ -106,7 +107,7 @@ function SortableRow({ post, index, onNavigate }: {
       >
         {(post.image_urls?.[0] || post.image_url) ? (
           <Image
-            src={post.image_urls?.[0] || post.image_url!}
+            src={getImageUrl(post.image_urls?.[0] || post.image_url!)}
             alt={post.title}
             fill
             className="object-cover"
@@ -179,7 +180,7 @@ function ReadOnlyRow({ post, index, onNavigate }: {
       <div className="w-12 h-12 rounded-xl overflow-hidden flex-shrink-0 relative bg-gray-100">
         {(post.image_urls?.[0] || post.image_url) ? (
           <Image
-            src={post.image_urls?.[0] || post.image_url!}
+            src={getImageUrl(post.image_urls?.[0] || post.image_url!)}
             alt={post.title}
             fill
             className="object-cover"
@@ -267,7 +268,7 @@ function UserPanel({
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-full overflow-hidden bg-gray-200 relative flex-shrink-0">
             {userRanking.avatar_url ? (
-              <Image src={userRanking.avatar_url} alt={userRanking.name} fill className="object-cover" />
+              <Image src={getImageUrl(userRanking.avatar_url)} alt={userRanking.name} fill className="object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-gray-300">
                 <svg viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">

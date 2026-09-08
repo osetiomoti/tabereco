@@ -3,6 +3,7 @@
 import { useRef, useState, useEffect } from 'react';
 import Image from 'next/image';
 import { ImagePlus, X } from 'lucide-react';
+import { getImageUrl } from '@/lib/image';
 
 type Props = {
   items: (File | string)[];
@@ -118,7 +119,7 @@ export function ImageUpload({ items = [], onChange, maxFiles = 5, uploadProgress
 
       <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-4">
         {items.map((item, i) => {
-          const url = typeof item === 'string' ? item : localPreviewMap.get(item) || '';
+          const url = typeof item === 'string' ? getImageUrl(item) : localPreviewMap.get(item) || '';
           const isFirst = i === 0;
           return (
             <div 

@@ -9,6 +9,7 @@ import { Header } from '@/components/Header';
 import { useUpload } from '@/hooks/useUpload';
 import { PushNotificationToggle } from '@/components/PushNotificationToggle';
 import { mutate } from 'swr';
+import { getImageUrl } from '@/lib/image';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -91,7 +92,7 @@ export default function SettingsPage() {
                     <Loader2 size={24} className="text-orange-500 animate-spin" />
                   </div>
                 ) : user?.avatar_url ? (
-                  <Image src={user.avatar_url} alt="Profile" fill className="object-cover" unoptimized />
+                  <Image src={getImageUrl(user.avatar_url)} alt="Profile" fill className="object-cover" unoptimized />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
                     <User size={32} className="text-gray-400" />

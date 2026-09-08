@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
           ? `https://${cfDomain}/${key}`
           : `https://${BUCKET}.s3.${REGION}.amazonaws.com/${key}`;
 
-        return NextResponse.json({ success: true, data: { url } });
+        return NextResponse.json({ success: true, data: { url, key } });
       }
 
       // Local fallback (dev mode without S3 config)
@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
       await writeFile(path.join(uploadDir, fileName), buffer);
       const url = `/uploads/${fileName}`;
 
-      return NextResponse.json({ success: true, data: { url } });
+      return NextResponse.json({ success: true, data: { url, key: url } });
     } catch (e: any) {
       console.error('[S3 Proxy Upload] Error:', e);
       return NextResponse.json({ success: false, error: e.message }, { status: 500 });

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
 import { deleteS3Objects } from '@/lib/s3';
+import { toS3Key } from '@/lib/image';
 
 /**
  * PUT /api/groups/[id]
@@ -37,12 +38,12 @@ export async function PUT(
       const updateData: Record<string, any> = {};
       if (name) updateData.name = name.trim().slice(0, 100);
       if (description !== undefined) updateData.description = description?.trim().slice(0, 200) || null;
-      if (image_url !== undefined) updateData.image_url = image_url || null;
+      if (image_url !== undefined) updateData.image_url = toS3Key(image_url);
 
       // 画像が変更された場合、旧画像を S3 から削除
       if (image_url !== undefined) {
         const oldGroup = await prisma.group.findUnique({ where: { id }, select: { image_url: true } });
-        if (oldGroup?.image_url && oldGroup.image_url !== image_url) {
+        if (oldGroup?.image_url && toS3Key(oldGroup.image_url) !== updateData.image_url) {
           deleteS3Objects([oldGroup.image_url], auth.idToken).catch(console.error);
         }
       }

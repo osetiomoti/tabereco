@@ -10,6 +10,7 @@ import { ja } from 'date-fns/locale';
 import { MonthPickerModal } from '@/components/MonthPickerModal';
 import useSWR from 'swr';
 import { getPosts } from '@/lib/api/posts';
+import { getImageUrl } from '@/lib/image';
 
 export default function CalendarPage() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -107,7 +108,7 @@ export default function CalendarPage() {
                   {/* Thumbnail Image */}
                   {hasImage && isCurrentMonth && (
                     <div className="absolute inset-1 rounded-2xl overflow-hidden z-0 shadow-sm border border-black/5">
-                       <Image src={firstImg} alt="" fill className="object-cover opacity-90" />
+                       <Image src={getImageUrl(firstImg)} alt="" fill className="object-cover opacity-90" />
                        <div className="absolute inset-0 bg-white/30" />
                     </div>
                   )}
@@ -153,7 +154,7 @@ export default function CalendarPage() {
                   >
                     <div className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gray-100">
                       {post.image_url ? (
-                        <Image src={post.image_url} alt="" fill className="object-cover" />
+                        <Image src={getImageUrl(post.image_url)} alt="" fill className="object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center text-gray-300">
                           <UtensilsCrossed size={20} />

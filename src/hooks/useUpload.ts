@@ -74,11 +74,11 @@ export function useUpload() {
       }
 
       const json = await res.json();
-      const url = json.data?.url;
-      if (!url) throw new Error('No URL returned from upload');
+      const keyOrUrl = json.data?.key || json.data?.url;
+      if (!keyOrUrl) throw new Error('No URL returned from upload');
 
       setState({ isUploading: false, progress: 100, error: null });
-      return url;
+      return keyOrUrl;
     } catch (e: any) {
       console.error('[useUpload] Error:', e);
       setState({ isUploading: false, progress: 0, error: e.message || 'Upload failed' });

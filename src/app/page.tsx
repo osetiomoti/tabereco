@@ -21,6 +21,7 @@ import { ja } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
 import { useMyProfile, useMyPosts, useGroupActivities, useTopRankings } from '@/hooks/useAppData';
 import { useAppType } from '@/contexts/AppTypeContext';
+import { getImageUrl } from '@/lib/image';
 
 export default function HomePage() {
   const { appType } = useAppType();
@@ -256,7 +257,7 @@ export default function HomePage() {
           <div className="relative rounded-[2rem] overflow-hidden bg-gray-900 active:scale-[0.98] transition-transform shadow-md h-[220px]">
             {rankingItems.length > 0 && (rankingItems[rankingIndex]?.post?.image_url || rankingItems[rankingIndex]?.post?.image_urls?.[0]) ? (
               <img
-                src={rankingItems[rankingIndex].post.image_url || rankingItems[rankingIndex].post.image_urls[0]}
+                src={getImageUrl(rankingItems[rankingIndex].post.image_url || rankingItems[rankingIndex].post.image_urls![0])}
                 alt=""
                 className="absolute inset-0 w-full h-full object-cover opacity-60 animate-in fade-in duration-700"
                 key={`bg-${rankingIndex}`}
@@ -335,7 +336,7 @@ export default function HomePage() {
                     <div className="relative w-20 h-20 rounded-2xl overflow-hidden bg-gray-100 shrink-0 border border-gray-100">
                       {(post.image_url || post.image_urls?.[0]) ? (
                         <img
-                          src={post.image_url || post.image_urls[0]}
+                          src={getImageUrl(post.image_url || post.image_urls![0])}
                           alt=""
                           className="w-full h-full object-cover"
                         />
@@ -418,7 +419,7 @@ export default function HomePage() {
                   <div className="relative aspect-square w-full rounded-2xl overflow-hidden bg-gray-100 mb-3 border border-gray-100">
                     {post.image_url || (post.image_urls && post.image_urls.length > 0) ? (
                       <img
-                        src={post.image_url || post.image_urls[0]}
+                        src={getImageUrl(post.image_url || post.image_urls![0])}
                         alt={post.store_name}
                         className="w-full h-full object-cover"
                       />

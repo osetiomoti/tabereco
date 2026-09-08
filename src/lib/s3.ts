@@ -18,16 +18,24 @@ const identityClient = new CognitoIdentityClient({ region: REGION });
  */
 export function extractS3KeyFromUrl(url: string): string | null {
   if (!url) return null;
+  const trimmed = url.trim();
+  if (!trimmed) return null;
+
+  // If already a relative S3 key (doesn't start with protocol or slash)
+  if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://') && !trimmed.startsWith('/')) {
+    return trimmed;
+  }
+
   // e.g., https://d1vw7ugwoz2pss.cloudfront.net/users/123/posts/1234.jpg
-  
-  if (process.env.NEXT_PUBLIC_CLOUDFRONT_DOMAIN && url.includes(process.env.NEXT_PUBLIC_CLOUDFRONT_DOMAIN)) {
-    const parts = url.split(`${process.env.NEXT_PUBLIC_CLOUDFRONT_DOMAIN}/`);
+  if (process.env.NEXT_PUBLIC_CLOUDFRONT_DOMAIN && trimmed.includes(process.env.NEXT_PUBLIC_CLOUDFRONT_DOMAIN)) {
+    const parts = trimmed.split(`${process.env.NEXT_PUBLIC_CLOUDFRONT_DOMAIN}/`);
     return parts.length > 1 ? parts[1] : null;
   }
   
-  if (BUCKET && url.includes(`${BUCKET}.s3.${REGION}.amazonaws.com/`)) {
-    const parts = url.split(`${BUCKET}.s3.${REGION}.amazonaws.com/`);
-    return parts.length > 1 ? parts[1] : null;
+  if (BUCKET && trimmed.includes(`${BUCKET}.s3`)) {
+    const regex = new RegExp(`https?://${BUCKET}\\.s3[.-][^/]+/`);
+    const key = trimmed.replace(regex, '');
+    return key !== trimmed ? key : null;
   }
   
   return null;

@@ -7,6 +7,7 @@ import { getPosts, getUserTags, bulkAddTags } from '@/lib/api/posts';
 import type { Post, Tag } from '@/lib/types';
 import Image from 'next/image';
 import Link from 'next/link';
+import { getImageUrl } from '@/lib/image';
 import { useRouter } from 'next/navigation';
 import { Search, MapPin, CheckSquare, Square, X, Loader2, Tag as TagIcon, Check } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
@@ -205,7 +206,7 @@ export default function BulkAddTagsPage() {
                   className={`relative aspect-square bg-gray-50 overflow-hidden cursor-pointer touch-manipulation group ${isSelected ? 'ring-4 ring-inset ring-orange-500 z-10' : ''}`}
                 >
                   {post.image_url ? (
-                    <Image src={post.image_url} alt={post.title} fill className="object-cover" sizes="33vw" />
+                    <Image src={getImageUrl(post.image_url)} alt={post.title} fill className="object-cover" sizes="33vw" />
                   ) : post.status === 'want_to_go' ? (
                     <MiniNoImageMap post={post} />
                   ) : (

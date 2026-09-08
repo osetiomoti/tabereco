@@ -9,6 +9,7 @@ import { ChevronLeft, Hash, Copy, CheckCircle, Crown, User, Users, UserPlus, Che
 import Link from 'next/link';
 import Image from 'next/image';
 import { useUpload } from '@/hooks/useUpload';
+import { getImageUrl } from '@/lib/image';
 
 type Group = {
   id: string;
@@ -237,7 +238,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
             <div className="relative group/icon">
               <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white shadow-xl shadow-orange-500/20 overflow-hidden relative">
                 {group.image_url ? (
-                  <Image src={group.image_url} alt={group.name} fill className="object-cover" />
+                  <Image src={getImageUrl(group.image_url)} alt={group.name} fill className="object-cover" />
                 ) : (
                   <Hash size={28} strokeWidth={3} />
                 )}
@@ -316,7 +317,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
                     <div key={f.id} className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors">
                       <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center overflow-hidden relative flex-shrink-0">
                         {f.avatar_url
-                          ? <Image src={f.avatar_url} alt={f.name} fill className="object-cover" />
+                          ? <Image src={getImageUrl(f.avatar_url)} alt={f.name} fill className="object-cover" />
                           : <User size={16} className="text-orange-400" />}
                       </div>
                       <span className="flex-1 font-bold text-sm text-gray-800 truncate">{f.name}</span>
@@ -359,7 +360,7 @@ export default function GroupDetailPage({ params }: { params: Promise<{ id: stri
                   <Link href={`/mypage?userId=${member.id}`} className="flex items-center gap-4 flex-1 min-w-0 hover:opacity-85 transition-opacity">
                     <div className="w-12 h-12 rounded-full bg-gray-100 overflow-hidden flex-shrink-0 relative border-2 border-white shadow">
                       {member.avatar_url ? (
-                        <Image src={member.avatar_url} alt={member.name} fill className="object-cover" />
+                        <Image src={getImageUrl(member.avatar_url)} alt={member.name} fill className="object-cover" />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-100 to-orange-200">
                           <User size={20} className="text-orange-400" />

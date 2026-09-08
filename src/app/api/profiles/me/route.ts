@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
 import { deleteS3Objects } from '@/lib/s3';
+import { toS3Key } from '@/lib/image';
 
 export const dynamic = 'force-dynamic';
 
@@ -145,7 +146,9 @@ export async function PATCH(request: NextRequest) {
       const { name, avatar_url } = await request.json();
       const data: { name?: string; avatar_url?: string | null } = {};
       if (name && typeof name === 'string') data.name = name.trim().slice(0, 50);
-      if (avatar_url !== undefined) data.avatar_url = avatar_url;
+      if (avatar_url !== undefined) {
+        data.avatar_url = toS3Key(avatar_url);
+      }
 
       if (Object.keys(data).length === 0) {
         return NextResponse.json({ success: false, error: 'No fields to update' }, { status: 400 });
@@ -154,7 +157,7 @@ export async function PATCH(request: NextRequest) {
       // If avatar_url is being updated, delete the old one from S3
       if (data.avatar_url !== undefined) {
         const oldUser = await prisma.user.findUnique({ where: { id: auth.userId } });
-        if (oldUser && oldUser.avatar_url && oldUser.avatar_url !== data.avatar_url) {
+        if (oldUser && oldUser.avatar_url && toS3Key(oldUser.avatar_url) !== data.avatar_url) {
           deleteS3Objects([oldUser.avatar_url], auth.idToken).catch(console.error);
         }
       }

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { getImageUrl } from '@/lib/image';
 
 // dnd-kit
 import {
@@ -53,7 +54,7 @@ function SortableFriendRow({ f, handleRemoveFriend }: { f: Friend, handleRemoveF
     >
       <Link href={`/mypage?userId=${f.id}`} className="flex items-center gap-4 flex-1 min-w-0 hover:opacity-85 transition-opacity">
         <div className="w-12 h-12 rounded-full bg-orange-100 flex items-center justify-center overflow-hidden relative flex-shrink-0 border-2 border-white shadow">
-          {f.avatar_url ? <Image src={f.avatar_url} alt={f.name} fill className="object-cover" /> : <User size={20} className="text-orange-400" />}
+          {f.avatar_url ? <Image src={getImageUrl(f.avatar_url)} alt={f.name} fill className="object-cover" /> : <User size={20} className="text-orange-400" />}
         </div>
         <div className="flex-1 min-w-0">
           <p className="font-black text-gray-900 truncate">{f.name}</p>
@@ -100,7 +101,7 @@ function SortableGroupRow({ group, copyCode, copiedCode }: { group: Group, copyC
       <Link href={`/groups/${group.id}`} className="flex items-center gap-4 p-5 bg-white rounded-3xl border border-gray-100 shadow-sm hover:shadow-xl hover:shadow-orange-500/5 hover:-translate-y-0.5 transition-all duration-300 pr-[88px]">
         <div className="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center text-orange-500 shadow-inner shrink-0 overflow-hidden relative">
           {group.image_url ? (
-            <Image src={group.image_url} alt={group.name} fill className="object-cover" />
+            <Image src={getImageUrl(group.image_url)} alt={group.name} fill className="object-cover" />
           ) : (
             <Hash size={22} strokeWidth={3} />
           )}
@@ -408,7 +409,7 @@ export default function FriendsPage() {
                   {searchResults.map(u => (
                     <div key={u.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-2xl">
                       <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center overflow-hidden relative flex-shrink-0">
-                        {u.avatar_url ? <Image src={u.avatar_url} alt={u.name} fill className="object-cover" /> : <User size={18} className="text-orange-400" />}
+                        {u.avatar_url ? <Image src={getImageUrl(u.avatar_url)} alt={u.name} fill className="object-cover" /> : <User size={18} className="text-orange-400" />}
                       </div>
                       <span className="flex-1 min-w-0 font-bold text-sm text-gray-800 truncate">{u.name}</span>
                       {(() => {
@@ -447,7 +448,7 @@ export default function FriendsPage() {
                   {pendingRequests.filter(r => r.type === 'received').map(req => (
                     <div key={req.friendship_id} className="flex items-center gap-3 p-3 bg-white rounded-2xl shadow-sm border border-pink-100">
                       <div className="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center overflow-hidden relative flex-shrink-0">
-                        {req.user.avatar_url ? <Image src={req.user.avatar_url} alt={req.user.name} fill className="object-cover" /> : <User size={18} className="text-pink-400" />}
+                        {req.user.avatar_url ? <Image src={getImageUrl(req.user.avatar_url)} alt={req.user.name} fill className="object-cover" /> : <User size={18} className="text-pink-400" />}
                       </div>
                       <span className="flex-1 min-w-0 font-bold text-sm text-gray-800 truncate">{req.user.name}</span>
                       <button

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
 import { deleteS3Objects } from '@/lib/s3';
+import { toS3Key } from '@/lib/image';
 
 /**
  * GET /api/posts/[id]
@@ -68,11 +69,23 @@ export async function PATCH(
         if (key in rawValues) values[key] = rawValues[key];
       }
 
+      // Sanitize image fields to S3 keys
+      if ('image_url' in values) {
+        values.image_url = toS3Key(values.image_url);
+      }
+      if ('image_urls' in values && Array.isArray(values.image_urls)) {
+        values.image_urls = values.image_urls.map(toS3Key).filter(Boolean);
+      }
+
       // Check for removed images to delete from S3
       if (values.image_urls) {
         const oldPost = await prisma.post.findUnique({ where: { id, user_id: auth.userId } });
         if (oldPost) {
-          const removedUrls = oldPost.image_urls.filter((url: string) => !values.image_urls.includes(url));
+          const newKeys = new Set((values.image_urls as string[]).map(toS3Key).filter(Boolean));
+          const removedUrls = oldPost.image_urls.filter((url: string) => {
+            const k = toS3Key(url);
+            return k && !newKeys.has(k);
+          });
           if (removedUrls.length > 0) {
             deleteS3Objects(removedUrls, auth.idToken).catch(console.error);
           }

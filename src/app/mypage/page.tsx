@@ -15,6 +15,7 @@ import { useSharedFilter } from '@/hooks/useSharedFilter';
 import { useScrollRestore } from '@/hooks/useScrollRestore';
 import { useMyProfile } from '@/hooks/useAppData';
 import { useAppType } from '@/contexts/AppTypeContext';
+import { getImageUrl } from '@/lib/image';
 
 function MiniNoImageMap({ post }: { post: Post }) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
@@ -368,7 +369,7 @@ export default function MyPage() {
           <div className="w-[84px] h-[84px] rounded-full bg-gray-100 flex items-center justify-center border-2 border-white shadow-sm overflow-hidden relative">
             {user?.avatar_url ? (
               <Image
-                src={user.avatar_url.includes('?') ? user.avatar_url : `${user.avatar_url}?v=${Date.now()}`}
+                src={getImageUrl(user.avatar_url.includes('?') ? user.avatar_url : `${user.avatar_url}?v=${Date.now()}`)}
                 alt="User"
                 fill
                 className="object-cover"
@@ -577,7 +578,7 @@ export default function MyPage() {
                 {filteredOwnWant.map(post => (
                   <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
                     {post.image_url ? (
-                      <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
+                      <Image src={getImageUrl(post.image_url)} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
                     ) : (
                       <MiniNoImageMap post={post} />
                     )}
@@ -618,7 +619,7 @@ export default function MyPage() {
                 {filteredMarkedWant.map(post => (
                   <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
                     {post.image_url ? (
-                      <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
+                      <Image src={getImageUrl(post.image_url)} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
                     ) : (
                       <MiniNoImageMap post={post} />
                     )}
@@ -654,7 +655,7 @@ export default function MyPage() {
                 {filteredOwnVisited.map(post => (
                   <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
                     {post.image_url ? (
-                      <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
+                      <Image src={getImageUrl(post.image_url)} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100 group-hover:scale-105 transition-transform duration-500">
                         <span className="text-xl mb-1">🍽️</span>
@@ -707,7 +708,7 @@ export default function MyPage() {
                 {filteredMarkedVisited.map(post => (
                   <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
                     {post.image_url ? (
-                      <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
+                      <Image src={getImageUrl(post.image_url)} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-indigo-50"><span className="text-2xl opacity-50">🍽️</span></div>
                     )}
@@ -742,7 +743,7 @@ export default function MyPage() {
           {filteredPosts.map(post => (
             <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
               {post.image_url ? (
-                <Image src={post.image_url} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
+                <Image src={getImageUrl(post.image_url)} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
               ) : post.status === 'want_to_go' ? (
                 <MiniNoImageMap post={post} />
               ) : (
