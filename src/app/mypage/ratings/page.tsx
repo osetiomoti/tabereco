@@ -200,7 +200,7 @@ function RatingsContent() {
   };
 
   return (
-    <div className="px-6 py-6 pb-28">
+    <div className={`px-6 py-6 ${isBulkMode ? 'pb-80' : 'pb-28'}`}>
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-gray-900/90 backdrop-blur text-white text-xs font-black px-4 py-2.5 rounded-full shadow-lg flex items-center gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -406,23 +406,34 @@ function RatingsContent() {
 
       {/* Floating Bulk Edit Control Toolbar */}
       {isBulkMode && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-md bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl border border-orange-100 p-4 z-40 animate-in slide-in-from-bottom-5 duration-300">
+        <div className="fixed bottom-[calc(4.5rem+env(safe-area-inset-bottom,0px)+12px)] left-1/2 -translate-x-1/2 w-[calc(100%-24px)] max-w-md bg-white/95 backdrop-blur-md rounded-3xl shadow-[0_10px_40px_rgba(0,0,0,0.15)] border border-orange-100 p-3.5 z-[55] animate-in slide-in-from-bottom-5 duration-300">
           {/* Header of Toolbar */}
-          <div className="flex items-center justify-between pb-2.5 border-b border-gray-100">
-            <span className="text-xs font-black text-gray-700">
-              選択中: <span className="text-orange-500 text-sm font-black">{selectedPostIds.size}</span>件
-            </span>
+          <div className="flex items-center justify-between pb-2 border-b border-gray-100">
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-black text-gray-700">
+                選択中: <span className="text-orange-500 text-sm font-black">{selectedPostIds.size}</span>件
+              </span>
+              <button
+                onClick={handleSelectAll}
+                className="text-[11px] font-bold text-gray-500 hover:text-orange-500 transition-colors bg-gray-100 px-2 py-0.5 rounded-full"
+              >
+                {selectedPostIds.size === displayPosts.length ? '全解除' : '全選択'}
+              </button>
+            </div>
             <button
-              onClick={handleSelectAll}
-              className="text-[11px] font-bold text-gray-500 hover:text-orange-500 transition-colors"
+              onClick={() => {
+                setIsBulkMode(false);
+                setSelectedPostIds(new Set());
+              }}
+              className="text-[11px] font-bold text-gray-400 hover:text-gray-600 px-1 py-0.5 transition-colors"
             >
-              {selectedPostIds.size === displayPosts.length ? '全解除' : '全選択'}
+              閉じる
             </button>
           </div>
 
           {/* Delta Adjuster */}
-          <div className="py-2.5">
-            <div className="flex items-center justify-between mb-2">
+          <div className="py-2">
+            <div className="flex items-center justify-between mb-1.5">
               <span className="text-[11px] font-bold text-gray-500">変更する評価数（増減）</span>
               <span
                 className={`text-sm font-black px-2.5 py-0.5 rounded-full ${
@@ -456,7 +467,7 @@ function RatingsContent() {
             </div>
 
             {/* Stepper + Reset */}
-            <div className="flex items-center justify-between mt-2 pt-1 border-t border-gray-50">
+            <div className="flex items-center justify-between mt-1.5 pt-1 border-t border-gray-50">
               <button
                 type="button"
                 onClick={() => setDelta(d => Number((d - 0.1).toFixed(1)))}
