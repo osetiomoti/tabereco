@@ -32,6 +32,8 @@ const DRY_RUN = process.argv.includes('--dry-run');
 const DELETE_OLD = !process.argv.includes('--keep-old'); // デフォルトで移行成功後に旧画像を削除
 const LIMIT_ARG = process.argv.find(a => a.startsWith('--limit='));
 const LIMIT = LIMIT_ARG ? parseInt(LIMIT_ARG.split('=')[1], 10) : Infinity;
+const CONCURRENCY_ARG = process.argv.find(a => a.startsWith('--concurrency='));
+const CONCURRENCY = CONCURRENCY_ARG ? parseInt(CONCURRENCY_ARG.split('=')[1], 10) : 6;
 
 const TARGET_MAX_PX = 1280;
 const TARGET_QUALITY = 80; // sharp uses 0-100 for webp
@@ -203,14 +205,15 @@ async function main() {
   console.log(`\n🚀 Image Migration ${DRY_RUN ? '[DRY RUN]' : '[LIVE]'}`);
   console.log(`   Target: ${TARGET_MAX_PX}px, WebP ${TARGET_QUALITY}%`);
   console.log(`   Bucket: ${BUCKET} (${REGION})`);
-  console.log(`   Delete Old Images: ${DELETE_OLD ? 'YES (after verified DB update)' : 'NO'}\n`);
+  console.log(`   Delete Old Images: ${DELETE_OLD ? 'YES (after verified DB update)' : 'NO'}`);
+  console.log(`   Concurrency: ${CONCURRENCY}\n`);
 
   const log = await loadLog();
 
   // DB から全画像 URL を収集
   console.log('📖 Loading image URLs from DB...');
 
-  const [posts, users] = await Promise.all([
+  const [posts, users, groups] = await Promise.all([
     prisma.post.findMany({
       select: { id: true, image_url: true, image_urls: true },
       where: {
@@ -224,137 +227,125 @@ async function main() {
       select: { id: true, avatar_url: true },
       where: { avatar_url: { not: null } }
     }),
+    prisma.group.findMany({
+      select: { id: true, image_url: true },
+      where: { image_url: { not: null } }
+    }),
   ]);
 
-  // 処理対象をフラットなリストに
-  const tasks = [];
+  // URL ごとに DB レコードへの参照をまとめる（同一画像の重複処理を防止）
+  const urlMap = new Map();
+  function addTarget(url, target) {
+    if (!url || typeof url !== 'string') return;
+    if (!urlMap.has(url)) urlMap.set(url, []);
+    urlMap.get(url).push(target);
+  }
 
   for (const post of posts) {
-    if (post.image_url) tasks.push({ type: 'post_image_url', id: post.id, url: post.image_url });
-    for (let i = 0; i < post.image_urls.length; i++) {
-      tasks.push({ type: 'post_image_urls', id: post.id, index: i, url: post.image_urls[i] });
+    if (post.image_url) addTarget(post.image_url, { type: 'post_image_url', id: post.id });
+    if (Array.isArray(post.image_urls)) {
+      post.image_urls.forEach((u, i) => addTarget(u, { type: 'post_image_urls', id: post.id, index: i }));
     }
   }
-
   for (const user of users) {
-    if (user.avatar_url) tasks.push({ type: 'avatar', id: user.id, url: user.avatar_url });
+    if (user.avatar_url) addTarget(user.avatar_url, { type: 'avatar', id: user.id });
+  }
+  for (const group of groups) {
+    if (group.image_url) addTarget(group.image_url, { type: 'group_image_url', id: group.id });
   }
 
-  const totalTasks = Math.min(tasks.length, LIMIT);
-  console.log(`📊 Found ${tasks.length} images (processing: ${totalTasks})\n`);
+  const allUrls = Array.from(urlMap.keys());
+  const totalUrls = Math.min(allUrls.length, LIMIT);
+  console.log(`📊 Found ${urlMap.size} unique image URLs (processing: ${totalUrls}, concurrency: ${CONCURRENCY})\n`);
 
   let successCount = 0, skipCount = 0, errorCount = 0;
   let totalSavedBytes = 0;
+  let currentIndex = 0;
 
-  for (let i = 0; i < totalTasks; i++) {
-    const task = tasks[i];
-    console.log(`[${i + 1}/${totalTasks}] ${task.type} (${task.id.slice(0, 8)}...)`);
+  async function worker() {
+    while (true) {
+      const idx = currentIndex++;
+      if (idx >= totalUrls) break;
 
-    const result = await processImage(task.url, log);
+      const url = allUrls[idx];
+      const targets = urlMap.get(url);
+      const prefix = `[${idx + 1}/${totalUrls}]`;
 
-    const effectiveNewUrl = result.status === 'success'
-      ? result.newUrl
-      : (result.status === 'skip' && result.newUrl ? result.newUrl : null);
+      const result = await processImage(url, log);
 
-    if (result.status === 'success') {
-      successCount++;
-      totalSavedBytes += (result.originalSize - result.newSize);
-    } else if (result.status === 'skip') {
-      skipCount++;
-    } else if (result.status === 'error') {
-      errorCount++;
-      log.errors.push({ url: task.url, error: result.error, at: new Date().toISOString() });
-      if (!DRY_RUN) await saveLog(log);
-    } else if (result.status === 'dry-run') {
-      successCount++;
-    }
+      const effectiveNewUrl = result.status === 'success'
+        ? result.newUrl
+        : (result.status === 'skip' && result.newUrl ? result.newUrl : null);
 
-    // DB 更新（新規変換成功、または以前既に変換済みだった画像の未更新レコード）
-    if (effectiveNewUrl && !DRY_RUN) {
-      try {
-        if (task.type === 'post_image_url') {
-          await prisma.post.update({ where: { id: task.id }, data: { image_url: effectiveNewUrl } });
-        } else if (task.type === 'post_image_urls') {
-          const post = await prisma.post.findUnique({ where: { id: task.id }, select: { image_urls: true } });
-          if (post) {
-            const newUrls = [...post.image_urls];
-            newUrls[task.index] = effectiveNewUrl;
-            await prisma.post.update({ where: { id: task.id }, data: { image_urls: newUrls } });
-          }
-        } else if (task.type === 'avatar') {
-          await prisma.user.update({ where: { id: task.id }, data: { avatar_url: effectiveNewUrl } });
-        }
-
-        // ログに保存（旧URL も保持）
-        if (result.status === 'success') {
-          log.processed[task.url] = {
-            newUrl: result.newUrl,
-            oldKey: result.oldKey,
-            newKey: result.newKey,
-            migratedAt: new Date().toISOString(),
-          };
-          await saveLog(log);
-        }
-      } catch (dbErr) {
-        console.error(`  ⚠️  DB update failed: ${dbErr.message}`);
-        log.errors.push({ url: task.url, error: `DB update: ${dbErr.message}`, at: new Date().toISOString() });
-        await saveLog(log);
-      }
-    }
-  }
-
-  // ── 旧画像の安全な削除 ──────────────────────────────────────
-  if (DELETE_OLD) {
-    console.log('\n🧹 Checking old original images to safely delete from S3...');
-    let deletedCount = 0;
-    let deleteSkipCount = 0;
-    let deleteFailCount = 0;
-
-    // 現在の DB 内に残っている URL を再確認
-    const [remainingPosts, remainingUsers] = await Promise.all([
-      prisma.post.findMany({ select: { image_url: true, image_urls: true } }),
-      prisma.user.findMany({ select: { avatar_url: true } }),
-    ]);
-
-    const activeDbUrls = new Set();
-    remainingPosts.forEach(p => {
-      if (p.image_url) activeDbUrls.add(p.image_url);
-      if (p.image_urls) p.image_urls.forEach(u => activeDbUrls.add(u));
-    });
-    remainingUsers.forEach(u => {
-      if (u.avatar_url) activeDbUrls.add(u.avatar_url);
-    });
-
-    for (const [oldUrl, entry] of Object.entries(log.processed)) {
-      if (entry.deletedOld) continue; // 既に削除済み
-      if (!entry.oldKey || entry.oldKey === entry.newKey) continue;
-
-      // DB のどこかにまだ旧 URL が残っている場合は安全のため削除しない
-      if (activeDbUrls.has(oldUrl)) {
-        deleteSkipCount++;
+      if (result.status === 'success') {
+        successCount++;
+        totalSavedBytes += (result.originalSize - result.newSize);
+      } else if (result.status === 'skip') {
+        skipCount++;
+      } else if (result.status === 'error') {
+        errorCount++;
+        log.errors.push({ url, error: result.error, at: new Date().toISOString() });
+        if (!DRY_RUN) await saveLog(log);
         continue;
+      } else if (result.status === 'dry-run') {
+        successCount++;
       }
 
-      if (DRY_RUN) {
-        console.log(`  [DRY-RUN] Would delete old S3 object: ${entry.oldKey}`);
-        deletedCount++;
-      } else {
+      // DB 更新（すべての参照先レコードを新 URL に書き換え）
+      if (effectiveNewUrl && !DRY_RUN) {
         try {
-          await deleteS3Object(entry.oldKey);
-          entry.deletedOld = true;
-          entry.deletedAt = new Date().toISOString();
-          deletedCount++;
-          console.log(`  🗑️  Deleted old S3 object: ${entry.oldKey}`);
+          for (const target of targets) {
+            if (target.type === 'post_image_url') {
+              await prisma.post.update({ where: { id: target.id }, data: { image_url: effectiveNewUrl } });
+            } else if (target.type === 'post_image_urls') {
+              const post = await prisma.post.findUnique({ where: { id: target.id }, select: { image_urls: true } });
+              if (post) {
+                const newUrls = [...post.image_urls];
+                newUrls[target.index] = effectiveNewUrl;
+                await prisma.post.update({ where: { id: target.id }, data: { image_urls: newUrls } });
+              }
+            } else if (target.type === 'avatar') {
+              await prisma.user.update({ where: { id: target.id }, data: { avatar_url: effectiveNewUrl } });
+            } else if (target.type === 'group_image_url') {
+              await prisma.group.update({ where: { id: target.id }, data: { image_url: effectiveNewUrl } });
+            }
+          }
+
+          // ログに保存
+          if (result.status === 'success') {
+            log.processed[url] = {
+              newUrl: result.newUrl,
+              oldKey: result.oldKey,
+              newKey: result.newKey,
+              migratedAt: new Date().toISOString(),
+            };
+          }
+
+          // 旧ファイルの安全な削除（全 DB レコードの更新が成功した直後に実施）
+          if (DELETE_OLD && result.oldKey && result.oldKey !== result.newKey && !log.processed[url]?.deletedOld) {
+            try {
+              await deleteS3Object(result.oldKey);
+              if (!log.processed[url]) log.processed[url] = {};
+              log.processed[url].deletedOld = true;
+              log.processed[url].deletedAt = new Date().toISOString();
+            } catch (delErr) {
+              console.error(`  ⚠️  Failed to delete old S3 file ${result.oldKey}: ${delErr.message}`);
+            }
+          }
+
           await saveLog(log);
-        } catch (delErr) {
-          console.error(`  ⚠️  Failed to delete ${entry.oldKey}: ${delErr.message}`);
-          deleteFailCount++;
+        } catch (dbErr) {
+          console.error(`  ⚠️  DB update failed for ${url}: ${dbErr.message}`);
+          log.errors.push({ url, error: `DB update: ${dbErr.message}`, at: new Date().toISOString() });
+          await saveLog(log);
         }
       }
     }
-
-    console.log(`🧹 Old files cleanup: ${deletedCount} deleted, ${deleteSkipCount} skipped (still referenced), ${deleteFailCount} failed.`);
   }
+
+  const numWorkers = Math.min(CONCURRENCY, totalUrls);
+  const workers = Array.from({ length: numWorkers }, () => worker());
+  await Promise.all(workers);
 
   console.log('\n─────────────────────────────────────');
   console.log(`✅ Success: ${successCount}`);
