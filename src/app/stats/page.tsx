@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, Suspense, useEffect } from 'react';
+import { useState, useMemo, Suspense, useEffect, useRef } from 'react';
 import useSWR from 'swr';
 import { Header } from '@/components/Header';
 import { Loader2, AlertCircle, Filter, X, Search } from 'lucide-react';
@@ -296,7 +296,7 @@ function StatCard({ title, subtitle, children }: { title: string; subtitle?: Rea
   );
 }
 
-function FilteredPostsList({ isMyPageMode, profileId, keyword, searchMode }: { isMyPageMode: boolean, profileId?: string, keyword: string, searchMode: string }) {
+function FilteredPostsList({ keyword, searchMode }: { keyword: string, searchMode: string }) {
   const [activeTab, setActiveTab] = useState<'visited' | 'want_to_go'>('visited');
 
   const {
@@ -306,8 +306,7 @@ function FilteredPostsList({ isMyPageMode, profileId, keyword, searchMode }: { i
     isReachingEnd,
     loadMore
   } = useTimeline({
-    timelineMode: isMyPageMode ? 'user' : 'home',
-    targetUserId: isMyPageMode ? profileId : undefined,
+    timelineMode: 'home',
     filters: { status: activeTab, keyword, searchMode }
   });
 
@@ -392,9 +391,34 @@ function StatsPageInner() {
   
   const { filterState, updateFilter } = useSharedFilter();
   const searchParams = useSearchParams();
+  const from = searchParams.get('from');
   const mode = searchParams.get('mode');
+  const queryUserId = searchParams.get('userId');
+  const isFromMypage = from === 'mypage' || mode === 'mypage';
+  const hasInitializedFromMypage = useRef(false);
+
   const { profile } = useMyProfile();
   const { appType } = useAppType();
+
+  // マイページから遷移してきた場合、フィルターを「自分のみ（または対象ユーザーのみ）」に設定
+  useEffect(() => {
+    if (isFromMypage && !hasInitializedFromMypage.current && (profile?.id || queryUserId)) {
+      hasInitializedFromMypage.current = true;
+      const targetId = queryUserId || profile?.id;
+      if (targetId) {
+        updateFilter({
+          filterMode: 'registrant',
+          activeGroups: [],
+          advancedFilters: {
+            ...filterState.advancedFilters,
+            filterMode: 'registrant',
+            registrantUserIds: [targetId],
+            include_mine: true,
+          },
+        });
+      }
+    }
+  }, [isFromMypage, profile?.id, queryUserId, updateFilter, filterState.advancedFilters]);
 
   const [showPosts, setShowPosts] = useState(false);
   const [lastQueryString, setLastQueryString] = useState('');
@@ -455,26 +479,22 @@ function StatsPageInner() {
       if (advanced.stay_type) params.append('stay_type', advanced.stay_type);
     }
 
-    const filterMode = advanced.filterMode || 'registrant';
-    if (filterMode === 'group') {
-      if (filterState.activeGroups.length > 0 && !filterState.activeGroups.includes('all')) {
+    const currentFilterMode = filterState.filterMode || advanced.filterMode || 'group';
+    if (currentFilterMode === 'group') {
+      if (filterState.activeGroups && filterState.activeGroups.length > 0 && !filterState.activeGroups.includes('all')) {
         params.append('group_ids', filterState.activeGroups.join(','));
       }
     } else {
-      if (advanced.registrantUserIds && advanced.registrantUserIds.length > 0) {
-        params.append('registrant_ids', advanced.registrantUserIds.join(','));
+      const registrantIds = advanced.registrantUserIds || (filterState as any).registrantUserIds;
+      if (registrantIds && registrantIds.length > 0) {
+        params.append('registrant_ids', registrantIds.join(','));
       }
     }
 
-    if (mode === 'mypage' && profile) {
-      params.set('timeline_mode', 'user');
-      params.set('target_user_id', profile.id);
-    } else {
-      params.set('timeline_mode', 'home');
-    }
+    params.set('timeline_mode', 'home');
 
     return params.toString();
-  }, [filterState, mode, profile, debouncedKeyword, searchMode, activePref, activeRatingLabel]);
+  }, [filterState, debouncedKeyword, searchMode, activePref, activeRatingLabel]);
 
   useEffect(() => {
     if (queryString !== lastQueryString) {
@@ -491,11 +511,15 @@ function StatsPageInner() {
 
   const stats = data?.data;
   
-  // マイページモードのときは、グループや他の人のフィルターを隠す
-  const isMyPageMode = mode === 'mypage';
+  const currentFilterMode = filterState.filterMode || filterState.advancedFilters?.filterMode || 'group';
+  const registrantIds: string[] = filterState.advancedFilters?.registrantUserIds || (filterState as any).registrantUserIds || [];
+  const isRegistrantFiltered = currentFilterMode === 'registrant' && registrantIds.length > 0;
+  const isGroupFiltered = currentFilterMode === 'group' && filterState.activeGroups?.length > 0 && !filterState.activeGroups.includes('all');
+
   const hasActiveFilters = (filterState.advancedFilters?.tags?.length > 0) || 
-                           (filterState.activeTab !== 'all' && filterState.activeTab !== 'visited') ||
-                           !!activePref || !!activeRatingLabel;
+                           (filterState.activeTab && filterState.activeTab !== 'all' && filterState.activeTab !== 'visited') ||
+                           !!activePref || !!activeRatingLabel ||
+                           isRegistrantFiltered || isGroupFiltered;
 
   const handleTagClick = (tag: string) => {
     if (tag === 'その他') return;
@@ -525,10 +549,14 @@ function StatsPageInner() {
     setActiveRatingLabel(undefined);
     updateFilter({
       activeTab: 'all',
+      activeGroups: ['all'],
+      filterMode: 'group',
       advancedFilters: {
         ...filterState.advancedFilters,
         tags: [],
-        tagMatchMode: 'AND'
+        tagMatchMode: 'AND',
+        filterMode: 'group',
+        registrantUserIds: [],
       }
     });
   };
@@ -547,7 +575,7 @@ function StatsPageInner() {
 
   return (
     <div className="bg-[#fcfcfc] min-h-[100dvh] pb-24">
-      <Header title={isMyPageMode ? "マイデータ" : "統計データ"} showBackButton>
+      <Header title="統計データ" showBackButton>
         <button
           onClick={() => setIsFilterModalOpen(true)}
           className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-all ${
@@ -606,6 +634,39 @@ function StatsPageInner() {
         {hasActiveFilters && (
           <div className="flex flex-wrap gap-2 items-center mb-2">
             <span className="text-[10px] font-black text-gray-400 mr-1">絞り込み中:</span>
+            {isRegistrantFiltered && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-bold border border-indigo-100">
+                👤 {registrantIds.length === 1 && registrantIds[0] === profile?.id ? '自分のみ' : `投稿者 (${registrantIds.length}人)`}
+                <button
+                  onClick={() => {
+                    updateFilter({
+                      advancedFilters: {
+                        ...filterState.advancedFilters,
+                        registrantUserIds: [],
+                      },
+                    });
+                  }}
+                  className="hover:bg-indigo-200 rounded-full p-0.5 transition-colors"
+                >
+                  <X size={10} />
+                </button>
+              </span>
+            )}
+            {isGroupFiltered && (
+              <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-600 rounded-full text-[10px] font-bold border border-purple-100">
+                👥 {filterState.activeGroups.length}グループ
+                <button
+                  onClick={() => {
+                    updateFilter({
+                      activeGroups: ['all'],
+                    });
+                  }}
+                  className="hover:bg-purple-200 rounded-full p-0.5 transition-colors"
+                >
+                  <X size={10} />
+                </button>
+              </span>
+            )}
             {activeTags.map((tag: string) => (
               <span key={tag} className="inline-flex items-center gap-1 px-2 py-1 bg-orange-50 text-orange-600 rounded-full text-[10px] font-bold border border-orange-100">
                 #{tag}
@@ -655,7 +716,9 @@ function StatsPageInner() {
             <div className="bg-gradient-to-br from-orange-50 to-amber-50 rounded-3xl p-5 border border-orange-100">
               <p className="text-[11px] font-black text-orange-400 tracking-widest uppercase mb-1">TOTAL</p>
               <p className="text-3xl font-black text-orange-500">{stats.totalPosts}<span className="text-base font-bold text-orange-300 ml-1">件</span></p>
-              <p className="text-[12px] font-bold text-orange-300 mt-0.5">{isMyPageMode ? 'これまでの投稿数' : '絞り込み条件に一致する投稿数'}</p>
+              <p className="text-[12px] font-bold text-orange-300 mt-0.5">
+                {isRegistrantFiltered && registrantIds.length === 1 && registrantIds[0] === profile?.id ? 'あなたの投稿数' : '絞り込み条件に一致する投稿数'}
+              </p>
             </div>
 
             {/* ① ジャンル割合 */}
@@ -707,7 +770,7 @@ function StatsPageInner() {
                 この条件の投稿を見る
               </button>
             ) : (
-              <FilteredPostsList isMyPageMode={isMyPageMode} profileId={profile?.id} keyword={debouncedKeyword} searchMode={searchMode} />
+              <FilteredPostsList keyword={debouncedKeyword} searchMode={searchMode} />
             )}
           </div>
         )}
@@ -717,11 +780,13 @@ function StatsPageInner() {
         isOpen={isFilterModalOpen}
         onClose={() => setIsFilterModalOpen(false)}
         initialFilters={{
+          ...(filterState.advancedFilters || {}),
           tags: filterState.advancedFilters?.tags || [],
           activeGroups: filterState.activeGroups || [],
           registrantUserIds: filterState.advancedFilters?.registrantUserIds || [],
-          filterMode: filterState.advancedFilters?.filterMode || 'group',
-          tagMatchMode: filterState.advancedFilters?.tagMatchMode || filterState.tagMatchMode || 'AND',
+          filterMode: filterState.filterMode || filterState.advancedFilters?.filterMode || 'group',
+          tagMatchMode: filterState.tagMatchMode || filterState.advancedFilters?.tagMatchMode || 'AND',
+          status: filterState.activeTab || 'all',
           is_hot_spring_mode: filterState.advancedFilters?.is_hot_spring_mode || false,
           spring_temp_min: filterState.advancedFilters?.spring_temp_min,
           spring_temp_max: filterState.advancedFilters?.spring_temp_max,
@@ -729,27 +794,22 @@ function StatsPageInner() {
           bath_type: filterState.advancedFilters?.bath_type,
           stay_type: filterState.advancedFilters?.stay_type,
         }}
-        onApply={(newFilters) => {
+        onApply={(f) => {
+          const { activeGroups: newGroups, status: newStatus, filterMode, ...rest } = f as any;
           updateFilter({
-            activeGroups: newFilters.activeGroups,
+            activeGroups: newGroups || ['all'],
+            activeTab: newStatus || filterState.activeTab,
+            filterMode: filterMode || 'group',
+            tagMatchMode: f.tagMatchMode || filterState.tagMatchMode || 'AND',
             advancedFilters: {
               ...filterState.advancedFilters,
-              tags: newFilters.tags,
-              registrantUserIds: newFilters.registrantUserIds,
-              filterMode: newFilters.filterMode,
-              tagMatchMode: newFilters.tagMatchMode,
-              is_hot_spring_mode: newFilters.is_hot_spring_mode,
-              spring_temp_min: newFilters.spring_temp_min,
-              spring_temp_max: newFilters.spring_temp_max,
-              is_source_fed: newFilters.is_source_fed,
-              bath_type: newFilters.bath_type,
-              stay_type: newFilters.stay_type,
+              ...rest,
+              filterMode: filterMode || 'group',
+              registrantUserIds: f.registrantUserIds || [],
             },
-            tagMatchMode: newFilters.tagMatchMode,
           });
           setIsFilterModalOpen(false);
         }}
-        hideGroupAndRegistrant={isMyPageMode}
         showHotSpringFilter={appType === 'tabireco'}
       />
     </div>

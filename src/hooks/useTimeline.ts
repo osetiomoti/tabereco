@@ -61,15 +61,16 @@ export function useTimeline(options: UseTimelineOptions = {}) {
       if (keyword) params.append('keyword', keyword);
       if (searchMode) params.append('search_mode', searchMode);
       
-      const filterMode = (advancedFilters as any)?.filterMode || 'registrant';
+      const filterMode = filterState.filterMode || (advancedFilters as any)?.filterMode || 'group';
 
       if (filterMode === 'group') {
         if (activeGroups.length > 0 && !activeGroups.includes('all')) {
           params.append('group_ids', activeGroups.join(','));
         }
       } else {
-        if (advancedFilters?.registrantUserIds && advancedFilters.registrantUserIds.length > 0) {
-          params.append('registrant_ids', advancedFilters.registrantUserIds.join(','));
+        const registrantIds = advancedFilters?.registrantUserIds || (filterState as any)?.registrantUserIds;
+        if (registrantIds && registrantIds.length > 0) {
+          params.append('registrant_ids', registrantIds.join(','));
         }
       }
 

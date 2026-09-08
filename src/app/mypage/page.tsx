@@ -311,6 +311,45 @@ export default function MyPage() {
     router.push('/calendar');
   };
 
+  const goToStats = async () => {
+    const navUserId = targetUserId ?? myProfileData?.id;
+    if (!navUserId) {
+      try {
+        const r = await fetch('/api/profiles/me');
+        const j = await r.json();
+        const id = j.data?.id;
+        if (id) {
+          updateFilter({
+            filterMode: 'registrant',
+            activeGroups: [],
+            advancedFilters: {
+              ...filterState?.advancedFilters,
+              filterMode: 'registrant',
+              registrantUserIds: [id],
+              include_mine: true,
+            },
+          });
+          router.push(`/stats?from=mypage&userId=${id}`);
+          return;
+        }
+      } catch (e) {}
+    } else {
+      updateFilter({
+        filterMode: 'registrant',
+        activeGroups: [],
+        advancedFilters: {
+          ...filterState?.advancedFilters,
+          filterMode: 'registrant',
+          registrantUserIds: [navUserId],
+          include_mine: !targetUserId,
+        },
+      });
+      router.push(`/stats?from=mypage&userId=${navUserId}`);
+      return;
+    }
+    router.push('/stats?from=mypage');
+  };
+
   const ratingsHref = targetUserId
     ? `/mypage/ratings?userId=${targetUserId}`
     : '/mypage/ratings';
@@ -451,7 +490,7 @@ export default function MyPage() {
         </button>
 
         <button
-          onClick={() => router.push('/stats?mode=mypage')}
+          onClick={goToStats}
           className="flex flex-col h-[56px] bg-white border border-gray-100 rounded-2xl items-center justify-center text-gray-600 hover:bg-[var(--color-primary-50)] hover:text-[var(--color-primary)] hover:border-[var(--color-primary-light)] transition-colors shadow-[0_2px_10px_rgba(0,0,0,0.02)]"
         >
           <BarChart2 size={18} strokeWidth={2.5} className="mb-0.5" />
