@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
+import { deleteS3Objects } from '@/lib/s3';
 
 /**
  * PUT /api/groups/[id]
@@ -38,6 +39,14 @@ export async function PUT(
       if (description !== undefined) updateData.description = description?.trim().slice(0, 200) || null;
       if (image_url !== undefined) updateData.image_url = image_url || null;
 
+      // 画像が変更された場合、旧画像を S3 から削除
+      if (image_url !== undefined) {
+        const oldGroup = await prisma.group.findUnique({ where: { id }, select: { image_url: true } });
+        if (oldGroup?.image_url && oldGroup.image_url !== image_url) {
+          deleteS3Objects([oldGroup.image_url], auth.idToken).catch(console.error);
+        }
+      }
+
       const updated = await prisma.group.update({
         where: { id },
         data: updateData,
@@ -69,6 +78,12 @@ export async function DELETE(
 
       if (!currentMember || currentMember.role !== 'admin') {
         return NextResponse.json({ success: false, error: '削除権限がありません' }, { status: 403 });
+      }
+
+      // グループ画像を S3 から削除
+      const groupToDelete = await prisma.group.findUnique({ where: { id }, select: { image_url: true } });
+      if (groupToDelete?.image_url) {
+        deleteS3Objects([groupToDelete.image_url], auth.idToken).catch(console.error);
       }
 
       await prisma.group.delete({ where: { id } });

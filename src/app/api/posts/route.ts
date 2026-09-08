@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { withAuth } from '@/lib/auth';
 import { sendPushNotification } from '@/lib/webpush';
+import { deleteS3Objects } from '@/lib/s3';
 
 /**
  * GET /api/posts
@@ -329,6 +330,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, data: post });
     } catch (e: any) {
       console.error('[POST /api/posts] Error:', e);
+      // DB保存が失敗した場合、アップロード済みの S3 画像をロールバック削除
+      try {
+        const { image_urls: rollbackUrls } = await request.json().catch(() => ({ image_urls: [] }));
+        if (Array.isArray(rollbackUrls) && rollbackUrls.length > 0) {
+          deleteS3Objects(rollbackUrls, auth.idToken).catch(console.error);
+          console.log(`[POST /api/posts] Rolled back ${rollbackUrls.length} S3 objects due to DB error`);
+        }
+      } catch (_) {}
       return NextResponse.json({ success: false, error: e.message }, { status: 500 });
     }
   });
