@@ -29,10 +29,11 @@ Thumbs.db
 .vscode/
 .idea/
 
-# 一時ファイル
+# 一時ファイル・ログ
 tmp_migrate.ts
 setup_db.cjs
 find_user.ts
 find_id.cjs
+migrate-images-log.json
 
 /src/generated/prisma
