@@ -18,7 +18,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
-import { S3Client, PutObjectCommand, HeadObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client, PutObjectCommand, HeadObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
 import sharp from 'sharp';
 import { readFile, writeFile } from 'fs/promises';
 import { existsSync } from 'fs';
@@ -29,6 +29,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // ── 設定 ──────────────────────────────────────────────────
 const DRY_RUN = process.argv.includes('--dry-run');
+const DELETE_OLD = !process.argv.includes('--keep-old'); // デフォルトで移行成功後に旧画像を削除
 const LIMIT_ARG = process.argv.find(a => a.startsWith('--limit='));
 const LIMIT = LIMIT_ARG ? parseInt(LIMIT_ARG.split('=')[1], 10) : Infinity;
 
@@ -45,14 +46,17 @@ if (!BUCKET) {
   process.exit(1);
 }
 
-// ── AWS 認証（サーバーサイド環境変数から直接）────────────────
-const s3 = new S3Client({
-  region: REGION,
-  credentials: {
-    accessKeyId: process.env.AWS_ACCESS_KEY_ID ?? '',
-    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY ?? '',
-  },
-});
+// ── AWS 認証（アクセスキーがあれば S3Client、なければ IP 許可の直接 PUT）──
+const hasAwsCreds = Boolean(process.env.AWS_ACCESS_KEY_ID && process.env.AWS_SECRET_ACCESS_KEY);
+const s3 = hasAwsCreds
+  ? new S3Client({
+      region: REGION,
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      },
+    })
+  : null;
 
 const prisma = new PrismaClient();
 
@@ -98,7 +102,13 @@ async function processImage(oldUrl, log) {
 
   // 既処理チェック
   if (log.processed[oldUrl]) {
-    return { status: 'skip', reason: 'Already processed', newUrl: log.processed[oldUrl].newUrl };
+    return {
+      status: 'skip',
+      reason: 'Already processed',
+      newUrl: log.processed[oldUrl].newUrl,
+      oldKey,
+      newKey: log.processed[oldUrl].newKey,
+    };
   }
 
   const newKey = toWebpKey(oldKey);
@@ -132,15 +142,37 @@ async function processImage(oldUrl, log) {
     const newSize = converted.byteLength;
 
     // 3. S3 にアップロード
-    await s3.send(new PutObjectCommand({
-      Bucket: BUCKET,
-      Key: newKey,
-      Body: converted,
-      ContentType: 'image/webp',
-    }));
+    if (s3) {
+      await s3.send(new PutObjectCommand({
+        Bucket: BUCKET,
+        Key: newKey,
+        Body: converted,
+        ContentType: 'image/webp',
+      }));
+      // 4. アップロード確認
+      await s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: newKey }));
+    } else {
+      // バケットポリシー（IP許可）による直接 HTTP PUT
+      const s3Url = `https://${BUCKET}.s3.${REGION}.amazonaws.com/${newKey}`;
+      const putRes = await fetch(s3Url, {
+        method: 'PUT',
+        body: converted,
+        headers: {
+          'Content-Type': 'image/webp',
+        },
+      });
 
-    // 4. アップロード確認
-    await s3.send(new HeadObjectCommand({ Bucket: BUCKET, Key: newKey }));
+      if (!putRes.ok) {
+        const errBody = await putRes.text().catch(() => '');
+        throw new Error(`S3 PUT failed (${putRes.status} ${putRes.statusText}): ${errBody.slice(0, 150)}`);
+      }
+
+      // 4. アップロード確認（HEAD）
+      const headRes = await fetch(s3Url, { method: 'HEAD' });
+      if (!headRes.ok) {
+        throw new Error(`S3 HEAD check failed (${headRes.status} ${headRes.statusText})`);
+      }
+    }
 
     const savings = ((1 - newSize / originalSize) * 100).toFixed(1);
     console.log(`  ✅ ${oldKey} → ${newKey} (${(originalSize / 1024).toFixed(0)}KB → ${(newSize / 1024).toFixed(0)}KB, -${savings}%)`);
@@ -152,11 +184,26 @@ async function processImage(oldUrl, log) {
   }
 }
 
+// ── S3 からオブジェクトを削除 ──────────────────────────────
+async function deleteS3Object(key) {
+  if (s3) {
+    await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: key }));
+  } else {
+    const s3Url = `https://${BUCKET}.s3.${REGION}.amazonaws.com/${key}`;
+    const res = await fetch(s3Url, { method: 'DELETE' });
+    if (!res.ok && res.status !== 204 && res.status !== 404) {
+      const errText = await res.text().catch(() => '');
+      throw new Error(`S3 DELETE failed (${res.status}): ${errText.slice(0, 100)}`);
+    }
+  }
+}
+
 // ── メイン処理 ────────────────────────────────────────────
 async function main() {
   console.log(`\n🚀 Image Migration ${DRY_RUN ? '[DRY RUN]' : '[LIVE]'}`);
   console.log(`   Target: ${TARGET_MAX_PX}px, WebP ${TARGET_QUALITY}%`);
-  console.log(`   Bucket: ${BUCKET} (${REGION})\n`);
+  console.log(`   Bucket: ${BUCKET} (${REGION})`);
+  console.log(`   Delete Old Images: ${DELETE_OLD ? 'YES (after verified DB update)' : 'NO'}\n`);
 
   const log = await loadLog();
 
@@ -205,35 +252,13 @@ async function main() {
 
     const result = await processImage(task.url, log);
 
+    const effectiveNewUrl = result.status === 'success'
+      ? result.newUrl
+      : (result.status === 'skip' && result.newUrl ? result.newUrl : null);
+
     if (result.status === 'success') {
       successCount++;
       totalSavedBytes += (result.originalSize - result.newSize);
-
-      // DB 更新（アップロード成功後のみ）
-      if (!DRY_RUN) {
-        try {
-          if (task.type === 'post_image_url') {
-            await prisma.post.update({ where: { id: task.id }, data: { image_url: result.newUrl } });
-          } else if (task.type === 'post_image_urls') {
-            const post = await prisma.post.findUnique({ where: { id: task.id }, select: { image_urls: true } });
-            if (post) {
-              const newUrls = [...post.image_urls];
-              newUrls[task.index] = result.newUrl;
-              await prisma.post.update({ where: { id: task.id }, data: { image_urls: newUrls } });
-            }
-          } else if (task.type === 'avatar') {
-            await prisma.user.update({ where: { id: task.id }, data: { avatar_url: result.newUrl } });
-          }
-
-          // ログに保存（旧URL も保持）
-          log.processed[task.url] = { newUrl: result.newUrl, oldKey: result.oldKey, newKey: result.newKey, migratedAt: new Date().toISOString() };
-          await saveLog(log);
-        } catch (dbErr) {
-          console.error(`  ⚠️  DB update failed: ${dbErr.message}`);
-          log.errors.push({ url: task.url, error: `DB update: ${dbErr.message}`, at: new Date().toISOString() });
-          await saveLog(log);
-        }
-      }
     } else if (result.status === 'skip') {
       skipCount++;
     } else if (result.status === 'error') {
@@ -243,6 +268,92 @@ async function main() {
     } else if (result.status === 'dry-run') {
       successCount++;
     }
+
+    // DB 更新（新規変換成功、または以前既に変換済みだった画像の未更新レコード）
+    if (effectiveNewUrl && !DRY_RUN) {
+      try {
+        if (task.type === 'post_image_url') {
+          await prisma.post.update({ where: { id: task.id }, data: { image_url: effectiveNewUrl } });
+        } else if (task.type === 'post_image_urls') {
+          const post = await prisma.post.findUnique({ where: { id: task.id }, select: { image_urls: true } });
+          if (post) {
+            const newUrls = [...post.image_urls];
+            newUrls[task.index] = effectiveNewUrl;
+            await prisma.post.update({ where: { id: task.id }, data: { image_urls: newUrls } });
+          }
+        } else if (task.type === 'avatar') {
+          await prisma.user.update({ where: { id: task.id }, data: { avatar_url: effectiveNewUrl } });
+        }
+
+        // ログに保存（旧URL も保持）
+        if (result.status === 'success') {
+          log.processed[task.url] = {
+            newUrl: result.newUrl,
+            oldKey: result.oldKey,
+            newKey: result.newKey,
+            migratedAt: new Date().toISOString(),
+          };
+          await saveLog(log);
+        }
+      } catch (dbErr) {
+        console.error(`  ⚠️  DB update failed: ${dbErr.message}`);
+        log.errors.push({ url: task.url, error: `DB update: ${dbErr.message}`, at: new Date().toISOString() });
+        await saveLog(log);
+      }
+    }
+  }
+
+  // ── 旧画像の安全な削除 ──────────────────────────────────────
+  if (DELETE_OLD) {
+    console.log('\n🧹 Checking old original images to safely delete from S3...');
+    let deletedCount = 0;
+    let deleteSkipCount = 0;
+    let deleteFailCount = 0;
+
+    // 現在の DB 内に残っている URL を再確認
+    const [remainingPosts, remainingUsers] = await Promise.all([
+      prisma.post.findMany({ select: { image_url: true, image_urls: true } }),
+      prisma.user.findMany({ select: { avatar_url: true } }),
+    ]);
+
+    const activeDbUrls = new Set();
+    remainingPosts.forEach(p => {
+      if (p.image_url) activeDbUrls.add(p.image_url);
+      if (p.image_urls) p.image_urls.forEach(u => activeDbUrls.add(u));
+    });
+    remainingUsers.forEach(u => {
+      if (u.avatar_url) activeDbUrls.add(u.avatar_url);
+    });
+
+    for (const [oldUrl, entry] of Object.entries(log.processed)) {
+      if (entry.deletedOld) continue; // 既に削除済み
+      if (!entry.oldKey || entry.oldKey === entry.newKey) continue;
+
+      // DB のどこかにまだ旧 URL が残っている場合は安全のため削除しない
+      if (activeDbUrls.has(oldUrl)) {
+        deleteSkipCount++;
+        continue;
+      }
+
+      if (DRY_RUN) {
+        console.log(`  [DRY-RUN] Would delete old S3 object: ${entry.oldKey}`);
+        deletedCount++;
+      } else {
+        try {
+          await deleteS3Object(entry.oldKey);
+          entry.deletedOld = true;
+          entry.deletedAt = new Date().toISOString();
+          deletedCount++;
+          console.log(`  🗑️  Deleted old S3 object: ${entry.oldKey}`);
+          await saveLog(log);
+        } catch (delErr) {
+          console.error(`  ⚠️  Failed to delete ${entry.oldKey}: ${delErr.message}`);
+          deleteFailCount++;
+        }
+      }
+    }
+
+    console.log(`🧹 Old files cleanup: ${deletedCount} deleted, ${deleteSkipCount} skipped (still referenced), ${deleteFailCount} failed.`);
   }
 
   console.log('\n─────────────────────────────────────');
@@ -256,7 +367,6 @@ async function main() {
 
   if (!DRY_RUN) {
     console.log(`📝 Log saved to: ${LOG_FILE}`);
-    console.log('⚠️  Old images are NOT deleted. Verify everything works before manually removing them.');
   }
 
   await prisma.$disconnect();
