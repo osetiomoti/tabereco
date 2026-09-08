@@ -33,5 +33,10 @@ export async function GET(request: NextRequest) {
         purpose: 'any maskable'
       }
     ]
+  }, {
+    headers: {
+      'Content-Type': 'application/manifest+json; charset=utf-8',
+      'Cache-Control': 'public, max-age=86400',
+    },
   });
 }

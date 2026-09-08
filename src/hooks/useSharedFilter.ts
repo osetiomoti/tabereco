@@ -42,15 +42,7 @@ export function useSharedFilter() {
   const storageKey = getStorageKey(appType);
   const eventKey = getEventKey(appType);
 
-  const [filterState, setFilterState] = useState<SharedFilterState>(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = localStorage.getItem(storageKey);
-        if (stored) return JSON.parse(stored);
-      } catch (e) {}
-    }
-    return defaultState;
-  });
+  const [filterState, setFilterState] = useState<SharedFilterState>(defaultState);
 
   useEffect(() => {
     // 初回ロードまたは appType 切り替え時

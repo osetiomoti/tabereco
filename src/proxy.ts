@@ -65,10 +65,11 @@ export async function proxy(request: NextRequest) {
   const isAuthPage = pathname.startsWith('/login') || pathname.startsWith('/api/auth');
   const isDevPage = pathname.startsWith('/dev') || pathname.startsWith('/api/dev');
   const isSetupPage = pathname.startsWith('/api/setup');
-  const isStaticFile = pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|ico|json)$/) || pathname === '/manifest.json';
+  const isManifest = pathname.startsWith('/api/manifest') || pathname.startsWith('/manifest');
+  const isStaticFile = pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|ico|json|webmanifest)$/) || pathname === '/manifest.json';
 
   // 1. 公開ページや静的ファイルはスルー
-  if (isAuthPage || isDevPage || isSetupPage || isStaticFile) {
+  if (isAuthPage || isDevPage || isSetupPage || isManifest || isStaticFile) {
     // ログイン済みなら /login から /posts へリダイレクト
     if ((accessToken || devToken) && pathname === '/login') {
       return NextResponse.redirect(new URL('/posts', request.url));

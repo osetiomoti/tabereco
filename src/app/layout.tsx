@@ -43,7 +43,6 @@ export async function generateMetadata(): Promise<Metadata> {
     icons: {
       icon: [
         { url: isTabireco ? '/tabireco-192.png' : '/icon-192.png', sizes: '192x192', type: 'image/png' },
-        { url: isTabireco ? '/tabireco-512.png' : '/icon-512.png', sizes: '512x512', type: 'image/png' },
       ],
       apple: [
         { url: isTabireco ? '/tabireco-192.png' : '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
@@ -63,12 +62,12 @@ export default async function RootLayout({
   const initialAppType: AppType = storedAppType === 'tabireco' ? 'tabireco' : 'tabereco';
 
   return (
-    <html lang="ja" data-app-type={initialAppType} className="overflow-x-hidden">
+    <html lang="ja" data-app-type={initialAppType} className="overflow-x-hidden" suppressHydrationWarning>
       <head>
         {/* iOS Safari でのズーム・縮小を確実に防ぐ */}
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover" />
       </head>
-      <body className={`${outfit.variable} ${notoSansJP.variable} font-sans bg-[#fcfcfc] text-gray-900 antialiased overflow-x-hidden min-h-[100dvh] flex flex-col`}>
+      <body className={`${outfit.variable} ${notoSansJP.variable} font-sans bg-[#fcfcfc] text-gray-900 antialiased overflow-x-hidden min-h-[100dvh] flex flex-col`} suppressHydrationWarning>
         <SWRProvider>
           <AppTypeProvider initialAppType={initialAppType}>
             <ToastProvider>
