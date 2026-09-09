@@ -77,6 +77,10 @@ export default function MyPage() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       setTargetUserId(params.get('userId') || params.get('user_id'));
+      const tab = params.get('tab');
+      if (tab === 'visited' || tab === 'want_to_go' || tab === 'liked') {
+        setActiveTab(tab);
+      }
     }
   }, []);
 
@@ -730,14 +734,16 @@ export default function MyPage() {
           </div>
         </div>
 
-      ) : loading ? (
+      ) : (activeTab === 'liked' ? likedPostsLoading : loading) ? (
         <div className="px-0.5 grid grid-cols-3 gap-0.5">
           {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(i => (
             <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />
           ))}
         </div>
       ) : filteredPosts.length === 0 ? (
-        <div className="py-20 text-center text-gray-400 font-bold text-[14px]">記録が見つかりません</div>
+        <div className="py-20 text-center text-gray-400 font-bold text-[14px]">
+          {activeTab === 'liked' ? 'いいねした投稿がまだありません' : '記録が見つかりません'}
+        </div>
       ) : (
         <div className="px-0.5 grid grid-cols-3 gap-0.5 animate-in fade-in duration-500">
           {filteredPosts.map(post => (
@@ -751,6 +757,9 @@ export default function MyPage() {
                   <span className="text-2xl mb-1">🍽️</span>
                   <span className="text-[9px] font-black text-center leading-tight text-gray-700 line-clamp-2 px-1">{post.title}</span>
                   {post.store_name && <span className="text-[7px] font-bold text-gray-400 mt-0.5 truncate w-full text-center">{post.store_name}</span>}
+                  {post.user?.name && (activeTab === 'liked' || post.user_id !== myProfileData?.id) && (
+                    <span className="text-[8px] font-black text-orange-500 mt-0.5 truncate">by {post.user.name}</span>
+                  )}
                 </div>
               )}
 
@@ -758,9 +767,18 @@ export default function MyPage() {
 
               <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
                 <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
-                <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate mt-0.5 opacity-80">
-                  {post.store_name} {post.visited_at ? `• ${formatDate(post.visited_at).split('-').slice(1).join('/')}` : ''}
-                </span>
+                <div className="flex flex-col gap-0.5 mt-0.5">
+                  {post.store_name && (
+                    <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate opacity-80">
+                      {post.store_name} {post.visited_at ? `• ${formatDate(post.visited_at).split('-').slice(1).join('/')}` : ''}
+                    </span>
+                  )}
+                  {post.user?.name && (activeTab === 'liked' || post.user_id !== myProfileData?.id) && (
+                    <span className="text-orange-300 font-black text-[8px] drop-shadow-md truncate">
+                      by {post.user.name}
+                    </span>
+                  )}
+                </div>
               </div>
 
               {post.rating && (
@@ -775,7 +793,7 @@ export default function MyPage() {
                    <span className="text-[10px] font-black">♥</span>
                 </div>
               )}
-              {post.user_id !== myProfileData?.id && (
+              {post.user_id !== myProfileData?.id && activeTab !== 'liked' && (
                 <div className="absolute bottom-1.5 right-1.5 bg-gray-800/80 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full z-10 shadow-sm opacity-90 scale-90 origin-bottom-right">
                   みんなの投稿
                 </div>

@@ -110,7 +110,11 @@ export function useTimeline(options: UseTimelineOptions = {}) {
       // 価格フィルター
       if ((advancedFilters as any)?.price_min != null) params.append('price_min', String((advancedFilters as any).price_min));
       if ((advancedFilters as any)?.price_max != null) params.append('price_max', String((advancedFilters as any).price_max));
-      
+
+      // ソート順（advancedFiltersから読み取り、propsのfiltersで上書き可能）
+      const sharedSortOrder = (advancedFilters as any)?.sort_order;
+      if (sharedSortOrder) params.append('sort_order', sharedSortOrder);
+      // propsで直接指定された場合は上書き
       if (filters.sortField) params.append('sort_field', filters.sortField);
       if (filters.sortOrder) params.append('sort_order', filters.sortOrder);
     }

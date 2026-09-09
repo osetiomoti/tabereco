@@ -23,7 +23,7 @@ const APP_OPTIONS: { type: AppType; label: string; icon: string; desc: string }[
   { type: 'tabireco', label: '旅レコ',   icon: '/tabireco-192.png', desc: '旅の記録' },
 ];
 
-function AppSwitcher() {
+function AppSwitcher({ transparent }: { transparent?: boolean }) {
   const { appType, setAppType } = useAppType();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -65,10 +65,10 @@ function AppSwitcher() {
         </div>
         {/* アプリ名 + チェブロン */}
         <span className="hidden xs:flex items-center gap-1">
-          <span className="font-black text-gray-900 text-[18px] tracking-tighter">{current.label}</span>
+          <span className={`font-black text-[18px] tracking-tighter ${transparent ? 'text-white drop-shadow-sm' : 'text-gray-900'}`}>{current.label}</span>
           <ChevronDown
             size={14}
-            className="text-gray-400 transition-transform duration-200"
+            className={`transition-transform duration-200 ${transparent ? 'text-white/80' : 'text-gray-400'}`}
             style={{ transform: open ? 'rotate(180deg)' : 'rotate(0deg)' }}
           />
         </span>
@@ -113,9 +113,10 @@ type HeaderProps = {
   hideSettings?: boolean;
   backUrl?: string;
   onBack?: () => void;
+  transparent?: boolean;
 };
 
-export function Header({ children, title, showBackButton, hideSettings, backUrl, onBack }: HeaderProps) {
+export function Header({ children, title, showBackButton, hideSettings, backUrl, onBack, transparent }: HeaderProps) {
   const router = useRouter();
   const { profile: user, isLoading } = useMyProfile();
 
@@ -132,27 +133,33 @@ export function Header({ children, title, showBackButton, hideSettings, backUrl,
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-gray-100/50 h-14 transition-all duration-300">
+    <header className={`sticky top-0 z-50 h-14 transition-all duration-300 ${
+      transparent
+        ? 'bg-transparent border-none'
+        : 'bg-white/95 backdrop-blur-xl border-b border-gray-100/50'
+    }`}>
       <div className="max-w-2xl mx-auto px-4 h-full flex items-center justify-between relative">
         {/* Left Side: Logo/AppSwitcher or Back Button */}
         <div className="flex items-center z-10">
           {showBackButton ? (
             <button
               onClick={handleBack}
-              className="w-9 h-9 bg-gray-100/80 rounded-full flex items-center justify-center hover:bg-gray-200 transition-colors"
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
+                transparent ? 'bg-white/20 text-white backdrop-blur-md hover:bg-white/30' : 'bg-gray-100/80 text-gray-900 hover:bg-gray-200'
+              }`}
               aria-label="戻る"
             >
-              <ChevronLeft size={20} className="text-gray-900" />
+              <ChevronLeft size={20} className={transparent ? 'text-white' : 'text-gray-900'} />
             </button>
           ) : (
-            <AppSwitcher />
+            <AppSwitcher transparent={transparent} />
           )}
         </div>
 
         {/* Center Title */}
         {title && (
           <div className="absolute inset-0 flex justify-center items-center pointer-events-none px-24">
-            <h1 className="font-bold text-gray-900 tracking-wide text-[16px] truncate">
+            <h1 className={`font-bold tracking-wide text-[16px] truncate ${transparent ? 'text-white drop-shadow-sm' : 'text-gray-900'}`}>
               {title}
             </h1>
           </div>
@@ -166,15 +173,23 @@ export function Header({ children, title, showBackButton, hideSettings, backUrl,
             <div className="flex items-center gap-2">
               <Link
                 href="/notifications"
-                className="relative w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 transition-all"
-                style={{'--hover-bg': 'var(--color-primary-50)', '--hover-color': 'var(--color-primary)'} as React.CSSProperties}
+                className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                  transparent
+                    ? 'bg-white/20 text-white backdrop-blur-md border border-white/25 hover:bg-white/30'
+                    : 'bg-gray-100 text-gray-500'
+                }`}
+                style={transparent ? undefined : ({'--hover-bg': 'var(--color-primary-50)', '--hover-color': 'var(--color-primary)'} as React.CSSProperties)}
                 onMouseEnter={e => {
-                  (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--color-primary-50)';
-                  (e.currentTarget as HTMLElement).style.color = 'var(--color-primary)';
+                  if (!transparent) {
+                    (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--color-primary-50)';
+                    (e.currentTarget as HTMLElement).style.color = 'var(--color-primary)';
+                  }
                 }}
                 onMouseLeave={e => {
-                  (e.currentTarget as HTMLElement).style.backgroundColor = '';
-                  (e.currentTarget as HTMLElement).style.color = '';
+                  if (!transparent) {
+                    (e.currentTarget as HTMLElement).style.backgroundColor = '';
+                    (e.currentTarget as HTMLElement).style.color = '';
+                  }
                 }}
               >
                 <Bell size={18} />
@@ -182,14 +197,22 @@ export function Header({ children, title, showBackButton, hideSettings, backUrl,
               </Link>
               <Link
                 href="/settings"
-                className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 transition-all"
+                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                  transparent
+                    ? 'bg-white/20 text-white backdrop-blur-md border border-white/25 hover:bg-white/30'
+                    : 'bg-gray-100 text-gray-500'
+                }`}
                 onMouseEnter={e => {
-                  (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--color-primary-50)';
-                  (e.currentTarget as HTMLElement).style.color = 'var(--color-primary)';
+                  if (!transparent) {
+                    (e.currentTarget as HTMLElement).style.backgroundColor = 'var(--color-primary-50)';
+                    (e.currentTarget as HTMLElement).style.color = 'var(--color-primary)';
+                  }
                 }}
                 onMouseLeave={e => {
-                  (e.currentTarget as HTMLElement).style.backgroundColor = '';
-                  (e.currentTarget as HTMLElement).style.color = '';
+                  if (!transparent) {
+                    (e.currentTarget as HTMLElement).style.backgroundColor = '';
+                    (e.currentTarget as HTMLElement).style.color = '';
+                  }
                 }}
               >
                 <Settings size={18} />
@@ -198,8 +221,12 @@ export function Header({ children, title, showBackButton, hideSettings, backUrl,
           ) : !isLoading && !user && !hideSettings && (
             <Link
               href="/login"
-              className="font-bold text-sm px-3 py-1.5 rounded-full hover:opacity-90 transition-colors"
-              style={{ color: 'var(--color-primary)', backgroundColor: 'var(--color-primary-50)' }}
+              className={`font-bold text-sm px-3.5 py-1.5 rounded-full transition-colors ${
+                transparent
+                  ? 'bg-white/20 text-white backdrop-blur-md border border-white/30 hover:bg-white/30'
+                  : 'hover:opacity-90'
+              }`}
+              style={transparent ? undefined : { color: 'var(--color-primary)', backgroundColor: 'var(--color-primary-50)' }}
             >
               ログイン
             </Link>

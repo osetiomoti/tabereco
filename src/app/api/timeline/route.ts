@@ -356,25 +356,25 @@ export async function GET(request: NextRequest) {
         ];
       } else if (sortOption === 'rating_desc' || (sortField === 'rating' && sortOrder === 'desc')) {
         orderBy = [
-          { rating: 'desc' },
+          { rating: { sort: 'desc', nulls: 'last' } },
           { created_at: 'desc' },
           { id: 'desc' },
         ];
       } else if (sortOption === 'rating_asc' || (sortField === 'rating' && sortOrder === 'asc')) {
         orderBy = [
-          { rating: 'asc' },
+          { rating: { sort: 'asc', nulls: 'last' } },
           { created_at: 'desc' },
           { id: 'desc' },
         ];
       } else if (sortOption === 'price_desc') {
         orderBy = [
-          { price_max: 'desc' },
+          { price_max: { sort: 'desc', nulls: 'last' } },
           { created_at: 'desc' },
           { id: 'desc' },
         ];
       } else if (sortOption === 'price_asc') {
         orderBy = [
-          { price_min: 'asc' },
+          { price_min: { sort: 'asc', nulls: 'last' } },
           { created_at: 'desc' },
           { id: 'desc' },
         ];
