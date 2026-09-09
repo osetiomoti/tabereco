@@ -20,6 +20,7 @@ import {
   Flame,
   Zap,
   Clock,
+  Sparkles,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -27,6 +28,10 @@ import { useRouter } from 'next/navigation';
 import { useMyProfile, useMyPosts, useGroupActivities, useTopRankings } from '@/hooks/useAppData';
 import { useAppType } from '@/contexts/AppTypeContext';
 import { getImageUrl } from '@/lib/image';
+import { FoodRouletteModal } from '@/components/home/FoodRouletteModal';
+import { MemoriesCard } from '@/components/home/MemoriesCard';
+import { NearbyWantToGo } from '@/components/home/NearbyWantToGo';
+import { PrefectureMapWidget } from '@/components/home/PrefectureMapWidget';
 
 // ─── サブコンポーネント ───────────────────────────────────
 
@@ -116,6 +121,7 @@ export default function HomePage() {
   const [likesCount, setLikesCount] = useState<Record<string, number>>({});
   const [greeting, setGreeting] = useState('');
   const [greetingEmoji, setGreetingEmoji] = useState('');
+  const [isRouletteOpen, setIsRouletteOpen] = useState(false);
 
   useEffect(() => {
     const hour = new Date().getHours();
@@ -146,6 +152,15 @@ export default function HomePage() {
     list.forEach(p => map.set(p.id, p));
     return Array.from(map.values()).sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }, [wantToGoPosts, allGroupWantToGo]);
+
+  // ルーレット用の全候補（自分の投稿＋グループの全投稿）
+  const allCandidatePosts = useMemo(() => {
+    const map = new Map<string, Post>();
+    [...visitedPosts, ...wantToGoPosts, ...groupActivities, ...allGroupWantToGo].forEach(p => {
+      map.set(p.id, p);
+    });
+    return Array.from(map.values());
+  }, [visitedPosts, wantToGoPosts, groupActivities, allGroupWantToGo]);
 
   const formatTime = (dateStr: string) => {
     try {
@@ -287,6 +302,56 @@ export default function HomePage() {
             <QuickActionBtn href="/rankings" icon={<Trophy size={24} />} label="ランキング" from="from-amber-400" to="to-orange-500" />
           </div>
         </section>
+
+        {/* ── 🎲 ルーレットバナー ── */}
+        <section className="px-4 mb-6">
+          <div
+            onClick={() => setIsRouletteOpen(true)}
+            className={`relative overflow-hidden rounded-[24px] p-4 text-white shadow-lg cursor-pointer active:scale-[0.98] transition-all group ${
+              appType === 'tabireco'
+                ? 'bg-gradient-to-r from-emerald-500 via-teal-500 to-green-600'
+                : 'bg-gradient-to-r from-orange-500 via-rose-500 to-amber-500'
+            }`}
+            style={{ boxShadow: '0 8px 24px rgba(0,0,0,0.12)' }}
+          >
+            <div className="absolute top-[-25px] right-[-25px] w-28 h-28 bg-white/10 rounded-full blur-xl group-hover:scale-125 transition-transform" />
+            <div className="relative z-10 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md border border-white/30 flex items-center justify-center text-2xl shadow-sm shrink-0">
+                  🎲
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="px-2 py-0.5 rounded-full bg-white/25 text-[10px] font-black tracking-wide">
+                      迷ったときのガチャ！
+                    </span>
+                    <Sparkles size={13} className="text-amber-200" />
+                  </div>
+                  <h3 className="text-[17px] font-black leading-tight mt-1">
+                    {appType === 'tabireco' ? '次どこ行く？旅ガチャ' : '今日何食べる？ルーレット'}
+                  </h3>
+                  <p className="text-[11px] text-white/80 font-bold mt-0.5">
+                    {appType === 'tabireco'
+                      ? '条件に合うスポットから運命の1軒をランダム決定'
+                      : '条件に合うお店から今日のご飯をランダム決定'}
+                  </p>
+                </div>
+              </div>
+              <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center shrink-0 group-hover:translate-x-1 transition-transform">
+                <ChevronRight size={18} className="text-white" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ── 📸 Memories 振り返りカード ── */}
+        <MemoriesCard posts={visitedPosts} />
+
+        {/* ── 📍 現在地近くの行きたい店 ── */}
+        <NearbyWantToGo posts={combinedWantToGo} />
+
+        {/* ── 🗺️ 都道府県制覇ミニマップ ── */}
+        <PrefectureMapWidget posts={visitedPosts} />
 
         {/* ── ランキング ── */}
         {rankingItems.length > 0 && (() => {
@@ -677,6 +742,13 @@ export default function HomePage() {
           </section>
         )}
       </main>
+
+      {/* ── 🎲 ルーレットモーダル ── */}
+      <FoodRouletteModal
+        isOpen={isRouletteOpen}
+        onClose={() => setIsRouletteOpen(false)}
+        posts={allCandidatePosts}
+      />
     </div>
   );
 }
