@@ -7,6 +7,7 @@ import { useMyProfile } from '@/hooks/useAppData';
 import { useUnreadNotifications } from '@/hooks/useNotifications';
 import { useAppType, type AppType } from '@/contexts/AppTypeContext';
 import { useState, useRef, useEffect } from 'react';
+import { canGoBackInApp } from '@/lib/navigationHistory';
 
 function NotificationBadge() {
   const { count } = useUnreadNotifications();
@@ -128,12 +129,7 @@ export function Header({ children, title, showBackButton, hideSettings, backUrl,
 
     // アプリ内の直前画面がある場合は前の画面へ戻る（ホームやマイページ等）
     // 直前画面がない場合（直接URLを開いた場合等）は backUrl または /posts へフォールバック
-    const hasInAppHistory = typeof window !== 'undefined' && (
-      (window.history.state?.idx !== undefined && window.history.state.idx > 0) ||
-      (document.referrer && document.referrer.includes(window.location.host))
-    );
-
-    if (hasInAppHistory) {
+    if (canGoBackInApp()) {
       router.back();
     } else if (backUrl) {
       router.push(backUrl);

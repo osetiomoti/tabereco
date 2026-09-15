@@ -10,6 +10,8 @@ import { AppTypeProvider, type AppType } from '@/contexts/AppTypeContext';
 import { PostUploadProvider } from '@/contexts/PostUploadContext';
 import { PostUploadBanner } from '@/components/PostUploadBanner';
 import { cookies } from 'next/headers';
+import { Suspense } from 'react';
+import { NavigationTracker } from '@/components/NavigationTracker';
 
 const outfit = Outfit({
   subsets: ['latin'],
@@ -73,6 +75,9 @@ export default async function RootLayout({
         <SWRProvider>
           <AppTypeProvider initialAppType={initialAppType}>
             <PostUploadProvider>
+              <Suspense fallback={null}>
+                <NavigationTracker />
+              </Suspense>
               <ToastProvider>
                 <SessionKeepAlive />
                 <ServiceWorkerRegister />
