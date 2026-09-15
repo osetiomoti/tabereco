@@ -9,7 +9,6 @@ import {
   Trophy,
   TrendingUp,
   Bookmark,
-  BookmarkCheck,
   ChevronRight,
   Calendar,
   BarChart2,
@@ -19,11 +18,8 @@ import {
   Camera,
   Flame,
   Zap,
-  Clock,
   Sparkles,
 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { ja } from 'date-fns/locale';
 import { useRouter } from 'next/navigation';
 import { useMyProfile, useMyPosts, useGroupActivities, useTopRankings } from '@/hooks/useAppData';
 import { useAppType } from '@/contexts/AppTypeContext';
@@ -162,37 +158,8 @@ export default function HomePage() {
     return Array.from(map.values());
   }, [visitedPosts, wantToGoPosts, groupActivities, allGroupWantToGo]);
 
-  const formatTime = (dateStr: string) => {
-    try {
-      return formatDistanceToNow(new Date(dateStr), { addSuffix: true, locale: ja });
-    } catch {
-      return '';
-    }
-  };
-
-  const toggleLike = async (postId: string, e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setLikedPosts(prev => {
-      const isLiked = !prev[postId];
-      setLikesCount(cPrev => {
-        const current = cPrev[postId] ?? 0;
-        return { ...cPrev, [postId]: isLiked ? current + 1 : Math.max(0, current - 1) };
-      });
-      return { ...prev, [postId]: isLiked };
-    });
-    try {
-      await fetch(`/api/posts/${postId}/want-to-go`, { method: 'POST' });
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   const totalVisited = visitedPosts.length;
   const totalWant = wantToGoPosts.length;
-
-  // 最近の自分の投稿（ハイライト用）
-  const recentVisited = visitedPosts.slice(0, 6);
 
   // ストーリー表示用：グループの最新投稿（重複ユーザーは省く）
   const storyPosts = useMemo(() => {
@@ -495,52 +462,7 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* ── 最近の自分の記録 ── */}
-        {!loading && recentVisited.length > 0 && (
-          <section className="px-4 mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center">
-                <Clock size={13} className="text-white" />
-              </div>
-              <h2 className="text-[15px] font-black text-gray-800">最近の自分の記録</h2>
-              <Link href="/mypage" className="ml-auto text-[11px] font-bold text-orange-500 flex items-center gap-0.5">
-                すべて <ChevronRight size={13} />
-              </Link>
-            </div>
-            <div className="flex gap-2.5 overflow-x-auto hide-scrollbar pb-1">
-              {recentVisited.map(post => (
-                <Link
-                  key={post.id}
-                  href={`/posts/${post.id}`}
-                  className="shrink-0 w-28 active:scale-95 transition-transform"
-                >
-                  <div className="relative w-28 h-28 rounded-2xl overflow-hidden bg-gray-100 mb-1.5 shadow-sm">
-                    {post.image_url ? (
-                      <img
-                        src={getImageUrl(post.image_url)}
-                        alt={post.store_name || post.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-rose-50 to-pink-100 flex flex-col items-center justify-center">
-                        <Utensils size={22} className="text-rose-300 mb-1" />
-                      </div>
-                    )}
-                    {post.rating && (
-                      <div className="absolute top-1.5 left-1.5 flex items-center gap-0.5 bg-black/50 backdrop-blur-sm text-white rounded-full px-1.5 py-0.5">
-                        <Star size={9} className="fill-amber-400 text-amber-400" />
-                        <span className="text-[9px] font-black">{post.rating.toFixed(1)}</span>
-                      </div>
-                    )}
-                  </div>
-                  <p className="text-[11px] font-bold text-gray-700 leading-tight line-clamp-2">
-                    {post.store_name || post.title}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
+
 
         {/* ── 次にどこ行く？ ── */}
         {combinedWantToGo.length > 0 && (
@@ -598,105 +520,7 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* ── グループフィード（カード形式） ── */}
-        {!activitiesLoading && groupActivities.length > 0 && (
-          <section className="px-4 mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-violet-400 to-purple-500 flex items-center justify-center">
-                <Camera size={13} className="text-white" />
-              </div>
-              <h2 className="text-[15px] font-black text-gray-800">
-                みんなの{appType === 'tabereco' ? 'ごちそう' : '旅'}フィード
-              </h2>
-              <Link href="/posts" className="ml-auto text-[11px] font-bold text-orange-500 flex items-center gap-0.5">
-                もっと見る <ChevronRight size={13} />
-              </Link>
-            </div>
-            <div className="space-y-3">
-              {groupActivities.slice(0, 5).map(post => (
-                <div key={post.id} className="bg-white rounded-[20px] overflow-hidden shadow-sm border border-gray-100">
-                  {/* Post header */}
-                  <div className="flex items-center gap-2.5 px-4 pt-4 pb-3">
-                    <div
-                      onClick={() => router.push(`/mypage?userId=${post.user_id}`)}
-                      className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 text-white font-black flex items-center justify-center text-[14px] shrink-0 cursor-pointer shadow-sm"
-                    >
-                      {(post.user?.name || 'U')[0].toUpperCase()}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4
-                        onClick={() => router.push(`/mypage?userId=${post.user_id}`)}
-                        className="text-[13px] font-black text-gray-800 cursor-pointer leading-none"
-                      >
-                        {post.user?.name || 'メンバー'}
-                      </h4>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-[9px] font-bold text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded-md">
-                          {post.__group_name || 'グループ'}
-                        </span>
-                        <span className="text-[9px] text-gray-300 font-bold">
-                          {post.created_at ? formatTime(post.created_at) : ''}
-                        </span>
-                      </div>
-                    </div>
-                    {post._avgRating && (
-                      <div className="flex items-center gap-1 bg-amber-50 border border-amber-100 rounded-full px-2 py-1">
-                        <Star size={10} className="fill-amber-400 text-amber-400" />
-                        <span className="text-[11px] font-black text-amber-600">{Number(post._avgRating).toFixed(1)}</span>
-                      </div>
-                    )}
-                  </div>
 
-                  {/* Post image */}
-                  {(post.image_url || (post.image_urls && post.image_urls.length > 0)) && (
-                    <Link href={`/posts/${post.id}`} className="block">
-                      <div className="aspect-[16/10] bg-gray-100 overflow-hidden">
-                        <img
-                          src={getImageUrl(post.image_url || post.image_urls![0])}
-                          alt={post.store_name || post.title}
-                          className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
-                        />
-                      </div>
-                    </Link>
-                  )}
-
-                  {/* Post info */}
-                  <div className="px-4 py-3">
-                    <Link href={`/posts/${post.id}`}>
-                      <p className="text-[14px] font-black text-gray-800 mb-1">
-                        {post.store_name || post.title}
-                      </p>
-                      {post.comment && (
-                        <p className="text-[12px] text-gray-500 line-clamp-2 leading-relaxed">{post.comment}</p>
-                      )}
-                    </Link>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center justify-between px-4 pb-4 border-t border-gray-50 pt-3">
-                    <button
-                      onClick={(e) => toggleLike(post.id, e)}
-                      className={`flex items-center gap-1.5 text-[12px] font-black transition-all ${likedPosts[post.id] ? 'text-rose-500' : 'text-gray-400 hover:text-rose-400'}`}
-                    >
-                      {likedPosts[post.id] ? (
-                        <BookmarkCheck size={17} className="transition-transform duration-300 scale-110" />
-                      ) : (
-                        <Bookmark size={17} />
-                      )}
-                      <span>行きたい！ {(likesCount[post.id] ?? 0) > 0 ? `(${likesCount[post.id]})` : ''}</span>
-                    </button>
-                    <Link
-                      href={`/posts/${post.id}`}
-                      className="text-[11px] font-black text-orange-500 bg-orange-50 px-3 py-1.5 rounded-full border border-orange-100 active:bg-orange-100 transition-colors"
-                    >
-                      詳細 →
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
 
         {/* ── 空状態 ── */}
         {!loading && !activitiesLoading && groupActivities.length === 0 && visitedPosts.length === 0 && (

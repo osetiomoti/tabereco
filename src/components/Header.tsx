@@ -123,10 +123,20 @@ export function Header({ children, title, showBackButton, hideSettings, backUrl,
   const handleBack = () => {
     if (onBack) {
       onBack();
+      return;
+    }
+
+    // アプリ内の直前画面がある場合は前の画面へ戻る（ホームやマイページ等）
+    // 直前画面がない場合（直接URLを開いた場合等）は backUrl または /posts へフォールバック
+    const hasInAppHistory = typeof window !== 'undefined' && (
+      (window.history.state?.idx !== undefined && window.history.state.idx > 0) ||
+      (document.referrer && document.referrer.includes(window.location.host))
+    );
+
+    if (hasInAppHistory) {
+      router.back();
     } else if (backUrl) {
       router.push(backUrl);
-    } else if (typeof window !== 'undefined' && window.history.length > 1) {
-      router.back();
     } else {
       router.push('/posts');
     }

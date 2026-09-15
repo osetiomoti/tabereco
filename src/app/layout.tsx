@@ -7,6 +7,8 @@ import { SessionKeepAlive } from '@/components/SessionKeepAlive';
 import { ToastProvider } from '@/components/Toast';
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister';
 import { AppTypeProvider, type AppType } from '@/contexts/AppTypeContext';
+import { PostUploadProvider } from '@/contexts/PostUploadContext';
+import { PostUploadBanner } from '@/components/PostUploadBanner';
 import { cookies } from 'next/headers';
 
 const outfit = Outfit({
@@ -70,12 +72,15 @@ export default async function RootLayout({
       <body className={`${outfit.variable} ${notoSansJP.variable} font-sans bg-[#fcfcfc] text-gray-900 antialiased overflow-x-hidden min-h-[100dvh] flex flex-col`} suppressHydrationWarning>
         <SWRProvider>
           <AppTypeProvider initialAppType={initialAppType}>
-            <ToastProvider>
-              <SessionKeepAlive />
-              <ServiceWorkerRegister />
-              {children}
-              <BottomNav />
-            </ToastProvider>
+            <PostUploadProvider>
+              <ToastProvider>
+                <SessionKeepAlive />
+                <ServiceWorkerRegister />
+                <PostUploadBanner />
+                {children}
+                <BottomNav />
+              </ToastProvider>
+            </PostUploadProvider>
           </AppTypeProvider>
         </SWRProvider>
       </body>

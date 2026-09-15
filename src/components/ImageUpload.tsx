@@ -1,7 +1,6 @@
 'use client';
 
 import { useRef, useState, useEffect } from 'react';
-import Image from 'next/image';
 import { ImagePlus, X } from 'lucide-react';
 import { getImageUrl } from '@/lib/image';
 
@@ -130,7 +129,7 @@ export function ImageUpload({ items = [], onChange, maxFiles = 5, uploadProgress
               onDragEnd={handleDragEnd}
               className={`relative rounded-2xl overflow-hidden bg-gray-50 aspect-square shadow-sm group cursor-move transition-transform duration-200 ${draggedIndex === i ? 'opacity-50 scale-95' : 'opacity-100 scale-100'} ${isFirst ? 'ring-2 ring-orange-500 ring-offset-2' : ''}`}
             >
-              <Image src={url} alt={`プレビュー ${i+1}`} fill className="object-cover pointer-events-none" />
+              <img src={url} alt={`プレビュー ${i+1}`} className="w-full h-full object-cover pointer-events-none" />
               <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-all duration-300 pointer-events-none" />
               
               {isFirst && (

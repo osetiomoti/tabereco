@@ -12,6 +12,9 @@ import { getExifGPS } from '@/lib/exif';
 import type { Post, PostFormValues, PostStatus, BathTemperatureInfo } from '@/lib/types';
 import { Loader2, MapPin, Globe, Hash, Check, Tag as TagIcon, Plus, X, Heart, ChevronDown, Lock } from 'lucide-react';
 import { useAppType } from '@/contexts/AppTypeContext';
+import { usePostUpload } from '@/contexts/PostUploadContext';
+import { compressImage } from '@/lib/imageCompression';
+import { getImageUrl } from '@/lib/image';
 
 import { PlaceAutocomplete } from './PlaceAutocomplete';
 import { TagSelector } from './TagSelector';
@@ -28,6 +31,8 @@ export function PostForm({ post }: Props) {
   const { appType } = useAppType();
   const searchParams = useSearchParams();
   const { uploadFile, isUploading } = useUpload();
+  const { startPostUpload } = usePostUpload();
+  const precompressedCacheRef = useRef<Map<File, File>>(new Map());
   const isEdit = Boolean(post);
 
   // Fallback initial values from URL query parameters (Map navigation)
@@ -152,18 +157,29 @@ export function PostForm({ post }: Props) {
   }, [addressLanguage]);
 
   // 画像が選択・並び替えられた時の処理
-  const handleImagesChange = async (items: (File | string)[]) => {
+  const handleImagesChange = (items: (File | string)[]) => {
     setOrderedImages(items);
 
-    // 最初のアイテムがファイルの場合にEXIF情報を取得
+    // バックグラウンドで即座に事前圧縮を開始（UI停止なし）
+    items.forEach(item => {
+      if (item instanceof File && !precompressedCacheRef.current.has(item)) {
+        compressImage(item).then(compressed => {
+          precompressedCacheRef.current.set(item, compressed);
+        }).catch(console.error);
+      }
+    });
+
+    // 最初のアイテムがファイルの場合に非ブロッキングでEXIF情報を取得
     if (items.length > 0 && items[0] instanceof File) {
       setExtractingGps(true);
-      const coords = await getExifGPS(items[0]);
-      if (coords) {
-        set('latitude', coords.latitude);
-        set('longitude', coords.longitude);
-      }
-      setExtractingGps(false);
+      getExifGPS(items[0]).then(coords => {
+        if (coords) {
+          set('latitude', coords.latitude);
+          set('longitude', coords.longitude);
+        }
+      }).catch(console.error).finally(() => {
+        setExtractingGps(false);
+      });
     }
   };
 
@@ -216,32 +232,87 @@ export function PostForm({ post }: Props) {
     if (!values.store_name.trim()) return setError('店名を入力してください');
     if (values.status !== 'want_to_go' && !values.rating) return setError('評価を選択してください');
 
+    const postData = {
+      title: values.title?.trim() || values.store_name.trim(),
+      store_name: values.store_name.trim(),
+      comment: values.comment?.trim() || null,
+      rating: values.status === 'want_to_go' ? null : (values.rating ?? 3),
+      image_url: null as string | null, 
+      image_urls: [] as string[],
+      visited_at: values.visited_at,
+      status: values.status,
+      is_public: values.is_public,
+      address: values.address || null,
+      google_place_id: values.google_place_id || null,
+      latitude: values.latitude || null,
+      longitude: values.longitude || null,
+      is_mine_only: values.is_mine_only,
+      price_min: values.price_min,
+      price_max: values.price_max,
+      temperature_min: values.tags.includes('温泉') ? values.temperature_min : null,
+      temperature_max: values.tags.includes('温泉') ? values.temperature_max : null,
+      // 旅レコ（温泉）専用フィールド (legacy)
+      spring_temp_type: values.tags.includes('温泉') ? values.spring_temp_type : null,
+      spring_temp_custom: values.tags.includes('温泉') ? values.spring_temp_custom : null,
+      spring_temp_min: values.tags.includes('温泉') ? values.spring_temp_min : null,
+      spring_temp_max: values.tags.includes('温泉') ? values.spring_temp_max : null,
+      cold_bath_temp: values.tags.includes('温泉') ? values.cold_bath_temp : null,
+      is_source_fed: values.tags.includes('温泉') ? values.is_source_fed : null,
+      bath_count: values.tags.includes('温泉') ? values.bath_count : null,
+      spring_quality: values.tags.includes('温泉') ? values.spring_quality : null,
+      bath_type: values.tags.includes('温泉') ? values.bath_type : null,
+      hidden_spring_rating: values.tags.includes('温泉') ? values.hidden_spring_rating : null,
+      has_amenities: values.tags.includes('温泉') ? values.has_amenities : null,
+      // V2/V3 hot spring fields
+      spring_qualities: values.tags.includes('温泉') ? values.spring_qualities : [],
+      bath_types: values.tags.includes('温泉') ? values.bath_types : [],
+      source_managements: values.tags.includes('温泉') ? values.source_managements : [],
+      bath_temperatures: values.tags.includes('温泉') ? values.bath_temperatures : null,
+      stay_types: values.tags.includes('温泉') ? values.stay_types : [],
+      facility_types: values.tags.includes('温泉') ? values.facility_types : [],
+      shampoo_types: values.tags.includes('温泉') ? values.shampoo_types : [],
+    };
+
+    // 新規投稿の場合は即座にタイムラインへ遷移し、バックグラウンドで投稿処理を続行
+    if (!isEdit) {
+      submittedRef.current = true;
+      let thumbnailUrl: string | null = null;
+      if (orderedImages.length > 0) {
+        const first = orderedImages[0];
+        if (first instanceof File) {
+          thumbnailUrl = URL.createObjectURL(first);
+        } else if (typeof first === 'string') {
+          thumbnailUrl = getImageUrl(first);
+        }
+      }
+
+      startPostUpload({
+        postData,
+        tags: values.tags,
+        orderedImages,
+        precompressedMap: precompressedCacheRef.current,
+        thumbnailUrl,
+      });
+
+      // 投稿ボタンを押したらタイムライン画面に即座に遷移！
+      router.push('/posts');
+      return;
+    }
+
+    // 既存投稿の編集（isEdit）の場合
     submittedRef.current = true;
     setLoading(true);
     try {
-      // 並び順を保持しつつ、ファイルだけをアップロードする（プログレス表示付き）
-      const filesToUpload = orderedImages.filter(item => item instanceof File);
-      const totalFiles = filesToUpload.length;
-      setUploadTotal(totalFiles);
-      setUploadCurrent(0);
-
-      // Initialize progress for all items
-      const initialProgress: Record<number, 'pending' | 'uploading' | 'done' | 'error'> = {};
-      orderedImages.forEach((item, i) => {
-        if (item instanceof File) initialProgress[i] = 'pending';
-      });
-      setUploadProgress(initialProgress);
-
-      // Upload sequentially for visible progress
+      // 並び順を保持しつつ、ファイルだけをアップロードする
       const finalImageUrls: (string | null)[] = new Array(orderedImages.length);
-      let uploadedCount = 0;
       for (let i = 0; i < orderedImages.length; i++) {
         const item = orderedImages[i];
         if (typeof item === 'string') {
           finalImageUrls[i] = item;
         } else {
           setUploadProgress(prev => ({ ...prev, [i]: 'uploading' }));
-          const uploadedUrl = await uploadFile(item);
+          const compressed = precompressedCacheRef.current.get(item) || await compressImage(item);
+          const uploadedUrl = await uploadFile(compressed);
           if (uploadedUrl) {
             finalImageUrls[i] = uploadedUrl;
             setUploadProgress(prev => ({ ...prev, [i]: 'done' }));
@@ -249,65 +320,18 @@ export function PostForm({ post }: Props) {
             finalImageUrls[i] = null;
             setUploadProgress(prev => ({ ...prev, [i]: 'error' }));
           }
-          uploadedCount++;
-          setUploadCurrent(uploadedCount);
         }
       }
       const filteredUrls = finalImageUrls.filter((url): url is string => url !== null);
 
-      const postData = {
-        title: values.title?.trim() || values.store_name.trim(),
-        store_name: values.store_name.trim(),
-        comment: values.comment?.trim() || null,
-        rating: values.status === 'want_to_go' ? null : (values.rating ?? 3),
-        image_url: filteredUrls[0] || null, 
-        image_urls: filteredUrls, // すべての画像配列
-        visited_at: values.visited_at,
-        status: values.status,
-        is_public: values.is_public,
-        address: values.address || null,
-        google_place_id: values.google_place_id || null,
-        latitude: values.latitude || null,
-        longitude: values.longitude || null,
-        is_mine_only: values.is_mine_only,
-        price_min: values.price_min,
-        price_max: values.price_max,
-        temperature_min: values.tags.includes('温泉') ? values.temperature_min : null,
-        temperature_max: values.tags.includes('温泉') ? values.temperature_max : null,
-        // 旅レコ（温泉）専用フィールド (legacy)
-        spring_temp_type: values.tags.includes('温泉') ? values.spring_temp_type : null,
-        spring_temp_custom: values.tags.includes('温泉') ? values.spring_temp_custom : null,
-        spring_temp_min: values.tags.includes('温泉') ? values.spring_temp_min : null,
-        spring_temp_max: values.tags.includes('温泉') ? values.spring_temp_max : null,
-        cold_bath_temp: values.tags.includes('温泉') ? values.cold_bath_temp : null,
-        is_source_fed: values.tags.includes('温泉') ? values.is_source_fed : null,
-        bath_count: values.tags.includes('温泉') ? values.bath_count : null,
-        spring_quality: values.tags.includes('温泉') ? values.spring_quality : null,
-        bath_type: values.tags.includes('温泉') ? values.bath_type : null,
-        hidden_spring_rating: values.tags.includes('温泉') ? values.hidden_spring_rating : null,
-        has_amenities: values.tags.includes('温泉') ? values.has_amenities : null,
-        // V2/V3 hot spring fields
-        spring_qualities: values.tags.includes('温泉') ? values.spring_qualities : [],
-        bath_types: values.tags.includes('温泉') ? values.bath_types : [],
-        source_managements: values.tags.includes('温泉') ? values.source_managements : [],
-        bath_temperatures: values.tags.includes('温泉') ? values.bath_temperatures : null,
-        stay_types: values.tags.includes('温泉') ? values.stay_types : [],
-        facility_types: values.tags.includes('温泉') ? values.facility_types : [],
-        shampoo_types: values.tags.includes('温泉') ? values.shampoo_types : [],
-      };
+      postData.image_url = filteredUrls[0] || null;
+      postData.image_urls = filteredUrls;
 
-      let result;
-      if (isEdit && post) {
-        result = await updatePost(post.id, postData, values.tags);
+      if (post) {
+        const result = await updatePost(post.id, postData, values.tags);
         if (result) {
           mutate((key: any) => typeof key === 'string' && (key.includes('/api/posts') || key.includes('/api/timeline')));
           router.push(`/posts/${post.id}`);
-        }
-      } else {
-        result = await createPost(postData, values.tags);
-        if (result?.id) {
-          mutate((key: any) => typeof key === 'string' && (key.includes('/api/posts') || key.includes('/api/timeline')));
-          router.push(`/posts/${result.id}`);
         }
       }
       router.refresh();
