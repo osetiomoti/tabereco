@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useEffect } from 'react';
 import useSWRInfinite from 'swr/infinite';
 import { useSharedFilter } from '@/hooks/useSharedFilter';
 import type { Post } from '@/lib/types';
@@ -153,6 +153,19 @@ export function useTimeline(options: UseTimelineOptions = {}) {
       setSize(size + 1);
     }
   }, [isReachingEnd, isLoadingMore, size, setSize]);
+
+  // 投稿作成・更新・削除などのイベント通知を受信した際に自動で一覧を最新状態に再フェッチ
+  useEffect(() => {
+    const handleUpdate = () => {
+      mutate();
+    };
+    window.addEventListener('app:post-updated', handleUpdate);
+    window.addEventListener('app:post-created', handleUpdate);
+    return () => {
+      window.removeEventListener('app:post-updated', handleUpdate);
+      window.removeEventListener('app:post-created', handleUpdate);
+    };
+  }, [mutate]);
 
   return {
     posts,

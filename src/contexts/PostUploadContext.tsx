@@ -1,9 +1,10 @@
 'use client';
 
 import React, { createContext, useContext, useState, useRef, useCallback } from 'react';
-import { mutate } from 'swr';
+import { mutate, useSWRConfig } from 'swr';
 import { compressImage } from '@/lib/imageCompression';
 import { createPost } from '@/lib/api/posts';
+import { notifyPostUpdated } from '@/lib/revalidate';
 
 export type PostUploadStatus = 'idle' | 'compressing' | 'uploading' | 'saving' | 'success' | 'error';
 
@@ -34,6 +35,7 @@ interface PostUploadContextType extends PostUploadState {
 const PostUploadContext = createContext<PostUploadContextType | null>(null);
 
 export function PostUploadProvider({ children }: { children: React.ReactNode }) {
+  const { cache, mutate: globalMutate } = useSWRConfig();
   const [state, setState] = useState<PostUploadState>({
     status: 'idle',
     progress: 0,
@@ -176,15 +178,21 @@ export function PostUploadProvider({ children }: { children: React.ReactNode }) 
         createdPostId: result.id,
       }));
 
-      // SWR のタイムライン・投稿・マイページ関連キャッシュを即時更新
-      mutate((key: any) =>
-        typeof key === 'string' && (
-          key.includes('/api/timeline') ||
-          key.includes('/api/posts') ||
-          key.includes('/api/stats') ||
-          key.includes('/api/map')
-        )
-      );
+      // SWR のタイムライン・投稿・マイページ関連キャッシュを即時更新 & useTimeline へイベント通知
+      notifyPostUpdated({ action: 'create', postId: result.id, post: result });
+
+      // SWRキャッシュ内の $inf$ キー（無限スクロール用キー）を直接 revalidate
+      try {
+        if (cache && typeof (cache as any).keys === 'function') {
+          for (const k of (cache as any).keys()) {
+            if (typeof k === 'string' && k.startsWith('$inf$') && k.includes('/api/timeline')) {
+              globalMutate(k);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[PostUploadContext] Failed to revalidate infinite cache keys:', e);
+      }
 
       // 4秒後にバナーを自動消去
       dismissTimerRef.current = setTimeout(() => {

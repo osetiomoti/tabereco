@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ImageUpload } from './ImageUpload';
 import { StarInput } from './StarRating';
 import { createPost, updatePost } from '@/lib/api/posts';
+import { notifyPostUpdated } from '@/lib/revalidate';
 import { useUpload } from '@/hooks/useUpload';
 import { todayString } from '@/lib/utils';
 import { getExifGPS } from '@/lib/exif';
@@ -330,7 +331,7 @@ export function PostForm({ post }: Props) {
       if (post) {
         const result = await updatePost(post.id, postData, values.tags);
         if (result) {
-          mutate((key: any) => typeof key === 'string' && (key.includes('/api/posts') || key.includes('/api/timeline')));
+          notifyPostUpdated({ action: 'update', postId: post.id, post: result });
           router.push(`/posts/${post.id}`);
         }
       }

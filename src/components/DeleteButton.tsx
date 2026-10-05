@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { mutate } from 'swr';
+import { notifyPostUpdated } from '@/lib/revalidate';
 import { deletePost } from '@/lib/api/posts';
 import { Trash2, Loader2 } from 'lucide-react';
 
@@ -19,7 +19,7 @@ export function DeleteButton({ postId }: Props) {
     setLoading(true);
     try {
       await deletePost(postId);
-      mutate((key: any) => typeof key === 'string' && (key.includes('/api/posts') || key.includes('/api/timeline')));
+      notifyPostUpdated({ action: 'delete', postId });
       router.push('/posts');
       router.refresh();
     } catch {
