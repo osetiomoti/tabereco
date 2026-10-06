@@ -11,7 +11,7 @@ import { useUpload } from '@/hooks/useUpload';
 import { todayString } from '@/lib/utils';
 import { getExifGPS } from '@/lib/exif';
 import type { Post, PostFormValues, PostStatus, BathTemperatureInfo } from '@/lib/types';
-import { Loader2, MapPin, Globe, Hash, Check, Tag as TagIcon, Plus, X, Heart, ChevronDown, Lock } from 'lucide-react';
+import { Loader2, MapPin, Globe, Hash, Check, Tag as TagIcon, Plus, X, Heart, ChevronDown, Lock, Camera } from 'lucide-react';
 import { useAppType } from '@/contexts/AppTypeContext';
 import { usePostUpload } from '@/contexts/PostUploadContext';
 import { compressImage } from '@/lib/imageCompression';
@@ -125,6 +125,42 @@ export function PostForm({ post }: Props) {
   const [uploadCurrent, setUploadCurrent] = useState(0);
   const [uploadTotal, setUploadTotal] = useState(0);
 
+  // Google Places 写真
+  const [placePhotos, setPlacePhotos] = useState<string[]>([]);
+  const [placePhotosLoading, setPlacePhotosLoading] = useState(false);
+  const placePhotosScrollRef = useRef<HTMLDivElement>(null);
+
+  const fetchPlacePhotos = async (placeId: string) => {
+    setPlacePhotos([]);
+    setPlacePhotosLoading(true);
+    try {
+      const detailsRes = await fetch(`/api/places/details?placeId=${placeId}`);
+      if (!detailsRes.ok) return;
+      const details = await detailsRes.json();
+      const photoRefs: Array<{ name: string }> = details.photos?.slice(0, 8) || [];
+      if (photoRefs.length === 0) return;
+
+      // 並列でphotoUriを取得
+      const uris = await Promise.all(
+        photoRefs.map(async (p) => {
+          try {
+            const r = await fetch(`/api/places/photo?name=${encodeURIComponent(p.name)}&maxWidth=800`);
+            if (!r.ok) return null;
+            const d = await r.json();
+            return d.photoUri as string | null;
+          } catch {
+            return null;
+          }
+        })
+      );
+      setPlacePhotos(uris.filter(Boolean) as string[]);
+    } catch (e) {
+      console.error('Failed to fetch place photos:', e);
+    } finally {
+      setPlacePhotosLoading(false);
+    }
+  };
+
   // 温泉詳細の表示トグル
   const [showHotSpringDetails, setShowHotSpringDetails] = useState(true);
 
@@ -205,6 +241,9 @@ export function PostForm({ post }: Props) {
     if (addressLanguage === 'en') {
       updateAddressByLanguage(place.placeId, 'en');
     }
+
+    // Google マップの写真を非同期で取得
+    fetchPlacePhotos(place.placeId);
   };
 
   const handleMapPlaceSelected = (place: {
@@ -356,6 +395,67 @@ export function PostForm({ post }: Props) {
           maxFiles={5}
           uploadProgress={uploadProgress}
         />
+
+        {/* Googleマップの写真候補 */}
+        {(placePhotosLoading || placePhotos.length > 0) && (
+          <div className="mt-3 space-y-2">
+            <div className="flex items-center gap-1.5 px-1">
+              <Camera size={13} className="text-gray-400" />
+              <span className="text-[11px] font-bold text-gray-400 tracking-wider">Googleマップの写真から追加</span>
+            </div>
+            {placePhotosLoading ? (
+              <div className="flex items-center gap-2 px-1">
+                <Loader2 size={16} className="animate-spin text-[var(--color-primary)]" />
+                <span className="text-[12px] text-gray-400">写真を取得中...</span>
+              </div>
+            ) : (
+              <div
+                ref={placePhotosScrollRef}
+                className="flex gap-2.5 overflow-x-auto pb-1 px-1 scrollbar-none"
+                style={{ scrollbarWidth: 'none' }}
+              >
+                {placePhotos.map((uri, idx) => {
+                  const alreadyAdded = orderedImages.includes(uri);
+                  return (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => {
+                        if (alreadyAdded) {
+                          handleImagesChange(orderedImages.filter((img) => img !== uri));
+                        } else if (orderedImages.length < 5) {
+                          handleImagesChange([...orderedImages, uri]);
+                        } else {
+                          alert('画像は最大5枚までです');
+                        }
+                      }}
+                      className={`relative shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 transition-all active:scale-95 ${
+                        alreadyAdded
+                          ? 'border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/30'
+                          : 'border-transparent hover:border-gray-300'
+                      }`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={uri}
+                        alt={`店舗写真${idx + 1}`}
+                        className="w-full h-full object-cover"
+                        loading="lazy"
+                      />
+                      {alreadyAdded && (
+                        <div className="absolute inset-0 bg-[var(--color-primary)]/20 flex items-center justify-center">
+                          <div className="w-6 h-6 rounded-full bg-[var(--color-primary)] flex items-center justify-center">
+                            <Check size={13} className="text-white" />
+                          </div>
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="flex p-1.5 bg-gray-100/50 backdrop-blur-md border border-gray-100 rounded-2xl shadow-inner mx-1">
           <button

@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       method: 'GET',
       headers: {
         'X-Goog-Api-Key': apiKey,
-        'X-Goog-FieldMask': 'id,displayName,formattedAddress,location',
+        'X-Goog-FieldMask': 'id,displayName,formattedAddress,location,photos',
       },
     });
 
