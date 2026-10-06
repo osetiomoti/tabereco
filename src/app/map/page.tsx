@@ -87,9 +87,9 @@ function MapPageInner() {
       </Header>
       <main className="w-full h-[calc(100dvh-64px-64px)] pb-safe relative animate-fade-in group">
         {/* Floating Search Bar & Filter Chips */}
-        <div className="absolute top-4 left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 sm:w-[500px] z-[100] flex flex-col gap-2 pointer-events-none">
+        <div className="absolute top-3 left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 sm:w-[500px] z-[100] flex flex-col gap-2 pointer-events-none">
           
-          <div className="shadow-2xl rounded-2xl overflow-visible relative pointer-events-auto">
+          <div className="shadow-lg rounded-2xl overflow-visible relative pointer-events-auto bg-white/95 backdrop-blur-md">
             <PlaceAutocomplete onPlaceSelected={handleSearchSelect} />
           </div>
 
@@ -106,8 +106,6 @@ function MapPageInner() {
             groups={joinedGroups}
             className="pointer-events-auto"
           />
-
-
         </div>
 
         {/* Map Area */}

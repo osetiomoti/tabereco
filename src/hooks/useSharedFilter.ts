@@ -15,20 +15,20 @@ type SharedFilterState = {
 };
 
 const defaultTaberecoState: SharedFilterState = {
-  activeTab: 'visited',
+  activeTab: 'all',
   keyword: '',
   searchMode: 'store_name',
   activeGroups: ['all'],
-  advancedFilters: { include_mine: true, status: 'visited' },
+  advancedFilters: undefined,
   activeMapTag: null,
 };
 
 const defaultTabirecoState: SharedFilterState = {
-  activeTab: 'visited',
+  activeTab: 'all',
   keyword: '',
   searchMode: 'store_name',
   activeGroups: ['all'],
-  advancedFilters: { include_mine: true, status: 'visited', is_hot_spring_mode: true },
+  advancedFilters: undefined,
   activeMapTag: null,
 };
 
