@@ -60,7 +60,7 @@ type Props = {
   initialSelectedPostId?: string | null;
 };
 
-export default function MapView({ posts, center, zoom = 14, tempMarker, setTempMarker, initialSelectedPostId }: Props) {
+export default function MapView({ posts, center, zoom = 5, tempMarker, setTempMarker, initialSelectedPostId }: Props) {
   const apiKey = (process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '').trim();
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -76,7 +76,6 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
   const markersRef = useRef<Map<string, google.maps.Marker>>(new Map());
   const tempMarkerRef = useRef<google.maps.Marker | null>(null);
   const userLocationMarkerRef = useRef<google.maps.Marker | null>(null);
-  const hasAutoCenteredRef = useRef(false);
 
   const [mapTypeId, setMapTypeId] = useState<string>('roadmap');
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -88,26 +87,20 @@ export default function MapView({ posts, center, zoom = 14, tempMarker, setTempM
   const tempMarkerRefState = useRef(tempMarker);
   tempMarkerRefState.current = tempMarker;
 
-  // ─── 投稿ピンの自動フィット（初回ロード時にピンが画面に入るように調整） ───
+  // ─── 外部 props (center, zoom) 変更時の追従 ───
+  const prevCenterRef = useRef(center);
+  const prevZoomRef = useRef(zoom);
   useEffect(() => {
-    if (!mapRef.current || !mapReady || hasAutoCenteredRef.current || initialSelectedPostId) return;
-
-    const validPosts = posts.filter(p => p.latitude && p.longitude);
-    if (validPosts.length === 0) return;
-
-    hasAutoCenteredRef.current = true;
-
-    if (validPosts.length === 1) {
-      mapRef.current.panTo({ lat: validPosts[0].latitude!, lng: validPosts[0].longitude! });
-      mapRef.current.setZoom(15);
-    } else {
-      const bounds = new window.google.maps.LatLngBounds();
-      validPosts.forEach(p => {
-        bounds.extend({ lat: p.latitude!, lng: p.longitude! });
-      });
-      mapRef.current.fitBounds(bounds, { top: 120, bottom: 80, left: 40, right: 40 });
+    if (!mapRef.current || !mapReady) return;
+    if (prevCenterRef.current.lat !== center.lat || prevCenterRef.current.lng !== center.lng) {
+      mapRef.current.panTo(center);
+      prevCenterRef.current = center;
     }
-  }, [posts, mapReady, initialSelectedPostId]);
+    if (prevZoomRef.current !== zoom) {
+      mapRef.current.setZoom(zoom);
+      prevZoomRef.current = zoom;
+    }
+  }, [center, zoom, mapReady]);
 
   // ─── 投稿ピンの命令的管理 ───
   useEffect(() => {

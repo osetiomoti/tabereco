@@ -22,28 +22,35 @@ const MapView = dynamic(() => import('@/components/MapView'), {
   ),
 });
 
+const JAPAN_CENTER = { lat: 37.0, lng: 137.5 };
+const JAPAN_ZOOM = 5;
+
 function MapPageInner() {
   const { appType } = useAppType();
   const { posts, loading, filterState, updateFilter, activeFilterCount, removeFilter, memberUsers, joinedGroups } = useFilteredPosts();
   const { activeTab, keyword, activeGroups, advancedFilters, activeMapTag } = filterState;
-
-  const [center, setCenter] = useState<{ lat: number, lng: number }>({ lat: 35.681236, lng: 139.767125 });
-  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [tempMarker, setTempMarker] = useState<{ lat: number, lng: number, placeId?: string, name?: string, address?: string } | null>(null);
 
   const searchParams = useSearchParams();
   const queryLat = searchParams.get('lat');
   const queryLng = searchParams.get('lng');
   const queryPostId = searchParams.get('postId');
 
+  const [center, setCenter] = useState<{ lat: number, lng: number }>(() => {
+    if (queryLat && queryLng) {
+      return { lat: parseFloat(queryLat), lng: parseFloat(queryLng) };
+    }
+    return JAPAN_CENTER;
+  });
+  const [zoom, setZoom] = useState<number>(() => {
+    return (queryLat && queryLng) || queryPostId ? 16 : JAPAN_ZOOM;
+  });
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
+  const [tempMarker, setTempMarker] = useState<{ lat: number, lng: number, placeId?: string, name?: string, address?: string } | null>(null);
+
   useEffect(() => {
     if (queryLat && queryLng) {
       setCenter({ lat: parseFloat(queryLat), lng: parseFloat(queryLng) });
-    } else if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => setCenter({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-        (err) => console.log('Location error:', err)
-      );
+      setZoom(16);
     }
   }, [queryLat, queryLng]);
 
@@ -57,6 +64,7 @@ function MapPageInner() {
 
   const handleSearchSelect = (place: { name: string, address: string, lat: number, lng: number, placeId: string }) => {
     setCenter({ lat: place.lat, lng: place.lng });
+    setZoom(15);
     setTempMarker({
       lat: place.lat,
       lng: place.lng,
@@ -115,7 +123,7 @@ function MapPageInner() {
                <MapPin className="text-gray-200 animate-bounce" size={48} />
              </div>
           ) : (
-            <MapView posts={displayedPosts} center={center} tempMarker={tempMarker} setTempMarker={setTempMarker} initialSelectedPostId={queryPostId} />
+            <MapView posts={displayedPosts} center={center} zoom={zoom} tempMarker={tempMarker} setTempMarker={setTempMarker} initialSelectedPostId={queryPostId} />
           )}
         </div>
       </main>
