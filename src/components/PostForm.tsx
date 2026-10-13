@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import useSWR, { mutate } from 'swr';
 import { useRouter } from 'next/navigation';
 import { ImageUpload } from './ImageUpload';
@@ -125,20 +125,62 @@ export function PostForm({ post }: Props) {
   const [uploadCurrent, setUploadCurrent] = useState(0);
   const [uploadTotal, setUploadTotal] = useState(0);
 
-  // Google Places 写真
+  // Google Places 写真（インターネット取得トグル: デフォルトOFF）
+  const [enableFetchPlacePhotos, setEnableFetchPlacePhotos] = useState(false);
   const [placePhotos, setPlacePhotos] = useState<string[]>([]);
   const [placePhotosLoading, setPlacePhotosLoading] = useState(false);
   const placePhotosScrollRef = useRef<HTMLDivElement>(null);
+  const lastFetchedKeyRef = useRef<string>('');
 
-  const fetchPlacePhotos = async (placeId: string) => {
+  const fetchPlacePhotos = useCallback(async (params: { placeId?: string; query?: string }) => {
+    let targetPlaceId = params.placeId;
+    const query = params.query?.trim();
+
+    if (!targetPlaceId && !query) {
+      setPlacePhotos([]);
+      setPlacePhotosLoading(false);
+      return;
+    }
+
+    const currentKey = targetPlaceId ? `id:${targetPlaceId}` : `q:${query}`;
+    if (lastFetchedKeyRef.current === currentKey && placePhotos.length > 0) {
+      return;
+    }
+
     setPlacePhotos([]);
     setPlacePhotosLoading(true);
+
     try {
-      const detailsRes = await fetch(`/api/places/details?placeId=${placeId}`);
-      if (!detailsRes.ok) return;
+      // placeId がない場合は店名テキストから最初のサジェストの placeId を取得
+      if (!targetPlaceId && query) {
+        const searchRes = await fetch(`/api/places/search?q=${encodeURIComponent(query)}`);
+        if (searchRes.ok) {
+          const searchData = await searchRes.json();
+          const firstSuggestion = searchData.suggestions?.[0]?.placePrediction;
+          if (firstSuggestion?.placeId) {
+            targetPlaceId = firstSuggestion.placeId;
+          }
+        }
+      }
+
+      if (!targetPlaceId) {
+        setPlacePhotosLoading(false);
+        return;
+      }
+
+      lastFetchedKeyRef.current = targetPlaceId ? `id:${targetPlaceId}` : currentKey;
+
+      const detailsRes = await fetch(`/api/places/details?placeId=${targetPlaceId}`);
+      if (!detailsRes.ok) {
+        setPlacePhotosLoading(false);
+        return;
+      }
       const details = await detailsRes.json();
       const photoRefs: Array<{ name: string }> = details.photos?.slice(0, 8) || [];
-      if (photoRefs.length === 0) return;
+      if (photoRefs.length === 0) {
+        setPlacePhotosLoading(false);
+        return;
+      }
 
       // 並列でphotoUriを取得
       const uris = await Promise.all(
@@ -159,7 +201,36 @@ export function PostForm({ post }: Props) {
     } finally {
       setPlacePhotosLoading(false);
     }
-  };
+  }, [placePhotos.length]);
+
+  // トグルがONのとき、場所入力や選択に連動して写真を自動取得
+  useEffect(() => {
+    if (!enableFetchPlacePhotos) {
+      setPlacePhotos([]);
+      setPlacePhotosLoading(false);
+      lastFetchedKeyRef.current = '';
+      return;
+    }
+
+    const hasPlaceId = Boolean(values.google_place_id);
+    const hasStoreName = Boolean(values.store_name?.trim());
+
+    if (!hasPlaceId && !hasStoreName) {
+      setPlacePhotos([]);
+      setPlacePhotosLoading(false);
+      lastFetchedKeyRef.current = '';
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      fetchPlacePhotos({
+        placeId: values.google_place_id || undefined,
+        query: values.store_name || undefined,
+      });
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [enableFetchPlacePhotos, values.store_name, values.google_place_id, fetchPlacePhotos]);
 
   // 温泉詳細の表示トグル
   const [showHotSpringDetails, setShowHotSpringDetails] = useState(true);
@@ -242,8 +313,10 @@ export function PostForm({ post }: Props) {
       updateAddressByLanguage(place.placeId, 'en');
     }
 
-    // Google マップの写真を非同期で取得
-    fetchPlacePhotos(place.placeId);
+    // Google マップの写真を非同期で取得（トグルがONの場合のみ即座に取得）
+    if (enableFetchPlacePhotos) {
+      fetchPlacePhotos({ placeId: place.placeId });
+    }
   };
 
   const handleMapPlaceSelected = (place: {
@@ -261,6 +334,10 @@ export function PostForm({ post }: Props) {
       longitude: place.lng,
       google_place_id: place.placeId || '',
     }));
+
+    if (enableFetchPlacePhotos && place.placeId) {
+      fetchPlacePhotos({ placeId: place.placeId });
+    }
   };
 
 
@@ -386,9 +463,9 @@ export function PostForm({ post }: Props) {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8 pb-20 sm:pb-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <form onSubmit={handleSubmit} className="space-y-8 pb-20 sm:pb-10 animate-in fade-in slide-in-from-bottom-4 duration-700 w-full min-w-0 max-w-full overflow-x-hidden">
       {/* 1. 写真と基本ステータス */}
-      <section className="space-y-4">
+      <section className="space-y-4 w-full min-w-0 max-w-full">
         <ImageUpload
           items={orderedImages}
           onChange={handleImagesChange}
@@ -396,62 +473,91 @@ export function PostForm({ post }: Props) {
           uploadProgress={uploadProgress}
         />
 
-        {/* Googleマップの写真候補 */}
-        {(placePhotosLoading || placePhotos.length > 0) && (
-          <div className="mt-3 space-y-2">
-            <div className="flex items-center gap-1.5 px-1">
-              <Camera size={13} className="text-gray-400" />
-              <span className="text-[11px] font-bold text-gray-400 tracking-wider">Googleマップの写真から追加</span>
-            </div>
+        {/* Googleマップの写真取得トグル（デフォルトOFF） */}
+        <div className="flex items-center justify-between px-1.5 py-1">
+          <div className="flex items-center gap-1.5">
+            <Camera size={13} className="text-gray-400" />
+            <span className="text-[11px] font-bold text-gray-500 tracking-wider">Googleマップの写真を取得</span>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={enableFetchPlacePhotos}
+            onClick={() => setEnableFetchPlacePhotos(!enableFetchPlacePhotos)}
+            className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+              enableFetchPlacePhotos ? 'bg-[var(--color-primary)]' : 'bg-gray-200'
+            }`}
+          >
+            <span
+              className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-sm ring-0 transition duration-200 ease-in-out ${
+                enableFetchPlacePhotos ? 'translate-x-4' : 'translate-x-0'
+              }`}
+            />
+          </button>
+        </div>
+
+        {/* Googleマップの写真候補（トグルがONの時のみ表示） */}
+        {enableFetchPlacePhotos && (
+          <div className="mt-2 space-y-2 w-full min-w-0 max-w-full overflow-hidden">
             {placePhotosLoading ? (
-              <div className="flex items-center gap-2 px-1">
-                <Loader2 size={16} className="animate-spin text-[var(--color-primary)]" />
-                <span className="text-[12px] text-gray-400">写真を取得中...</span>
+              <div className="flex items-center gap-2 px-1 py-1">
+                <Loader2 size={15} className="animate-spin text-[var(--color-primary)]" />
+                <span className="text-[11px] text-gray-400">Googleマップから写真を取得中...</span>
+              </div>
+            ) : placePhotos.length > 0 ? (
+              <div className="w-full min-w-0 max-w-full overflow-hidden">
+                <div
+                  ref={placePhotosScrollRef}
+                  className="flex gap-2.5 overflow-x-auto pb-1 px-1 scrollbar-none w-full min-w-0 max-w-full overscroll-x-contain touch-pan-x"
+                  style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
+                >
+                  {placePhotos.map((uri, idx) => {
+                    const alreadyAdded = orderedImages.includes(uri);
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          if (alreadyAdded) {
+                            handleImagesChange(orderedImages.filter((img) => img !== uri));
+                          } else if (orderedImages.length < 5) {
+                            handleImagesChange([...orderedImages, uri]);
+                          } else {
+                            alert('画像は最大5枚までです');
+                          }
+                        }}
+                        className={`relative shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 transition-all active:scale-95 ${
+                          alreadyAdded
+                            ? 'border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/30'
+                            : 'border-transparent hover:border-gray-300'
+                        }`}
+                      >
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={uri}
+                          alt={`店舗写真${idx + 1}`}
+                          className="w-full h-full object-cover"
+                          loading="lazy"
+                        />
+                        {alreadyAdded && (
+                          <div className="absolute inset-0 bg-[var(--color-primary)]/20 flex items-center justify-center">
+                            <div className="w-6 h-6 rounded-full bg-[var(--color-primary)] flex items-center justify-center">
+                              <Check size={13} className="text-white" />
+                            </div>
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : values.store_name.trim() || values.google_place_id ? (
+              <div className="px-1 py-1 text-[11px] text-gray-400">
+                写真が見つかりませんでした
               </div>
             ) : (
-              <div
-                ref={placePhotosScrollRef}
-                className="flex gap-2.5 overflow-x-auto pb-1 px-1 scrollbar-none"
-                style={{ scrollbarWidth: 'none' }}
-              >
-                {placePhotos.map((uri, idx) => {
-                  const alreadyAdded = orderedImages.includes(uri);
-                  return (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => {
-                        if (alreadyAdded) {
-                          handleImagesChange(orderedImages.filter((img) => img !== uri));
-                        } else if (orderedImages.length < 5) {
-                          handleImagesChange([...orderedImages, uri]);
-                        } else {
-                          alert('画像は最大5枚までです');
-                        }
-                      }}
-                      className={`relative shrink-0 w-20 h-20 rounded-xl overflow-hidden border-2 transition-all active:scale-95 ${
-                        alreadyAdded
-                          ? 'border-[var(--color-primary)] ring-2 ring-[var(--color-primary)]/30'
-                          : 'border-transparent hover:border-gray-300'
-                      }`}
-                    >
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={uri}
-                        alt={`店舗写真${idx + 1}`}
-                        className="w-full h-full object-cover"
-                        loading="lazy"
-                      />
-                      {alreadyAdded && (
-                        <div className="absolute inset-0 bg-[var(--color-primary)]/20 flex items-center justify-center">
-                          <div className="w-6 h-6 rounded-full bg-[var(--color-primary)] flex items-center justify-center">
-                            <Check size={13} className="text-white" />
-                          </div>
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
+              <div className="px-1 py-1 text-[11px] text-gray-400">
+                場所を入力すると写真候補が表示されます
               </div>
             )}
           </div>

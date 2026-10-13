@@ -42,7 +42,7 @@ export default async function EditPostPage({ params }: Props) {
   return (
     <>
       <Header title="編集する" showBackButton hideSettings />
-      <main className="max-w-2xl mx-auto px-4 py-4 pb-32">
+      <main className="max-w-2xl mx-auto px-4 py-4 pb-32 w-full min-w-0 overflow-x-hidden">
         <h1 className="text-base font-black text-gray-800 mb-4 px-1">記録の内容を編集</h1>
 
         <React.Suspense fallback={<div className="h-64 flex justify-center items-center"><div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" /></div>}>
