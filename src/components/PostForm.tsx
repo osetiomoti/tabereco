@@ -474,16 +474,31 @@ export function PostForm({ post }: Props) {
         />
 
         {/* Googleマップの写真取得トグル（デフォルトOFF） */}
-        <div className="flex items-center justify-between px-1.5 py-1">
-          <div className="flex items-center gap-1.5">
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setEnableFetchPlacePhotos((prev) => !prev)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setEnableFetchPlacePhotos((prev) => !prev);
+            }
+          }}
+          className="flex items-center justify-between px-1.5 py-1 cursor-pointer select-none rounded-lg hover:bg-black/[0.02] active:bg-black/[0.04] transition-colors"
+        >
+          <div className="flex items-center gap-1.5 pointer-events-none">
             <Camera size={13} className="text-gray-400" />
             <span className="text-[11px] font-bold text-gray-500 tracking-wider">Googleマップの写真を取得</span>
           </div>
           <button
+            id="toggle-fetch-place-photos"
             type="button"
             role="switch"
             aria-checked={enableFetchPlacePhotos}
-            onClick={() => setEnableFetchPlacePhotos(!enableFetchPlacePhotos)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setEnableFetchPlacePhotos((prev) => !prev);
+            }}
             className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
               enableFetchPlacePhotos ? 'bg-[var(--color-primary)]' : 'bg-gray-200'
             }`}
