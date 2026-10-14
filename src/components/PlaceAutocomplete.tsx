@@ -37,6 +37,26 @@ export function PlaceAutocomplete({ onPlaceSelected, defaultValue = '', onInputC
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
+  // スマホでのスクロール検知用Ref
+  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
+  const isScrollingRef = useRef(false);
+  const isInteractingWithListRef = useRef(false);
+
+  // コンテナ外タップ・クリックで候補を閉じる
+  useEffect(() => {
+    const handleOutsideInteraction = (e: MouseEvent | TouchEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideInteraction);
+    document.addEventListener('touchstart', handleOutsideInteraction, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideInteraction);
+      document.removeEventListener('touchstart', handleOutsideInteraction);
+    };
+  }, []);
+
   const fetchPredictions = async (value: string) => {
     if (value.length < 1) {
       setPredictions([]);
@@ -129,7 +149,15 @@ export function PlaceAutocomplete({ onPlaceSelected, defaultValue = '', onInputC
           value={inputValue}
           onChange={(e) => handleInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          onBlur={() => setTimeout(() => setIsOpen(false), 200)}
+          onBlur={() => {
+            setTimeout(() => {
+              if (!isInteractingWithListRef.current) {
+                if (containerRef.current && !containerRef.current.contains(document.activeElement)) {
+                  setIsOpen(false);
+                }
+              }
+            }, 200);
+          }}
           onFocus={() => inputValue && predictions.length > 0 && setIsOpen(true)}
           placeholder="店名・スポット名を入力（例：マクドナルド 渋谷）"
           className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3.5 pl-10 text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all shadow-sm group-hover:border-gray-300 text-[16px]"
@@ -152,17 +180,59 @@ export function PlaceAutocomplete({ onPlaceSelected, defaultValue = '', onInputC
       </div>
 
       {isOpen && predictions.length > 0 && (
-        <ul className="absolute z-[100000] left-0 right-0 mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-y-auto max-h-[50vh] sm:max-h-[65vh] py-1"
+        <ul
+          className="absolute z-[100000] left-0 right-0 mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-y-auto max-h-[50vh] sm:max-h-[65vh] py-1 touch-pan-y overscroll-y-contain select-none"
           style={{ WebkitOverflowScrolling: 'touch' }}
+          onMouseDown={(e) => {
+            // PCでスクロールバーやリストクリック時に入力のフォーカスが外れるのを防ぐ
+            e.preventDefault();
+          }}
+          onTouchStart={(e) => {
+            isInteractingWithListRef.current = true;
+            const touch = e.touches[0];
+            touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
+            isScrollingRef.current = false;
+          }}
+          onTouchMove={(e) => {
+            if (!touchStartPosRef.current) return;
+            const touch = e.touches[0];
+            const dist = Math.hypot(
+              touch.clientX - touchStartPosRef.current.x,
+              touch.clientY - touchStartPosRef.current.y
+            );
+            // 8px以上の移動があればスクロール操作とみなす
+            if (dist > 8) {
+              isScrollingRef.current = true;
+            }
+          }}
+          onTouchEnd={() => {
+            // タッチ終了後、inputのblurによる即時クローズを防ぐため少し間を置く
+            setTimeout(() => {
+              isInteractingWithListRef.current = false;
+            }, 300);
+            // タップ後のクリック判定完了後にスクロールフラグをリセット
+            setTimeout(() => {
+              isScrollingRef.current = false;
+              touchStartPosRef.current = null;
+            }, 150);
+          }}
+          onTouchCancel={() => {
+            isInteractingWithListRef.current = false;
+            isScrollingRef.current = false;
+            touchStartPosRef.current = null;
+          }}
         >
           {predictions.map((p, i) => {
             const pred = p.placePrediction;
             return (
               <li
                 key={pred.placeId}
-                onMouseDown={(e) => { e.preventDefault(); handleSelect(p); }}
-                className={`flex items-start gap-3 px-4 py-3.5 cursor-pointer transition-colors ${
-                  i === activeIndex ? 'bg-orange-50' : 'hover:bg-gray-50'
+                onClick={() => {
+                  if (isScrollingRef.current) return;
+                  handleSelect(p);
+                }}
+                className={`flex items-start gap-3 px-4 py-3.5 cursor-pointer transition-colors select-none ${
+                  i === activeIndex ? 'bg-orange-50' : 'hover:bg-gray-50 active:bg-orange-50/50'
                 } ${i !== 0 ? 'border-t border-gray-50' : ''}`}
               >
                 <div className="mt-0.5 flex-shrink-0 w-7 h-7 rounded-full bg-orange-50 flex items-center justify-center">
