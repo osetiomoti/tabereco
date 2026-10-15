@@ -171,17 +171,7 @@ export default function HomePage() {
     }).slice(0, 8);
   }, [groupActivities]);
 
-  // 人気投稿（いいね順）
-  const hotPosts = useMemo(() => {
-    return [...groupActivities]
-      .sort((a, b) => {
-        const countA = likesCount[a.id] ?? a.want_to_gos?.length ?? 0;
-        const countB = likesCount[b.id] ?? b.want_to_gos?.length ?? 0;
-        return countB - countA;
-      })
-      .filter(p => (likesCount[p.id] ?? p.want_to_gos?.length ?? 0) > 0 || p.image_url || p.image_urls?.[0])
-      .slice(0, 4);
-  }, [groupActivities, likesCount]);
+
 
   return (
     <div className="bg-gray-50 min-h-screen pb-32 overflow-x-hidden">
@@ -405,62 +395,7 @@ export default function HomePage() {
           </section>
         )}
 
-        {/* ── ホット投稿 2×2グリッド ── */}
-        {!activitiesLoading && hotPosts.length >= 2 && (
-          <section className="px-4 mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center">
-                <Zap size={13} className="text-white" />
-              </div>
-              <h2 className="text-[15px] font-black text-gray-800">みんなのピックアップ</h2>
-              <Link href="/posts" className="ml-auto text-[11px] font-bold text-orange-500 flex items-center gap-0.5">
-                もっと見る <ChevronRight size={13} />
-              </Link>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              {hotPosts.slice(0, 4).map((post, idx) => (
-                <Link
-                  key={post.id}
-                  href={`/posts/${post.id}`}
-                  className={`relative overflow-hidden rounded-2xl bg-gray-100 active:scale-98 transition-transform shadow-sm ${idx === 0 ? 'row-span-2 aspect-[4/5]' : 'aspect-square'}`}
-                  style={{ minHeight: idx === 0 ? 0 : undefined }}
-                >
-                  {(post.image_url || post.image_urls?.[0]) ? (
-                    <img
-                      src={getImageUrl(post.image_url || post.image_urls![0])}
-                      alt={post.store_name || post.title}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-orange-50 to-pink-100 flex items-center justify-center">
-                      <Utensils size={28} className="text-orange-300" />
-                    </div>
-                  )}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-                  <div className="absolute bottom-0 left-0 right-0 p-2.5">
-                    <p className="text-white font-black text-[11px] leading-tight line-clamp-2">
-                      {post.store_name || post.title}
-                    </p>
-                    <div className="flex items-center gap-1.5 mt-1">
-                      <div className="w-4 h-4 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center">
-                        <span className="text-white font-black text-[8px]">
-                          {(post.user?.name || 'U')[0].toUpperCase()}
-                        </span>
-                      </div>
-                      <span className="text-white/70 text-[9px] font-bold truncate">{post.user?.name}</span>
-                    </div>
-                  </div>
-                  {(likesCount[post.id] ?? post.want_to_gos?.length ?? 0) > 0 && (
-                    <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/40 backdrop-blur-sm text-white rounded-full px-2 py-1">
-                      <Heart size={9} className="fill-rose-400 text-rose-400" />
-                      <span className="text-[9px] font-black">{likesCount[post.id] ?? post.want_to_gos?.length ?? 0}</span>
-                    </div>
-                  )}
-                </Link>
-              ))}
-            </div>
-          </section>
-        )}
+
 
 
 

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Map, Trophy, ChevronDown, ChevronUp, Check, Sparkles } from 'lucide-react';
 import type { Post } from '@/lib/types';
 import { useAppType } from '@/contexts/AppTypeContext';
+import { useSharedFilter } from '@/hooks/useSharedFilter';
 
 type Props = {
   posts: Post[];
@@ -30,6 +31,7 @@ const ALL_PREFECTURES = REGIONS.flatMap(r => r.prefectures);
 
 export function PrefectureMapWidget({ posts }: Props) {
   const { appType } = useAppType();
+  const { updateFilter } = useSharedFilter();
   const isTabireco = appType === 'tabireco';
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -138,12 +140,19 @@ export function PrefectureMapWidget({ posts }: Props) {
                     {region.prefectures.map(pref => {
                       const count = visitedCounts[pref] || 0;
                       const isVisited = count > 0;
-                      const shortName = pref.replace(/[都道府県]$/, '');
+                      const shortName = pref === '北海道' ? '北海道' : pref.replace(/[都府県]$/, '');
 
                       return (
                         <Link
                           key={pref}
-                          href={`/posts?keyword=${encodeURIComponent(shortName)}`}
+                          href={`/posts?keyword=${encodeURIComponent(shortName)}&searchMode=address`}
+                          onClick={() => {
+                            updateFilter({
+                              keyword: shortName,
+                              searchMode: 'address',
+                              activeTab: 'all',
+                            });
+                          }}
                           className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-black transition-all ${
                             isVisited
                               ? isTabireco

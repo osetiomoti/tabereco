@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { PostCard, FilterChips } from '@/components/PostCard';
 import { PostCardSkeleton } from '@/components/Skeleton';
@@ -15,7 +16,6 @@ import { format, startOfMonth, endOfMonth, isSameDay, addMonths, subMonths, getD
 import { ja } from 'date-fns/locale';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useEffect, useRef, useCallback } from 'react';
 import { useAppType } from '@/contexts/AppTypeContext';
 import { getImageUrl } from '@/lib/image';
 
@@ -133,11 +133,25 @@ function CalendarView({ posts }: { posts: any[] }) {
   );
 }
 
-export default function PostsPage() {
+function PostsPageInner() {
   useScrollRestore('posts_list');
+  const searchParams = useSearchParams();
   const { appType } = useAppType();
   const { filterState, updateFilter } = useSharedFilter();
   const { activeTab, keyword, searchMode, activeGroups, advancedFilters } = filterState;
+
+  // URLクエリパラメータ（例: /posts?keyword=静岡&searchMode=address）を検知してフィルターへ同期
+  useEffect(() => {
+    const kw = searchParams.get('keyword');
+    const sm = searchParams.get('searchMode') as ('store_name' | 'address') | null;
+    if (kw !== null && kw !== undefined && kw.trim() !== '') {
+      updateFilter({
+        keyword: kw.trim(),
+        searchMode: sm || 'address',
+        activeTab: 'all',
+      });
+    }
+  }, [searchParams, updateFilter]);
   
   const {
     posts,
@@ -408,5 +422,17 @@ export default function PostsPage() {
       />
       <FloatingActionButton />
     </>
+  );
+}
+
+export default function PostsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <Loader2 className="animate-spin text-orange-500" size={32} />
+      </div>
+    }>
+      <PostsPageInner />
+    </Suspense>
   );
 }
