@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef, useState, useCallback, useEffect } from 'react';
-import { Search, MapPin, X, Loader2 } from 'lucide-react';
+import { useRef, useState, useEffect } from 'react';
+import { Search, X, Loader2 } from 'lucide-react';
 
 type Props = {
   onPlaceSelected: (place: {
@@ -37,11 +37,6 @@ export function PlaceAutocomplete({ onPlaceSelected, defaultValue = '', onInputC
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
-  // スマホでのスクロール検知用Ref
-  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
-  const isScrollingRef = useRef(false);
-  const isInteractingWithListRef = useRef(false);
-
   // コンテナ外タップ・クリックで候補を閉じる
   useEffect(() => {
     const handleOutsideInteraction = (e: MouseEvent | TouchEvent) => {
@@ -58,7 +53,7 @@ export function PlaceAutocomplete({ onPlaceSelected, defaultValue = '', onInputC
   }, []);
 
   const fetchPredictions = async (value: string) => {
-    if (value.length < 1) {
+    if (value.trim().length < 1) {
       setPredictions([]);
       setIsOpen(false);
       return;
@@ -94,12 +89,29 @@ export function PlaceAutocomplete({ onPlaceSelected, defaultValue = '', onInputC
   };
 
   const handleSelect = async (prediction: AutocompletePrediction) => {
-    setIsOpen(false);
     const { placeId, structuredFormat, text } = prediction.placePrediction;
     const name = structuredFormat.mainText.text;
-    const fallbackAddress = structuredFormat.secondaryText?.text || text.text;
-    setInputValue(name);
+    const rawSecondary = structuredFormat.secondaryText?.text || text.text || '';
+    const cleanSecondary = rawSecondary
+      .replace(/^日本(、|,\s*)?/, '')
+      .replace(/〒?\d{3}-\d{4}\s*/, '')
+      .replace(/^日本(、|,\s*)?/, '')
+      .trim();
 
+    // futaribaと同じく、選択した瞬間に候補を閉じ、入力欄・住所を即座に反映
+    setInputValue(name);
+    setIsOpen(false);
+    setPredictions([]);
+
+    onPlaceSelected({
+      name,
+      address: cleanSecondary,
+      lat: 0,
+      lng: 0,
+      placeId,
+    });
+
+    // バックグラウンドで詳細（正確な緯度経度・住所）を取得して更新
     try {
       const res = await fetch(`/api/places/details?placeId=${placeId}`);
       if (!res.ok) throw new Error('Failed to fetch details');
@@ -107,21 +119,15 @@ export function PlaceAutocomplete({ onPlaceSelected, defaultValue = '', onInputC
       
       onPlaceSelected({
         name: data.displayName?.text || name,
-        address: data.formattedAddress || fallbackAddress,
+        address: data.formattedAddress
+          ? data.formattedAddress.replace(/^日本(、|,\s*)?/, '').replace(/〒?\d{3}-\d{4}\s*/, '').replace(/^日本(、|,\s*)?/, '').trim()
+          : cleanSecondary,
         lat: data.location?.latitude || 0,
         lng: data.location?.longitude || 0,
         placeId,
       });
     } catch (e) {
       console.error('Place details fetch failed:', e);
-      // 失敗した場合でも名前とIDだけ返す
-      onPlaceSelected({
-        name,
-        address: fallbackAddress,
-        lat: 0,
-        lng: 0,
-        placeId,
-      });
     }
   };
 
@@ -149,16 +155,8 @@ export function PlaceAutocomplete({ onPlaceSelected, defaultValue = '', onInputC
           value={inputValue}
           onChange={(e) => handleInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          onBlur={() => {
-            setTimeout(() => {
-              if (!isInteractingWithListRef.current) {
-                if (containerRef.current && !containerRef.current.contains(document.activeElement)) {
-                  setIsOpen(false);
-                }
-              }
-            }, 200);
-          }}
-          onFocus={() => inputValue && predictions.length > 0 && setIsOpen(true)}
+          onFocus={() => { if (inputValue && predictions.length > 0) setIsOpen(true); }}
+          onBlur={() => setTimeout(() => setIsOpen(false), 300)}
           placeholder="店名・スポット名を入力（例：マクドナルド 渋谷）"
           className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3.5 pl-10 text-gray-900 placeholder-gray-300 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all shadow-sm group-hover:border-gray-300 text-[16px]"
         />
@@ -179,80 +177,40 @@ export function PlaceAutocomplete({ onPlaceSelected, defaultValue = '', onInputC
         )}
       </div>
 
+      {/* futaribaと同じコンテナ構造: onMouseDown preventDefault + button(onClick) + overscroll-contain */}
       {isOpen && predictions.length > 0 && (
-        <ul
-          className="absolute z-[100000] left-0 right-0 mt-2 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-y-auto max-h-[50vh] sm:max-h-[65vh] py-1 touch-pan-y overscroll-y-contain select-none"
-          style={{ WebkitOverflowScrolling: 'touch' }}
-          onMouseDown={(e) => {
-            // PCでスクロールバーやリストクリック時に入力のフォーカスが外れるのを防ぐ
-            e.preventDefault();
-          }}
-          onTouchStart={(e) => {
-            isInteractingWithListRef.current = true;
-            const touch = e.touches[0];
-            touchStartPosRef.current = { x: touch.clientX, y: touch.clientY };
-            isScrollingRef.current = false;
-          }}
-          onTouchMove={(e) => {
-            if (!touchStartPosRef.current) return;
-            const touch = e.touches[0];
-            const dist = Math.hypot(
-              touch.clientX - touchStartPosRef.current.x,
-              touch.clientY - touchStartPosRef.current.y
-            );
-            // 8px以上の移動があればスクロール操作とみなす
-            if (dist > 8) {
-              isScrollingRef.current = true;
-            }
-          }}
-          onTouchEnd={() => {
-            // タッチ終了後、inputのblurによる即時クローズを防ぐため少し間を置く
-            setTimeout(() => {
-              isInteractingWithListRef.current = false;
-            }, 300);
-            // タップ後のクリック判定完了後にスクロールフラグをリセット
-            setTimeout(() => {
-              isScrollingRef.current = false;
-              touchStartPosRef.current = null;
-            }, 150);
-          }}
-          onTouchCancel={() => {
-            isInteractingWithListRef.current = false;
-            isScrollingRef.current = false;
-            touchStartPosRef.current = null;
-          }}
+        <div
+          onMouseDown={(e) => e.preventDefault()}
+          className="absolute top-full left-0 mt-1 w-full bg-white shadow-xl rounded-2xl overflow-hidden border border-gray-100 max-h-52 overflow-y-auto overscroll-contain z-[100000]"
         >
           {predictions.map((p, i) => {
             const pred = p.placePrediction;
+            const mainText = pred.structuredFormat.mainText.text;
+            const secondaryText = pred.structuredFormat.secondaryText?.text || pred.text.text;
+
             return (
-              <li
-                key={pred.placeId}
-                onClick={() => {
-                  if (isScrollingRef.current) return;
-                  handleSelect(p);
-                }}
-                className={`flex items-start gap-3 px-4 py-3.5 cursor-pointer transition-colors select-none ${
-                  i === activeIndex ? 'bg-orange-50' : 'hover:bg-gray-50 active:bg-orange-50/50'
-                } ${i !== 0 ? 'border-t border-gray-50' : ''}`}
+              <button
+                key={pred.placeId ?? i}
+                type="button"
+                onClick={() => handleSelect(p)}
+                className={`w-full text-left px-4 py-3 hover:bg-orange-50 active:bg-orange-100 flex items-start gap-3 border-b border-gray-50 last:border-0 transition-colors ${
+                  i === activeIndex ? 'bg-orange-50' : ''
+                }`}
               >
-                <div className="mt-0.5 flex-shrink-0 w-7 h-7 rounded-full bg-orange-50 flex items-center justify-center">
-                  <MapPin size={14} className="text-orange-400" />
+                <span className="text-gray-400 mt-0.5 text-sm flex-shrink-0">📍</span>
+                <div className="text-left min-w-0 flex-1">
+                  <p className="font-bold text-gray-800 text-[14px] truncate">{mainText}</p>
+                  {secondaryText && (
+                    <p className="text-xs text-gray-400 truncate mt-0.5">{secondaryText}</p>
+                  )}
                 </div>
-                <div className="min-w-0">
-                  <p className="font-black text-sm text-gray-900 leading-snug truncate">
-                    {pred.structuredFormat.mainText.text}
-                  </p>
-                  <p className="text-[11px] text-gray-400 mt-0.5 leading-snug line-clamp-2">
-                    {pred.structuredFormat.secondaryText?.text || pred.text.text}
-                  </p>
-                </div>
-              </li>
+              </button>
             );
           })}
-          <li className="px-4 py-2 text-center">
+          <div className="px-4 py-2 text-center bg-gray-50/50">
             <span className="text-[10px] text-gray-300 font-bold">Powered by Google Maps</span>
-          </li>
-        </ul>
+          </div>
+        </div>
       )}
     </div>
   );
