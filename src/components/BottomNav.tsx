@@ -1,15 +1,15 @@
 'use client';
 
 import { usePathname, useRouter } from 'next/navigation';
-import { useTransition, useRef, useLayoutEffect, useState } from 'react';
+import { useTransition, useRef, useLayoutEffect, useState, useEffect } from 'react';
 import { Clock, User, Trophy, MapPin, Home } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { href: '/',         icon: Home,   label: 'ホーム',      match: (p: string) => p === '/'              },
-  { href: '/posts',    icon: Clock,  label: 'タイムライン', match: (p: string) => p === '/posts'         },
-  { href: '/mypage',   icon: User,   label: 'マイページ',   match: (p: string) => p.startsWith('/mypage')},
-  { href: '/map',      icon: MapPin, label: 'マップ',       match: (p: string) => p === '/map'           },
-  { href: '/rankings', icon: Trophy, label: 'ランキング',   match: (p: string) => p.startsWith('/rankings') },
+  { href: '/',         icon: Home,   label: 'ホーム',       match: (p: string) => p === '/'               },
+  { href: '/posts',    icon: Clock,  label: 'タイムライン',  match: (p: string) => p === '/posts'          },
+  { href: '/mypage',   icon: User,   label: 'マイページ',    match: (p: string) => p.startsWith('/mypage') },
+  { href: '/map',      icon: MapPin, label: 'マップ',        match: (p: string) => p === '/map'            },
+  { href: '/rankings', icon: Trophy, label: 'ランキング',    match: (p: string) => p.startsWith('/rankings') },
 ];
 
 export function BottomNav() {
@@ -17,12 +17,84 @@ export function BottomNav() {
   const router = useRouter();
   const [, startTransition] = useTransition();
 
-  // ログイン画面では下部メニューを非表示にする
+  const navRef = useRef<HTMLElement>(null);
+  const buttonRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const [pillStyle, setPillStyle] = useState<{ left: number; width: number } | null>(null);
+
+  // 初回レンダー時はアニメーションを無効化（初期位置へのflash防止）
+  const isFirstRender = useRef(true);
+
+  // 実際のURLから計算したインデックス
+  const pathnameActiveIndex = NAV_ITEMS.findIndex(item => item.match(pathname));
+
+  // タップ時に即座にアニメーションを開始するための楽観的インデックス
+  const [optimisticIndex, setOptimisticIndex] = useState<number | null>(null);
+  const targetIndex = optimisticIndex !== null ? optimisticIndex : pathnameActiveIndex;
+
+  // 移動距離に応じたアニメーション時間を動的に計算
+  const prevIndexRef = useRef(targetIndex >= 0 ? targetIndex : 0);
+  const [transitionDuration, setTransitionDuration] = useState(360);
+
+  // URL遷移が完了したら楽観的状態をリセット
+  useEffect(() => {
+    setOptimisticIndex(null);
+  }, [pathname]);
+
+  // ピル位置の計測とアニメーション時間の設定
+  useLayoutEffect(() => {
+    if (targetIndex < 0) {
+      setPillStyle(null);
+      return;
+    }
+
+    // 移動距離（ステップ数）を算出
+    const fromIndex = prevIndexRef.current >= 0 ? prevIndexRef.current : targetIndex;
+    const diff = Math.abs(targetIndex - fromIndex);
+    prevIndexRef.current = targetIndex;
+
+    // 2つ以上離れているときも動きがしっかり見えるよう、距離に応じて時間をスケール
+    // 1ステップ: 340ms, 2ステップ: 410ms, 3ステップ: 470ms, 4ステップ: 530ms
+    const duration = isFirstRender.current ? 0 : Math.min(540, 300 + Math.max(1, diff) * 60);
+    setTransitionDuration(duration);
+
+    const updatePill = () => {
+      const btn = buttonRefs.current[targetIndex];
+      if (!btn) return;
+
+      // btn.offsetLeft は relative である nav の padding-box を基準にした正確な座標
+      // ピル（position: absolute）も nav の padding-box が基準のため、ズレなく一致する
+      const btnWidth = btn.offsetWidth;
+      const pillWidth = Math.round(Math.min(68, Math.max(48, btnWidth * 0.78)));
+      const left = btn.offsetLeft + Math.round((btnWidth - pillWidth) / 2);
+
+      setPillStyle({ left, width: pillWidth });
+    };
+
+    updatePill();
+
+    // 画面サイズ変更時（回転等）も再計算
+    window.addEventListener('resize', updatePill);
+
+    // 初回描画フラグ解除
+    const timer = setTimeout(() => {
+      isFirstRender.current = false;
+    }, 50);
+
+    return () => {
+      window.removeEventListener('resize', updatePill);
+      clearTimeout(timer);
+    };
+  }, [targetIndex]);
+
+  // ログイン画面では下部メニューを非表示
   if (pathname === '/login') return null;
 
-  const activeIndex = NAV_ITEMS.findIndex(item => item.match(pathname));
+  const handleNavClick = (href: string, index: number) => {
+    if (index === targetIndex) return;
 
-  const navigate = (href: string) => {
+    // 即座に楽観的状態をセットしてアニメーションを即時スタート（ゼロ遅延）
+    setOptimisticIndex(index);
+
     startTransition(() => {
       router.push(href);
     });
@@ -30,30 +102,46 @@ export function BottomNav() {
 
   return (
     <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-2xl border-t border-gray-100 shadow-[0_-5px_20px_rgba(0,0,0,0.02)] pb-safe">
-      <nav className="max-w-md mx-auto px-3 h-16 flex items-center relative">
+      <nav ref={navRef} className="max-w-md mx-auto px-2 h-16 flex items-center relative">
 
         {/* スライドするピル背景 */}
-        {activeIndex >= 0 && (
-          <PillIndicator activeIndex={activeIndex} total={NAV_ITEMS.length} />
+        {pillStyle && (
+          <div
+            className="absolute top-1/2 -translate-y-1/2 rounded-2xl pointer-events-none"
+            style={{
+              left: pillStyle.left,
+              width: pillStyle.width,
+              height: 46,
+              background: 'color-mix(in srgb, var(--color-primary) 13%, transparent)',
+              boxShadow: '0 2px 10px color-mix(in srgb, var(--color-primary) 16%, transparent)',
+              // 距離に応じた滑らかなアニメーション。2つ以上離れても移動の軌跡がくっきり見えるカーブ
+              transition: isFirstRender.current
+                ? 'none'
+                : `left ${transitionDuration}ms cubic-bezier(0.28, 1.1, 0.42, 1), width ${transitionDuration}ms cubic-bezier(0.28, 1.1, 0.42, 1)`,
+            }}
+          />
         )}
 
         {NAV_ITEMS.map((item, index) => {
-          const isActive = item.match(pathname);
+          const isActive = index === targetIndex;
           const Icon = item.icon;
           return (
             <button
               key={item.href}
+              ref={el => { buttonRefs.current[index] = el; }}
               type="button"
-              onClick={() => navigate(item.href)}
-              className="relative flex flex-col items-center justify-center flex-1 gap-0.5 z-10 py-1"
+              onClick={() => handleNavClick(item.href, index)}
+              className="relative flex flex-col items-center justify-center flex-1 gap-0.5 z-10 h-full"
             >
-              {/* アイコン：アクティブ時は少し上にシフトしてバウンス */}
+              {/* アイコン */}
               <div
-                className="transition-all duration-300 ease-out"
                 style={{
                   color: isActive ? 'var(--color-primary)' : '#9ca3af',
-                  transform: isActive ? 'translateY(-2px) scale(1.1)' : 'translateY(0) scale(1)',
-                  filter: isActive ? 'drop-shadow(0 2px 6px color-mix(in srgb, var(--color-primary) 40%, transparent))' : 'none',
+                  transform: isActive ? 'translateY(-2px) scale(1.12)' : 'translateY(0) scale(1)',
+                  filter: isActive
+                    ? 'drop-shadow(0 2px 8px color-mix(in srgb, var(--color-primary) 45%, transparent))'
+                    : 'none',
+                  transition: 'color 0.25s, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.25s',
                 }}
               >
                 <Icon size={21} strokeWidth={isActive ? 2.2 : 1.8} />
@@ -61,10 +149,11 @@ export function BottomNav() {
 
               {/* ラベル */}
               <span
-                className="text-[9px] font-black tracking-wider transition-all duration-300"
+                className="text-[9px] font-black tracking-wider"
                 style={{
                   color: isActive ? 'var(--color-primary)' : '#9ca3af',
-                  opacity: isActive ? 1 : 0.75,
+                  opacity: isActive ? 1 : 0.7,
+                  transition: 'color 0.25s, opacity 0.25s',
                 }}
               >
                 {item.label}
@@ -74,40 +163,5 @@ export function BottomNav() {
         })}
       </nav>
     </div>
-  );
-}
-
-/** ピル（背景バブル）を activeIndex に合わせてスライドさせるコンポーネント */
-function PillIndicator({ activeIndex, total }: { activeIndex: number; total: number }) {
-  const navRef = useRef<HTMLDivElement>(null);
-  const [pillStyle, setPillStyle] = useState<{ left: number; width: number } | null>(null);
-
-  useLayoutEffect(() => {
-    // ナビ全体の幅からアイテム1つ分の幅を計算
-    if (!navRef.current) return;
-    const navWidth = navRef.current.offsetWidth;
-    const itemWidth = navWidth / total;
-    const pillWidth = itemWidth * 0.72; // ピルの幅はアイテムの72%
-    const left = activeIndex * itemWidth + (itemWidth - pillWidth) / 2;
-    setPillStyle({ left, width: pillWidth });
-  }, [activeIndex, total]);
-
-  return (
-    // オフスクリーンで幅計測用の隠し要素
-    <>
-      <div ref={navRef} className="absolute inset-0 pointer-events-none" aria-hidden />
-      {pillStyle && (
-        <div
-          className="absolute top-1/2 -translate-y-1/2 rounded-2xl pointer-events-none"
-          style={{
-            left: pillStyle.left,
-            width: pillStyle.width,
-            height: 44,
-            background: 'color-mix(in srgb, var(--color-primary) 10%, transparent)',
-            transition: 'left 0.35s cubic-bezier(0.34, 1.56, 0.64, 1), width 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)',
-          }}
-        />
-      )}
-    </>
   );
 }
