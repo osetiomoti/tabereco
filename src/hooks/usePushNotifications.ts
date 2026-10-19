@@ -40,28 +40,62 @@ export function usePushNotifications() {
 
     setIsLoading(true);
     try {
-      const registration = await navigator.serviceWorker.ready;
-      
-      // Request permission
+      // 1. SWの登録を確実に取得する（未登録なら即座に登録する）
+      let registration = await navigator.serviceWorker.getRegistration('/');
+      if (!registration) {
+        console.log('[usePushNotifications] Registering SW on demand...');
+        registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+      }
+
+      // 2. SWが installing / waiting の場合は activated になるまで待つ
+      //    （アプリを開き直さなくてもその場でアクティブ化できる）
+      if (registration.installing || registration.waiting) {
+        const sw = registration.installing ?? registration.waiting!;
+        await new Promise<void>((resolve, reject) => {
+          const timer = setTimeout(() => reject(new Error('SW activation timeout')), 10000);
+          sw.addEventListener('statechange', function onStateChange() {
+            if (sw.state === 'activated') {
+              clearTimeout(timer);
+              sw.removeEventListener('statechange', onStateChange);
+              resolve();
+            } else if (sw.state === 'redundant') {
+              clearTimeout(timer);
+              sw.removeEventListener('statechange', onStateChange);
+              reject(new Error('SW became redundant'));
+            }
+          });
+        });
+        // activate 後に最新の registration を取得し直す
+        registration = (await navigator.serviceWorker.getRegistration('/'))!;
+      }
+
+      // 3. 念のため ready で最終確認（すでに active なのでほぼ即時解決する）
+      const finalReg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('SW ready timeout')), 5000)
+        ),
+      ]).catch(() => registration!);
+
+      // 4. 通知許可を要求
       const perm = await Notification.requestPermission();
       setPermission(perm as NotificationPermission);
       if (perm !== 'granted') {
-        setIsLoading(false);
         return;
       }
 
-      // Subscribe to push
+      // 5. Push 購読を作成
       const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!;
       const convertedKey = urlBase64ToUint8Array(vapidPublicKey);
-      const subscription = await registration.pushManager.subscribe({
+      const subscription = await finalReg.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: convertedKey as any,
       });
 
-      // Get appType from data-app-type attribute (added in layout) or default to tabereco
+      // 6. Get appType from data-app-type attribute (added in layout) or default to tabereco
       const appType = document.documentElement.getAttribute('data-app-type') || 'tabereco';
 
-      // Send subscription to backend
+      // 7. サーバーへ購読情報を送信して保存
       const subJson = subscription.toJSON();
       await fetch('/api/push/subscribe', {
         method: 'POST',
