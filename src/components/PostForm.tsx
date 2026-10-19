@@ -417,49 +417,59 @@ export function PostForm({ post }: Props) {
     }
 
     // 既存投稿の編集（isEdit）の場合
+    // 更新ボタンを押したら即座に詳細画面へ遷移し、バックグラウンドで更新処理を続行
     submittedRef.current = true;
     setLoading(true);
-    try {
-      // 並び順を保持しつつ、ファイルだけをアップロードする
-      const finalImageUrls: (string | null)[] = new Array(orderedImages.length);
-      for (let i = 0; i < orderedImages.length; i++) {
-        const item = orderedImages[i];
-        if (typeof item === 'string') {
-          finalImageUrls[i] = item;
-        } else {
-          setUploadProgress(prev => ({ ...prev, [i]: 'uploading' }));
-          const compressed = precompressedCacheRef.current.get(item) || await compressImage(item);
-          const uploadedUrl = await uploadFile(compressed);
-          if (uploadedUrl) {
-            finalImageUrls[i] = uploadedUrl;
-            setUploadProgress(prev => ({ ...prev, [i]: 'done' }));
+
+    // まず即座に詳細画面へ遷移（UXを優先）
+    if (post) {
+      router.push(`/posts/${post.id}`);
+    }
+
+    // バックグラウンドで画像アップロード＆更新処理
+    (async () => {
+      try {
+        const finalImageUrls: (string | null)[] = new Array(orderedImages.length);
+        for (let i = 0; i < orderedImages.length; i++) {
+          const item = orderedImages[i];
+          if (typeof item === 'string') {
+            finalImageUrls[i] = item;
           } else {
-            finalImageUrls[i] = null;
-            setUploadProgress(prev => ({ ...prev, [i]: 'error' }));
+            setUploadProgress(prev => ({ ...prev, [i]: 'uploading' }));
+            const compressed = precompressedCacheRef.current.get(item) || await compressImage(item);
+            const uploadedUrl = await uploadFile(compressed);
+            if (uploadedUrl) {
+              finalImageUrls[i] = uploadedUrl;
+              setUploadProgress(prev => ({ ...prev, [i]: 'done' }));
+            } else {
+              finalImageUrls[i] = null;
+              setUploadProgress(prev => ({ ...prev, [i]: 'error' }));
+            }
           }
         }
-      }
-      const filteredUrls = finalImageUrls.filter((url): url is string => url !== null);
+        const filteredUrls = finalImageUrls.filter((url): url is string => url !== null);
 
-      postData.image_url = filteredUrls[0] || null;
-      postData.image_urls = filteredUrls;
+        postData.image_url = filteredUrls[0] || null;
+        postData.image_urls = filteredUrls;
 
-      if (post) {
-        const result = await updatePost(post.id, postData, values.tags);
-        if (result) {
-          notifyPostUpdated({ action: 'update', postId: post.id, post: result });
-          router.push(`/posts/${post.id}`);
+        if (post) {
+          const result = await updatePost(post.id, postData, values.tags);
+          if (result) {
+            notifyPostUpdated({ action: 'update', postId: post.id, post: result });
+            // 詳細画面のデータをSWRで即時更新
+            mutate(`/api/posts/${post.id}`);
+          }
         }
+        router.refresh();
+      } catch (err) {
+        setError(err instanceof Error ? err.message : '予期しないエラーが発生しました');
+      } finally {
+        setLoading(false);
+        setUploadProgress({});
+        setUploadCurrent(0);
+        setUploadTotal(0);
       }
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '予期しないエラーが発生しました');
-    } finally {
-      setLoading(false);
-      setUploadProgress({});
-      setUploadCurrent(0);
-      setUploadTotal(0);
-    }
+    })();
   };
 
   return (
