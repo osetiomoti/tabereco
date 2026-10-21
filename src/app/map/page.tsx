@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { PlaceAutocomplete } from '@/components/PlaceAutocomplete';
 import type { Post } from '@/lib/types';
-import { MapPin, Search, Navigation, Filter } from 'lucide-react';
+import { MapPin, Search, Filter, X } from 'lucide-react';
 import { useFilteredPosts } from '@/hooks/useFilteredPosts';
 import { FilterModal } from '@/components/FilterModal';
 import { FilterChips } from '@/components/PostCard';
@@ -28,7 +28,7 @@ const JAPAN_ZOOM = 5;
 function MapPageInner() {
   const { appType } = useAppType();
   const { posts, loading, filterState, updateFilter, activeFilterCount, removeFilter, memberUsers, joinedGroups } = useFilteredPosts();
-  const { activeTab, keyword, activeGroups, advancedFilters, activeMapTag } = filterState;
+  const { activeTab, keyword, searchMode, activeGroups, advancedFilters, activeMapTag } = filterState;
 
   const searchParams = useSearchParams();
   const queryLat = searchParams.get('lat');
@@ -46,6 +46,28 @@ function MapPageInner() {
   });
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [tempMarker, setTempMarker] = useState<{ lat: number, lng: number, placeId?: string, name?: string, address?: string } | null>(null);
+
+  // 投稿絞り込み用のキーワード入力（ローカル状態：デバウンスで shared filter に反映）
+  const [localKeyword, setLocalKeyword] = useState(keyword);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // shared filter の keyword が外部から変わった場合（タイムライン→マップ遷移など）に同期
+  useEffect(() => {
+    setLocalKeyword(keyword);
+  }, [keyword]);
+
+  const handleKeywordChange = (value: string) => {
+    setLocalKeyword(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      updateFilter({ keyword: value });
+    }, 300);
+  };
+
+  const handleClearKeyword = () => {
+    setLocalKeyword('');
+    updateFilter({ keyword: '' });
+  };
 
   useEffect(() => {
     if (queryLat && queryLng) {
@@ -96,9 +118,77 @@ function MapPageInner() {
       <main className="w-full h-[calc(100dvh-64px-64px)] pb-safe relative animate-fade-in group">
         {/* Floating Search Bar & Filter Chips */}
         <div className="absolute top-3 left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 sm:w-[500px] z-[100] flex flex-col gap-2 pointer-events-none">
-          
+
+          {/* Google Places 検索（地図移動用） */}
           <div className="shadow-lg rounded-2xl overflow-visible relative pointer-events-auto bg-white/95 backdrop-blur-md">
             <PlaceAutocomplete onPlaceSelected={handleSearchSelect} />
+          </div>
+
+          {/* 投稿絞り込み検索（店名/住所） */}
+          <div className="pointer-events-auto flex flex-col gap-1.5">
+            {/* 検索モード切り替えトグル */}
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => {
+                  updateFilter({ searchMode: 'store_name', keyword: '' });
+                  setLocalKeyword('');
+                }}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-black transition-all shadow-sm ${
+                  searchMode !== 'address'
+                    ? 'bg-orange-500 text-white shadow-orange-200/60'
+                    : 'bg-white/90 text-gray-400 backdrop-blur-sm hover:bg-white'
+                }`}
+              >
+                🏪 店名で絞り込み
+              </button>
+              <button
+                onClick={() => {
+                  updateFilter({ searchMode: 'address', keyword: '' });
+                  setLocalKeyword('');
+                }}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-black transition-all shadow-sm ${
+                  searchMode === 'address'
+                    ? 'bg-orange-500 text-white shadow-orange-200/60'
+                    : 'bg-white/90 text-gray-400 backdrop-blur-sm hover:bg-white'
+                }`}
+              >
+                📍 住所で絞り込み
+              </button>
+            </div>
+
+            {/* キーワード入力 */}
+            <div className="relative">
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300" size={15} />
+              <input
+                type="text"
+                placeholder={
+                  searchMode === 'address'
+                    ? '住所・エリアで絞り込み（例：渋谷区、銀座...）'
+                    : '店名で絞り込み...'
+                }
+                className="w-full pl-9 pr-9 py-2.5 bg-white/95 backdrop-blur-md border-none rounded-2xl text-[12px] font-medium text-gray-800 placeholder:text-gray-300 focus:ring-2 focus:ring-orange-100 shadow-md transition-all"
+                value={localKeyword}
+                onChange={(e) => handleKeywordChange(e.target.value)}
+              />
+              {localKeyword && (
+                <button
+                  onClick={handleClearKeyword}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </div>
+
+            {/* ピン数表示バッジ */}
+            {!loading && (
+              <div className="flex items-center gap-1.5">
+                <span className="px-2.5 py-1 rounded-full bg-white/90 backdrop-blur-sm text-[10px] font-black text-gray-500 shadow-sm">
+                  📍 {displayedPosts.filter((p: Post) => p.latitude && p.longitude).length} 件表示中
+                  {localKeyword && ` (「${localKeyword}」で絞り込み)`}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Active Filter Chips */}
