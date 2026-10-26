@@ -4,7 +4,6 @@ import { useState, useEffect, useRef, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/Header';
-import { PlaceAutocomplete } from '@/components/PlaceAutocomplete';
 import type { Post } from '@/lib/types';
 import { MapPin, Search, Filter, X } from 'lucide-react';
 import { useFilteredPosts } from '@/hooks/useFilteredPosts';
@@ -84,18 +83,6 @@ function MapPageInner() {
     ? posts.filter((p: Post) => p.tags?.some((t: any) => t.name === activeMapTag))
     : posts;
 
-  const handleSearchSelect = (place: { name: string, address: string, lat: number, lng: number, placeId: string }) => {
-    setCenter({ lat: place.lat, lng: place.lng });
-    setZoom(15);
-    setTempMarker({
-      lat: place.lat,
-      lng: place.lng,
-      placeId: place.placeId,
-      name: place.name,
-      address: place.address
-    });
-  };
-
   return (
     <>
       <Header title="マップ">
@@ -118,12 +105,6 @@ function MapPageInner() {
       <main className="w-full h-[calc(100dvh-64px-64px)] pb-safe relative animate-fade-in group">
         {/* Floating Search Bar & Filter Chips */}
         <div className="absolute top-3 left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 sm:w-[500px] z-[100] flex flex-col gap-2 pointer-events-none">
-
-          {/* Google Places 検索（地図移動用） */}
-          <div className="shadow-lg rounded-2xl overflow-visible relative pointer-events-auto bg-white/95 backdrop-blur-md">
-            <PlaceAutocomplete onPlaceSelected={handleSearchSelect} />
-          </div>
-
           {/* 投稿絞り込み検索（店名/住所） */}
           <div className="pointer-events-auto flex flex-col gap-1.5">
             {/* 検索モード切り替えトグル */}
