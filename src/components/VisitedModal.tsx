@@ -161,12 +161,12 @@ export function VisitedModal({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div 
-        className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden animate-in slide-in-from-bottom duration-300"
+        className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[85dvh] sm:max-h-[85vh] h-auto overflow-hidden animate-in slide-in-from-bottom duration-300"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between bg-white/80 backdrop-blur sticky top-0 z-10">
-          <div className="flex flex-col min-w-0 pr-3">
+        {/* Header (shrink-0で固定 & クイック保存ボタン設置) */}
+        <div className="shrink-0 px-5 py-3.5 border-b border-gray-100 flex items-center justify-between bg-white/95 backdrop-blur sticky top-0 z-10">
+          <div className="flex flex-col min-w-0 pr-2">
             <span className="text-[10px] font-black tracking-wider text-orange-500 uppercase">
               {initialData?.isMarked ? '行った記録の編集' : '行った！を記録'}
             </span>
@@ -174,17 +174,32 @@ export function VisitedModal({
               {displayName}
             </h2>
           </div>
-          <button
-            onClick={onClose}
-            disabled={isSubmitting || isDeleting}
-            className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => handleSave(false)}
+              disabled={isSubmitting || isDeleting}
+              className="px-3 py-1.5 rounded-full bg-orange-500 hover:bg-orange-600 active:scale-95 text-white font-black text-xs shadow-sm flex items-center gap-1 transition-all"
+            >
+              {isSubmitting ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : (
+                <Check size={14} strokeWidth={2.5} />
+              )}
+              <span>保存</span>
+            </button>
+            <button
+              onClick={onClose}
+              disabled={isSubmitting || isDeleting}
+              className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 text-gray-500 flex items-center justify-center transition-colors"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
 
-        {/* Content Body */}
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
+        {/* Content Body (min-h-0 & overscroll-contain) */}
+        <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain px-5 py-4 space-y-4">
           {/* 1. 星評価 */}
           <div className="bg-orange-50/60 border border-orange-100/80 rounded-2xl p-4 flex flex-col items-center justify-center gap-2">
             <span className="text-xs font-black text-gray-600 flex items-center gap-1">
@@ -244,8 +259,8 @@ export function VisitedModal({
           </div>
         </div>
 
-        {/* Footer Actions */}
-        <div className="px-5 py-3.5 border-t border-gray-100 bg-gray-50/80 flex flex-col gap-2">
+        {/* Footer Actions (shrink-0で下部に常時固定 & セーフエリア余白) */}
+        <div className="shrink-0 px-5 pt-3.5 pb-[max(1.25rem,env(safe-area-inset-bottom))] border-t border-gray-100 bg-white/95 backdrop-blur shadow-[0_-4px_16px_rgba(0,0,0,0.06)] flex flex-col gap-2 z-10">
           {uploadStatusText && (
             <div className="text-center text-xs font-bold text-orange-500 flex items-center justify-center gap-2 py-1">
               <Loader2 size={14} className="animate-spin" />
@@ -270,7 +285,8 @@ export function VisitedModal({
               type="button"
               onClick={() => handleSave(true)}
               disabled={isSubmitting || isDeleting}
-              className="flex-1 py-3 px-3 rounded-2xl bg-gray-200 hover:bg-gray-300 text-gray-700 font-black text-xs transition-colors"
+              className="flex-1 py-3 px-3 rounded-2xl bg-gray-100 hover:bg-gray-200 active:scale-[0.98] text-gray-700 font-black text-xs transition-all border border-gray-200/80"
+              title="星や写真の入力をスキップして「行った」のみ登録します"
             >
               あとで入力
             </button>
@@ -279,7 +295,7 @@ export function VisitedModal({
               type="button"
               onClick={() => handleSave(false)}
               disabled={isSubmitting || isDeleting}
-              className="flex-[2] py-3 px-4 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 text-white font-black text-xs shadow-md shadow-orange-500/20 transition-all flex items-center justify-center gap-1.5"
+              className="flex-[2] py-3 px-4 rounded-2xl bg-gradient-to-r from-orange-500 to-amber-500 hover:from-orange-600 hover:to-amber-600 active:scale-[0.98] text-white font-black text-xs shadow-md shadow-orange-500/20 transition-all flex items-center justify-center gap-1.5"
             >
               {isSubmitting ? (
                 <>

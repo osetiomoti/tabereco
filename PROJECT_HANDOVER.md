@@ -35,10 +35,10 @@
 # 1. データベース接続情報 (Neon PostgreSQL)
 # ==========================================
 # アプリケーション実行用 (Neon コネクションプーラー経由)
-DATABASE_URL="postgresql://username:password@ep-xxxx-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+DATABASE_URL="postgresql://username:password@ep-xxxx-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&connect_timeout=15"
 
 # マイグレーション実行用 (Direct 接続)
-DIRECT_URL="postgresql://username:password@ep-xxxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+DIRECT_URL="postgresql://username:password@ep-xxxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&connect_timeout=15"
 
 # ==========================================
 # 2. 認証 (AWS Cognito User Pool)
