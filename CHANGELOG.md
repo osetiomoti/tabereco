@@ -4,6 +4,57 @@
 
 ---
 
+## 2026-10-27
+### 変更内容
+1. **`post_visiteds`（行った記録）のスキーマ拡張とAPI対応**
+   - 他人の投稿に対する「行った」記録に、ユーザー自身の写真 (`image_url`, `image_urls`)、コメント (`comment`)、訪問日 (`visited_at`) を保存できるよう Prisma スキーマ (`PostVisited` モデル) を拡張。
+   - `/api/posts/[id]/visited` (POST / PUT) にて、コメント、画像URL、訪問日、星評価を保存・更新できるようエンドポイントを改修。
+   - `/api/posts?marked_visited=true` において、ユーザーが登録した写真やコメントを元投稿のデータよりも優先してマージするよう改善。
+2. **閲覧者の関係性に基づくプロフィール・マイページ表示制御（権限管理）のAPI実装**
+   - `/api/profiles/[id]` (GET) において、赤の他人（本人・フレンド・共有グループ外）のアクセス時に一律 `403` を返していた仕様を改め、基本プロフィールの閲覧を許可。
+   - 赤の他人が閲覧した際、「行きたい」投稿の画像URL・プライベートメモを非表示（`null`）にし、`is_restricted: true` フラグを付与。
+   - 身内（本人・フレンド・共有グループ）の場合は通常通り画像や詳細を返却。
+   - 対象ユーザーが他人の投稿に付けた「行った」一覧 (`markedVisitedPosts`) を、本人の写真・コメントで優先マージした状態でレスポンスに含めるよう拡張。
+### 影響範囲
+- `prisma/schema.prisma`
+- `src/app/api/posts/[id]/visited/route.ts`
+- `src/app/api/profiles/[id]/route.ts`
+- `src/app/api/posts/route.ts`
+- `DATABASE_SPECIFICATION.md`
+
+---
+
+## 2026-10-27 (追記)
+### 変更内容
+3. **マイページ (`/mypage`) の `is_restricted` 表示制御（フロントエンド実装）**
+   - 赤の他人のプロフィールを閲覧した際、APIから `is_restricted: true` で返ってくる投稿カードに対して、専用の「知り合い限定」プレースホルダーを表示するよう実装。
+   - 制限付きカードには画像を表示せず、店名のみ表示。「知り合い限定」バッジと「Maps」バッジを表示。
+   - タップ時はアプリ内詳細ページではなく、Google マップ検索 (`https://www.google.com/maps/search/`) へ直接遷移するよう変更。
+   - 他人投稿への「行った」タブ (`filteredMarkedVisited`) にも `is_restricted` の判定処理を追加。
+   - `Post` 型 (`src/lib/types.ts`) に `is_restricted?: boolean` フィールドを追加。
+4. **「行った」詳細記録モーダル (`VisitedModal`) のコンポーネント統合・バグ修正**
+   - `VisitedModal.tsx` の `isOpen` プロパティをオプショナル（デフォルト `true`）に変更。
+   - `src/components/PostSocial.tsx`: 未定義関数 `toggleVis` の参照エラーを解消し、`openVisitedModal` ハンドラーに修正。モーダル本体の JSX 配置を追加。
+   - `src/components/PostCard.tsx`: タイムラインカードの「行った」ボタン押下時に即時APIトグルするのではなく `VisitedModal` を起動するように改修。モーダル内の写真・コメント・訪問日・★評価の登録および解除コールバック（`onSuccess`, `onDeleted`）を配備。
+   - 全体 TypeScript 型チェック (`npx tsc --noEmit`) を実行しエラー0件を確認。
+5. **各種仕様書・ドキュメントの同期更新**
+   - `APP_SPECIFICATION.md`: セクション 2.4、2.11、3 に VisitedModal と is_restricted 表示制御を反映。
+   - `API_SPECIFICATION.md`: セクション 4.10 (`/api/posts/[id]/visited`) を詳細化し、セクション 8.7 (`/api/profiles/[id]`) を新規追加。
+   - `IMPLEMENTATION_STATUS.md`: セクション 2.4 および 2.8 の実装ステータスを更新。
+   - `PROJECT_HANDOVER.md`: セクション 5 に ADR 5.6 (`PostVisited` 個人保存) および ADR 5.7 (`is_restricted` プライバシー保護) を追記。
+### 影響範囲
+- `src/lib/types.ts`
+- `src/app/mypage/page.tsx`
+- `src/components/VisitedModal.tsx`
+- `src/components/PostSocial.tsx`
+- `src/components/PostCard.tsx`
+- `APP_SPECIFICATION.md`
+- `API_SPECIFICATION.md`
+- `IMPLEMENTATION_STATUS.md`
+- `PROJECT_HANDOVER.md`
+
+---
+
 ## 2026-10-26
 ### 変更内容
 1. **マップ画面（`/map`）の検索バー整理（重複解消）**

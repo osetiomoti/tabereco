@@ -295,20 +295,10 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
     }
   };
 
-  const toggleVisited = async (e: React.MouseEvent) => {
+  const toggleVisited = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const newVal = !isVisited;
-    setIsVisited(newVal);
-    if (newVal) setIsWantToGo(false);
-    try {
-      const res = await fetch(`/api/posts/${post.id}/visited`, { method: 'POST' });
-      if (!res.ok) setIsVisited(!newVal);
-      else bumpDetail();
-    } catch (e) {
-      console.error(e);
-      setIsVisited(!newVal);
-    }
+    setIsVisitedModalOpen(true);
   };
 
   const saveRating = async () => {
@@ -673,10 +663,38 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
 
       {isVisitedModalOpen && (
         <VisitedModal
+          isOpen={isVisitedModalOpen}
           postId={post.id}
           storeName={post.store_name || post.title}
+          initialData={{
+            rating: myRating,
+            comment: (post as any)._myComment,
+            imageUrl: (post as any)._myImageUrl,
+            imageUrls: (post as any)._myImageUrls,
+            visitedAt: (post as any)._myVisitedAt,
+            isMarked: isVisited,
+          }}
           onClose={() => setIsVisitedModalOpen(false)}
-          onSuccess={() => window.location.reload()}
+          onSuccess={(result) => {
+            setIsVisited(true);
+            setIsWantToGo(false);
+            if (result?.rating !== undefined) {
+              setMyRating(result.rating);
+            }
+            setIsVisitedModalOpen(false);
+            bumpDetail();
+            if (_isMine && post.status === 'want_to_go') {
+              window.location.reload();
+            }
+          }}
+          onDeleted={() => {
+            setIsVisited(false);
+            setIsVisitedModalOpen(false);
+            bumpDetail();
+            if (_isMine && post.status === 'want_to_go') {
+              window.location.reload();
+            }
+          }}
         />
       )}
     </div>

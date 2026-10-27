@@ -5,7 +5,7 @@ import { sendPushNotification } from '@/lib/webpush';
 
 /**
  * POST /api/posts/[id]/visited
- * Toggle "visited" on another user's post, or update rating.
+ * Toggle "visited" on another user's post, or update rating/comment/images/visit date.
  */
 export async function POST(
   request: NextRequest,
@@ -17,11 +17,17 @@ export async function POST(
       const body = await request.json().catch(() => ({}));
       const rating = body.rating !== undefined ? body.rating : undefined;
       const action = body.action; // 'increment' | 'decrement' | undefined
+      const comment = body.comment !== undefined ? body.comment : undefined;
+      const imageUrl = body.image_url !== undefined ? body.image_url : undefined;
+      const imageUrls = body.image_urls !== undefined ? body.image_urls : undefined;
+      const visitedAt = body.visited_at !== undefined ? (body.visited_at ? new Date(body.visited_at) : null) : undefined;
+      const visitCount = body.visit_count !== undefined ? Number(body.visit_count) : undefined;
 
       const existing = await prisma.postVisited.findUnique({
         where: { post_id_user_id: { post_id: postId, user_id: auth.userId } },
       });
 
+      // 1. Visit count increment/decrement
       if (action === 'increment' || action === 'decrement') {
         if (!existing) return NextResponse.json({ success: false, error: 'Not visited yet' }, { status: 400 });
         
@@ -36,48 +42,100 @@ export async function POST(
         return NextResponse.json({ success: true, marked: true, data: updated });
       }
 
-      if (rating !== undefined) {
-        // Update or Create with specific rating
+      // 2. Specific data update (rating, comment, image_url, image_urls, visited_at, visit_count)
+      const hasDetailedData = 
+        rating !== undefined || 
+        comment !== undefined || 
+        imageUrl !== undefined || 
+        imageUrls !== undefined || 
+        visitedAt !== undefined ||
+        visitCount !== undefined;
+
+      if (hasDetailedData) {
+        const updateData: any = {};
+        if (rating !== undefined) updateData.rating = rating;
+        if (comment !== undefined) updateData.comment = comment;
+        if (imageUrl !== undefined) updateData.image_url = imageUrl;
+        if (imageUrls !== undefined) updateData.image_urls = imageUrls;
+        if (visitedAt !== undefined) updateData.visited_at = visitedAt;
+        if (visitCount !== undefined) updateData.visit_count = visitCount;
+
+        const createData: any = {
+          post_id: postId,
+          user_id: auth.userId,
+          rating: rating ?? null,
+          comment: comment ?? null,
+          image_url: imageUrl ?? null,
+          image_urls: imageUrls ?? [],
+          visited_at: visitedAt ?? null,
+          visit_count: visitCount ?? 1,
+        };
+
         const updated = await prisma.postVisited.upsert({
           where: { post_id_user_id: { post_id: postId, user_id: auth.userId } },
-          update: { rating: rating },
-          create: { post_id: postId, user_id: auth.userId, rating: rating },
+          update: updateData,
+          create: createData,
         });
 
-        // Notify post owner about new rating
+        // 互いに排他にする: 行ったを追加・更新した場合は行きたいを削除
+        await prisma.postWantToGo.deleteMany({
+          where: { post_id: postId, user_id: auth.userId }
+        });
+
+        // Notify post owner about update (if not owner)
         const post = await prisma.post.findUnique({ where: { id: postId } });
         if (post && post.user_id !== auth.userId) {
           const actor = await prisma.user.findUnique({ where: { id: auth.userId }, select: { name: true } });
-          await prisma.notification.create({
-            data: {
-              user_id: post.user_id,
-              actor_id: auth.userId,
-              type: 'rating',
-              post_id: postId,
-              message: `あなたの投稿に★${rating}の評価をつけました`,
-            }
-          });
           const isTabireco = post.app_type === 'tabireco';
-          await sendPushNotification(post.user_id, {
-            title: isTabireco ? '旅レコ' : '食べレコ',
-            body: `${actor?.name || '誰か'}さんが「${post.title}」に★${rating}をつけました`,
-            url: `/posts/${postId}`,
-            tag: `rating-${postId}`,
-            icon: isTabireco ? '/tabireco-192.png' : '/icon-192.png',
-          }, post.app_type as 'tabereco' | 'tabireco');
+          
+          if (rating !== undefined && !existing) {
+            await prisma.notification.create({
+              data: {
+                user_id: post.user_id,
+                actor_id: auth.userId,
+                type: 'rating',
+                post_id: postId,
+                message: `あなたの投稿に★${rating}の評価をつけました`,
+              }
+            });
+            await sendPushNotification(post.user_id, {
+              title: isTabireco ? '旅レコ' : '食べレコ',
+              body: `${actor?.name || '誰か'}さんが「${post.title}」に★${rating}をつけました`,
+              url: `/posts/${postId}`,
+              tag: `rating-${postId}`,
+              icon: isTabireco ? '/tabireco-192.png' : '/icon-192.png',
+            }, post.app_type as 'tabereco' | 'tabireco');
+          } else if (!existing) {
+            await prisma.notification.create({
+              data: {
+                user_id: post.user_id,
+                actor_id: auth.userId,
+                type: 'visited',
+                post_id: postId,
+                message: 'あなたの投稿を行ったに追加しました',
+              }
+            });
+            await sendPushNotification(post.user_id, {
+              title: isTabireco ? '旅レコ' : '食べレコ',
+              body: `${actor?.name || '誰か'}さんが「${post.title}」を行ったに追加しました`,
+              url: `/posts/${postId}`,
+              tag: `visited-${postId}`,
+              icon: isTabireco ? '/tabireco-192.png' : '/icon-192.png',
+            }, post.app_type as 'tabereco' | 'tabireco');
+          }
         }
 
         return NextResponse.json({ success: true, marked: true, data: updated });
       }
 
-      // No rating provided -> Toggle behavior
+      // 3. No detailed data provided -> Simple Toggle behavior
       if (existing) {
         await prisma.postVisited.delete({
           where: { post_id_user_id: { post_id: postId, user_id: auth.userId } },
         });
         return NextResponse.json({ success: true, marked: false });
       } else {
-        await prisma.postVisited.create({
+        const created = await prisma.postVisited.create({
           data: { post_id: postId, user_id: auth.userId },
         });
 
@@ -99,7 +157,6 @@ export async function POST(
               message: 'あなたの投稿を行ったに追加しました',
             }
           });
-          // Send Web Push
           const isTabireco = post.app_type === 'tabireco';
           await sendPushNotification(post.user_id, {
             title: isTabireco ? '旅レコ' : '食べレコ',
@@ -110,13 +167,24 @@ export async function POST(
           }, post.app_type as 'tabereco' | 'tabireco');
         }
 
-        return NextResponse.json({ success: true, marked: true });
+        return NextResponse.json({ success: true, marked: true, data: created });
       }
     } catch (e: any) {
       console.error('[POST /api/posts/[id]/visited] Error:', e);
       return NextResponse.json({ success: false, error: e.message }, { status: 500 });
     }
   });
+}
+
+/**
+ * PUT /api/posts/[id]/visited
+ * Explicit update endpoint for visited data.
+ */
+export async function PUT(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  return POST(request, context);
 }
 
 /**
@@ -147,7 +215,19 @@ export async function GET(
           isMarked: !!myRecord,
           myRating: myRecord?.rating ?? null,
           myVisitCount: myRecord?.visit_count ?? 1,
-          users: visiteds.map((w) => ({ ...w.user, rating: w.rating, visit_count: w.visit_count })),
+          myComment: myRecord?.comment ?? null,
+          myImageUrl: myRecord?.image_url ?? null,
+          myImageUrls: myRecord?.image_urls ?? [],
+          myVisitedAt: myRecord?.visited_at ?? null,
+          users: visiteds.map((w) => ({
+            ...w.user,
+            rating: w.rating,
+            visit_count: w.visit_count,
+            comment: w.comment,
+            image_url: w.image_url,
+            image_urls: w.image_urls,
+            visited_at: w.visited_at,
+          })),
         },
       });
     } catch (e: any) {

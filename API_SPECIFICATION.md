@@ -258,9 +258,66 @@ Cookie をクリアしてログアウト。
 ### 4.9 `POST /api/posts/[id]/want-to-go`
 「行きたい」をトグル。
 
-### 4.10 `POST /api/posts/[id]/visited`
-「行った！」をトグル。
-- **Body:** `{ "rating": 4.5 }` (任意)
+### 4.10 `POST /api/posts/[id]/visited` (および `PUT`)
+「行った！」のトグル、または訪問詳細データ（写真、コメント、訪問日、星評価、訪問回数）の保存・更新。
+- **リクエスト Body (JSON, すべて任意):**
+  ```json
+  {
+    "rating": 4.5,
+    "comment": "スープが絶品でした",
+    "image_url": "s3-key-or-url",
+    "image_urls": ["s3-key-1", "s3-key-2"],
+    "visited_at": "2026-10-27",
+    "visit_count": 2,
+    "action": "increment" // または "decrement"（訪問回数の増減時のみ指定）
+  }
+  ```
+- **処理ロジック:**
+  1. `action` 指定時: 既存レコードの `visit_count` を増減。
+  2. 詳細データ（`rating`, `comment`, `image_url`, `image_urls`, `visited_at`, `visit_count`）のいずれかが指定された場合:
+     - `PostVisited` テーブルに upsert（既存レコード更新または新規作成）。
+     - 排他処理として、該当ユーザーの該当投稿に対する `PostWantToGo` レコードを自動削除。
+     - 投稿者本人以外の場合、通知および Web Push を送信。
+  3. ボディが空（詳細データ未指定）の場合:
+     - 既存の訪問レコードがあれば削除（トグル解除）。
+     - なければ新規作成し、排他として「行きたい」を削除して通知を送信。
+- **レスポンス (200):**
+  ```json
+  { "success": true, "marked": true, "data": { /* PostVisited レコード */ } }
+  ```
+  *(トグル解除時は `{ "success": true, "marked": false }`)*
+
+### 4.10.1 `GET /api/posts/[id]/visited`
+該当投稿に対する訪問件数、訪問ユーザー一覧、および閲覧者自身の訪問記録を取得。
+- **レスポンス (200):**
+  ```json
+  {
+    "success": true,
+    "data": {
+      "count": 3,
+      "isMarked": true,
+      "myRating": 4.5,
+      "myVisitCount": 1,
+      "myComment": "スープが絶品でした",
+      "myImageUrl": "...",
+      "myImageUrls": ["..."],
+      "myVisitedAt": "2026-10-27T00:00:00.000Z",
+      "users": [
+        {
+          "id": "uuid",
+          "name": "ユーザー名",
+          "avatar_url": "...",
+          "rating": 4.5,
+          "visit_count": 1,
+          "comment": "...",
+          "image_url": "...",
+          "image_urls": [],
+          "visited_at": "..."
+        }
+      ]
+    }
+  }
+  ```
 
 ### 4.11 `POST /api/posts/[id]/share`
 指定したグループへ投稿を共有する。
@@ -406,6 +463,37 @@ Cookie をクリアしてログアウト。
 
 ### 8.6 `GET /api/user/hot-spring-history`
 旅レコ（温泉）訪問履歴を取得する（タビレコ専用）。
+
+### 8.7 `GET /api/profiles/[id]`
+指定したユーザーのプロフィール情報、投稿一覧、他者投稿への「行った」一覧、他者投稿への「行きたい」一覧を取得。
+- **リクエストパラメータ:** `id` (ユーザーID)
+- **関係性判定ロジック (`relationship`):**
+  - `self`: 本人自身
+  - `friend`: 相互承認済みフレンド
+  - `group`: 共通のグループに所属するメンバー
+  - `stranger`: 上記いずれにも該当しない第三者
+- **プライバシー制限 (`is_restricted`):**
+  - `relationship === 'stranger'` の場合:
+    - メールアドレスは非開示 (`null`)。
+    - ユーザー自身の投稿のうち `status === 'want_to_go'` のものは、画像（`image_url`, `image_urls`）およびコメントを `null`/空配列にマスクし、`is_restricted: true` を付与。
+    - 他人の投稿への「行きたい」も同様に画像・コメントをマスクし `is_restricted: true` を付与。
+  - 身内（`isInsider`: self / friend / group）の場合は全データを開示 (`is_restricted: false`)。
+- **他人の投稿への「行った」マージ処理:**
+  - ユーザーが他人の投稿に対して追加した写真・コメント・評価・訪問日があれば、元投稿データより優先してマージ返却。
+- **レスポンス (200):**
+  ```json
+  {
+    "success": true,
+    "data": {
+      "user": { "id": "uuid", "name": "...", "avatar_url": "...", "email": "..." },
+      "posts": [ /* 投稿オブジェクト配列 (is_restricted フラグ付き) */ ],
+      "markedVisitedPosts": [ /* 訪問データマージ済み投稿配列 */ ],
+      "markedWantToGoPosts": [ /* 行きたい投稿配列 (is_restricted フラグ付き) */ ],
+      "relationship": "stranger" | "friend" | "group" | "self",
+      "stats": { "totalVisited": 15, "totalWantToGo": 8, "totalLiked": 5 }
+    }
+  }
+  ```
 
 ---
 

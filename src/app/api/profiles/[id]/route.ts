@@ -23,20 +23,23 @@ export async function GET(
 
       // Check if target is self
       const isSelf = auth.userId === targetUserId;
+      let isFriend = false;
+      let shareGroup = false;
 
       if (!isSelf) {
         // Check if they are friends
-        const isFriend = await prisma.friendship.findFirst({
+        const friendship = await prisma.friendship.findFirst({
           where: {
             OR: [
               { user_id: auth.userId, friend_id: targetUserId },
               { user_id: targetUserId, friend_id: auth.userId }
-            ]
+            ],
+            status: 'accepted',
           }
         });
+        isFriend = !!friendship;
 
         // Check if they share any groups
-        let shareGroup = false;
         if (!isFriend) {
           const myGroups = await prisma.groupMember.findMany({
             where: { user_id: auth.userId },
@@ -54,16 +57,16 @@ export async function GET(
             if (commonMember) shareGroup = true;
           }
         }
-
-        if (!isFriend && !shareGroup) {
-          return NextResponse.json({ success: false, error: 'Unauthorized to view this profile' }, { status: 403 });
-        }
       }
 
-      // Fetch user info
+      // 身内（本人・フレンド・共有グループ）判定
+      const isInsider = isSelf || isFriend || shareGroup;
+      const relationship = isSelf ? 'self' : isFriend ? 'friend' : shareGroup ? 'group' : 'stranger';
+
+      // Fetch user info (赤の他人にはメールアドレスは開示しない)
       const user = await prisma.user.findUnique({
         where: { id: targetUserId },
-        select: { id: true, name: true, avatar_url: true, email: true }
+        select: { id: true, name: true, avatar_url: true, email: isInsider }
       });
 
       if (!user) {
@@ -72,8 +75,8 @@ export async function GET(
 
       const appType = request.cookies.get('app_type')?.value === 'tabireco' ? 'tabireco' : 'tabereco';
 
-      // Fetch user's public/shared posts (is_mine_only = false)
-      const posts = await prisma.post.findMany({
+      // 1. ユーザー自身が作成した投稿 (is_mine_only = false)
+      const rawPosts = await prisma.post.findMany({
         where: {
           user_id: targetUserId,
           is_mine_only: false,
@@ -94,11 +97,106 @@ export async function GET(
         },
       });
 
-      // Flatten tags
-      const resultPosts = posts.map((post: any) => ({
-        ...post,
-        tags: post.tags.map((pt: any) => pt.tag),
-      }));
+      // 2. ユーザーが他人の投稿に付けた「行った」 (PostVisited)
+      const rawMarkedVisiteds = await prisma.postVisited.findMany({
+        where: {
+          user_id: targetUserId,
+          post: {
+            app_type: appType,
+            is_mine_only: false,
+          },
+        },
+        include: {
+          post: {
+            include: {
+              user: { select: { id: true, name: true, avatar_url: true } },
+              tags: { include: { tag: true } },
+            },
+          },
+        },
+        orderBy: { created_at: 'desc' },
+      });
+
+      // 3. ユーザーが他人の投稿に付けた「行きたい」 (PostWantToGo)
+      const rawMarkedWantToGos = await prisma.postWantToGo.findMany({
+        where: {
+          user_id: targetUserId,
+          post: {
+            app_type: appType,
+            is_mine_only: false,
+          },
+        },
+        include: {
+          post: {
+            include: {
+              user: { select: { id: true, name: true, avatar_url: true } },
+              tags: { include: { tag: true } },
+            },
+          },
+        },
+        orderBy: { created_at: 'desc' },
+      });
+
+      // 自身作成の投稿を整形（赤の他人の場合、「行きたい」投稿の画像を伏せ is_restricted: true を付与）
+      const resultPosts = rawPosts.map((post: any) => {
+        const isWantToGo = post.status === 'want_to_go';
+        const restrictThis = !isInsider && isWantToGo;
+
+        return {
+          ...post,
+          tags: post.tags.map((pt: any) => pt.tag),
+          image_url: restrictThis ? null : post.image_url,
+          image_urls: restrictThis ? [] : post.image_urls,
+          comment: restrictThis ? null : post.comment,
+          is_restricted: restrictThis,
+        };
+      });
+
+      // 他人の投稿への「行った」を整形（自分が追加した写真・コメント・評価があれば元投稿より優先マージ）
+      const markedVisitedPosts = rawMarkedVisiteds
+        .filter((v) => v.post && v.post.user_id !== targetUserId)
+        .map((v) => {
+          const base = v.post;
+          const effectiveImageUrl = v.image_url || (v.image_urls && v.image_urls.length > 0 ? v.image_urls[0] : base.image_url);
+          const effectiveImageUrls = (v.image_urls && v.image_urls.length > 0) ? v.image_urls : (v.image_url ? [v.image_url] : base.image_urls);
+          const effectiveComment = v.comment !== null && v.comment !== undefined && v.comment !== '' ? v.comment : base.comment;
+          const effectiveRating = v.rating ?? base.rating;
+          const effectiveVisitedAt = v.visited_at ?? base.visited_at;
+
+          return {
+            ...base,
+            image_url: effectiveImageUrl,
+            image_urls: effectiveImageUrls,
+            comment: effectiveComment,
+            rating: effectiveRating,
+            visited_at: effectiveVisitedAt,
+            visit_count: v.visit_count,
+            tags: base.tags.map((pt: any) => pt.tag),
+            _isMarkedVisited: true,
+            _markedVisitedAt: v.created_at,
+            _visitedRecordId: v.id,
+            is_restricted: false,
+          };
+        });
+
+      // 他人の投稿への「行きたい」を整形（赤の他人の場合は画像非表示 & is_restricted: true）
+      const markedWantToGoPosts = rawMarkedWantToGos
+        .filter((w) => w.post && w.post.user_id !== targetUserId)
+        .map((w) => {
+          const base = w.post;
+          const restrictThis = !isInsider;
+
+          return {
+            ...base,
+            image_url: restrictThis ? null : base.image_url,
+            image_urls: restrictThis ? [] : base.image_urls,
+            comment: restrictThis ? null : base.comment,
+            tags: base.tags.map((pt: any) => pt.tag),
+            _isMarkedWantToGo: true,
+            _markedWantToGoAt: w.created_at,
+            is_restricted: restrictThis,
+          };
+        });
 
       // Count friends (accepted only)
       const friendsCount = await prisma.friendship.count({
@@ -140,6 +238,8 @@ export async function GET(
         where: { user_id: targetUserId, rating: { not: null }, post: { app_type: appType } },
         select: {
           rating: true,
+          comment: true,
+          image_url: true,
           post: {
             select: {
               id: true,
@@ -167,7 +267,7 @@ export async function GET(
           ratedPosts.push({
             id: v.post.id,
             title: v.post.title,
-            image_url: v.post.image_url,
+            image_url: v.image_url || v.post.image_url,
             rating: v.rating,
             user: v.post.user,
           });
@@ -208,7 +308,11 @@ export async function GET(
         success: true,
         data: {
           user,
+          isInsider,
+          relationship,
           posts: resultPosts,
+          markedVisitedPosts,
+          markedWantToGoPosts,
           friendsCount,
           groupsCount,
           totalPostCount,

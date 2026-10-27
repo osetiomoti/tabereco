@@ -69,13 +69,29 @@ export async function GET(request: NextRequest) {
         });
 
         const result = visiteds
-          .filter((v) => v.post.user_id !== auth.userId)
-          .map((v) => ({
-            ...v.post,
-            rating: v.rating,
-            tags: v.post.tags.map((pt: any) => pt.tag),
-            _markedVisitedAt: v.created_at,
-          }));
+          .filter((v) => v.post && v.post.user_id !== auth.userId)
+          .map((v) => {
+            const base = v.post;
+            const effectiveImageUrl = v.image_url || (v.image_urls && v.image_urls.length > 0 ? v.image_urls[0] : base.image_url);
+            const effectiveImageUrls = (v.image_urls && v.image_urls.length > 0) ? v.image_urls : (v.image_url ? [v.image_url] : base.image_urls);
+            const effectiveComment = v.comment !== null && v.comment !== undefined && v.comment !== '' ? v.comment : base.comment;
+            const effectiveRating = v.rating ?? base.rating;
+            const effectiveVisitedAt = v.visited_at ?? base.visited_at;
+
+            return {
+              ...base,
+              image_url: effectiveImageUrl,
+              image_urls: effectiveImageUrls,
+              comment: effectiveComment,
+              rating: effectiveRating,
+              visited_at: effectiveVisitedAt,
+              visit_count: v.visit_count,
+              tags: base.tags.map((pt: any) => pt.tag),
+              _isMarkedVisited: true,
+              _markedVisitedAt: v.created_at,
+              _visitedRecordId: v.id,
+            };
+          });
         return NextResponse.json({ success: true, data: result });
       }
 

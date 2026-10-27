@@ -49,6 +49,7 @@ export type Post = {
   facility_types: string[];
   shampoo_types: string[];
 
+  is_restricted?: boolean; // true when a stranger views a restricted (e.g. want-to-go) post
   _avgRating?: number | null;
   _ratingCount?: number;
   tags?: Tag[];

@@ -156,6 +156,10 @@ erDiagram
         uuid post_id FK
         uuid user_id FK
         float rating
+        text comment
+        text image_url
+        text_array image_urls
+        date visited_at
         int visit_count
         timestamp created_at
         timestamp updated_at
@@ -382,7 +386,7 @@ erDiagram
 ---
 
 ### 3.11 `post_visiteds` テーブル
-他のユーザーの投稿に対して「自分も行った！」を記録する機能。
+他のユーザーの投稿に対して「自分も行った！」を記録する機能。自分自身の写真やコメント、訪問日、評価を保持。
 
 | カラム名 | 型 | NULL | 初期値 / 制約 | 説明 |
 | :--- | :--- | :---: | :--- | :--- |
@@ -390,6 +394,10 @@ erDiagram
 | `post_id` | UUID | NO | FK (`posts.id`, Cascade) | 対象投稿ID |
 | `user_id` | UUID | NO | FK (`users.id`, Cascade) | 訪問ユーザーID |
 | `rating` | FLOAT | YES | - | 自分の評価 |
+| `comment` | TEXT | YES | - | 自分の感想・メモ |
+| `image_url` | TEXT | YES | - | 自分の写真URL（メイン） |
+| `image_urls` | TEXT[] | NO | `[]` | 自分の写真URLリスト |
+| `visited_at` | DATE | YES | - | 自分の訪問日 |
 | `visit_count` | INT | NO | `1` | 訪問回数 |
 | `created_at` | TIMESTAMP | NO | `now()` | 作成日時 |
 | `updated_at` | TIMESTAMP | NO | `@updatedAt` | 更新日時 |

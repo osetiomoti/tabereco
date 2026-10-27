@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { getImageUrl } from '@/lib/image';
 import { Bookmark, BookmarkCheck, Star, Send, Trash2, User, ChevronDown, Pencil, X, ThumbsUp } from 'lucide-react';
 import { StarDisplay, StarInput } from './StarRating';
+import { VisitedModal } from './VisitedModal';
 
 // ── Rating and Actions (Visited / Want-to-Go) ────────────────────────────────────
 type RatingAndActionsProps = {
@@ -40,6 +41,11 @@ export function RatingAndActions({ postId, isOwner, ownerRating, ownerVisitCount
   const [likeToggling, setLikeToggling] = useState(false);
 
   const [loading, setLoading] = useState(true);
+  const [isVisitedModalOpen, setIsVisitedModalOpen] = useState(false);
+  const [myComment, setMyComment] = useState<string | null>(null);
+  const [myImageUrl, setMyImageUrl] = useState<string | null>(null);
+  const [myImageUrls, setMyImageUrls] = useState<string[]>([]);
+  const [myVisitedAt, setMyVisitedAt] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
@@ -63,6 +69,10 @@ export function RatingAndActions({ postId, isOwner, ownerRating, ownerVisitCount
         setMyRating(visRes.data.myRating);
         setPendingRating(visRes.data.myRating);
         setMyVisitCount(visRes.data.myVisitCount);
+        setMyComment(visRes.data.myComment ?? null);
+        setMyImageUrl(visRes.data.myImageUrl ?? null);
+        setMyImageUrls(visRes.data.myImageUrls ?? []);
+        setMyVisitedAt(visRes.data.myVisitedAt ?? null);
       }
       if (likeRes?.success) {
         setLikeCount(likeRes.data.count);
@@ -89,15 +99,8 @@ export function RatingAndActions({ postId, isOwner, ownerRating, ownerVisitCount
     }
   };
 
-  const toggleVis = async () => {
-    if (visToggling) return;
-    setVisToggling(true);
-    try {
-      await fetch(`/api/posts/${postId}/visited`, { method: 'POST' });
-      fetchData();
-    } finally {
-      setVisToggling(false);
-    }
+  const openVisitedModal = () => {
+    setIsVisitedModalOpen(true);
   };
 
   const toggleLike = async () => {
@@ -211,7 +214,7 @@ export function RatingAndActions({ postId, isOwner, ownerRating, ownerVisitCount
             {/* Action buttons row */}
             <div className="flex items-center gap-3">
               <button
-                onClick={toggleVis}
+                onClick={openVisitedModal}
                 disabled={visToggling}
                 className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-2xl font-black text-[13px] transition-all active:scale-95 ${
                   visMarked
@@ -385,6 +388,28 @@ export function RatingAndActions({ postId, isOwner, ownerRating, ownerVisitCount
             </div>
           )}
         </div>
+      )}
+
+      {isVisitedModalOpen && (
+        <VisitedModal
+          isOpen={isVisitedModalOpen}
+          postId={postId}
+          onClose={() => setIsVisitedModalOpen(false)}
+          initialData={{
+            rating: myRating,
+            comment: myComment,
+            imageUrl: myImageUrl,
+            imageUrls: myImageUrls,
+            visitedAt: myVisitedAt,
+            isMarked: visMarked,
+          }}
+          onSuccess={() => {
+            fetchData();
+          }}
+          onDeleted={() => {
+            fetchData();
+          }}
+        />
       )}
     </div>
   );

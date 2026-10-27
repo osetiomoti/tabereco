@@ -64,6 +64,49 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
+/** Build a Google Maps search URL for a post */
+function getGoogleMapsUrl(post: any) {
+  const query = post.store_name || post.title || '';
+  const base = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+  return post.google_place_id ? `${base}&query_place_id=${post.google_place_id}` : base;
+}
+
+/** Restricted card shown to strangers instead of the real post card */
+function RestrictedCard({ post }: { post: any }) {
+  const mapsUrl = getGoogleMapsUrl(post);
+  return (
+    <a
+      href={mapsUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="relative aspect-square bg-gray-100 overflow-hidden touch-manipulation block"
+    >
+      {/* blurred placeholder */}
+      <div className="w-full h-full flex flex-col items-center justify-center gap-1 p-2 bg-gradient-to-br from-gray-100 via-gray-200 to-gray-100">
+        <span className="text-2xl grayscale opacity-40">🔒</span>
+        <span className="text-[8px] font-black text-gray-400 text-center leading-tight">
+          非公開
+        </span>
+      </div>
+      {/* bottom bar with store name */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
+      <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
+        <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">
+          {post.store_name || post.title}
+        </span>
+      </div>
+      {/* badge */}
+      <div className="absolute top-1.5 left-1.5 bg-gray-700/90 text-white text-[7px] font-black px-1.5 py-0.5 rounded-full leading-none">
+        知り合い限定
+      </div>
+      {/* google maps hint */}
+      <div className="absolute top-1.5 right-1.5 bg-blue-500/90 text-white text-[7px] font-black px-1.5 py-0.5 rounded-full leading-none">
+        Maps
+      </div>
+    </a>
+  );
+}
+
 export default function MyPage() {
   const { appType } = useAppType();
   const [targetUserId, setTargetUserId] = useState<string | null>(null);
@@ -621,21 +664,25 @@ export default function MyPage() {
             ) : (
               <div className="px-0.5 grid grid-cols-3 gap-0.5 pb-4">
                 {filteredMarkedWant.map(post => (
-                  <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
-                    {post.image_url ? (
-                      <Image src={getImageUrl(post.image_url)} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
-                    ) : (
-                      <MiniNoImageMap post={post} />
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
-                    <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
-                      <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
-                      <div className="flex flex-col gap-0.5 mt-0.5">
-                        {post.store_name && <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate opacity-80">{post.store_name}</span>}
-                        {post.user?.name && <span className="text-orange-300 font-black text-[8px] drop-shadow-md truncate">by {post.user.name}</span>}
+                  post.is_restricted ? (
+                    <RestrictedCard key={post.id} post={post} />
+                  ) : (
+                    <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
+                      {post.image_url ? (
+                        <Image src={getImageUrl(post.image_url)} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
+                      ) : (
+                        <MiniNoImageMap post={post} />
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
+                      <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
+                        <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
+                        <div className="flex flex-col gap-0.5 mt-0.5">
+                          {post.store_name && <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate opacity-80">{post.store_name}</span>}
+                          {post.user?.name && <span className="text-orange-300 font-black text-[8px] drop-shadow-md truncate">by {post.user.name}</span>}
+                        </div>
                       </div>
-                    </div>
-                  </Link>
+                    </Link>
+                  )
                 ))}
               </div>
             )}
@@ -710,24 +757,28 @@ export default function MyPage() {
             ) : (
               <div className="px-0.5 grid grid-cols-3 gap-0.5 pb-4">
                 {filteredMarkedVisited.map(post => (
-                  <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
-                    {post.image_url ? (
-                      <Image src={getImageUrl(post.image_url)} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-indigo-50"><span className="text-2xl opacity-50">🍽️</span></div>
-                    )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
-                    <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
-                      <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
-                      {post.user?.name && <span className="text-orange-300 font-black text-[8px] drop-shadow-md truncate mt-0.5">by {post.user.name}</span>}
-                    </div>
-                    {post.rating && (
-                      <div className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur-sm text-orange-500 px-1 py-0.5 rounded flex items-center gap-0.5 shadow-sm scale-75 origin-top-left">
-                        <span className="text-[10px] font-black">★</span>
-                        <span className="text-[10px] font-black">{post.rating.toFixed(1)}</span>
+                  post.is_restricted ? (
+                    <RestrictedCard key={post.id} post={post} />
+                  ) : (
+                    <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
+                      {post.image_url ? (
+                        <Image src={getImageUrl(post.image_url)} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center bg-indigo-50"><span className="text-2xl opacity-50">🍽️</span></div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
+                      <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
+                        <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
+                        {post.user?.name && <span className="text-orange-300 font-black text-[8px] drop-shadow-md truncate mt-0.5">by {post.user.name}</span>}
                       </div>
-                    )}
-                  </Link>
+                      {post.rating && (
+                        <div className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur-sm text-orange-500 px-1 py-0.5 rounded flex items-center gap-0.5 shadow-sm scale-75 origin-top-left">
+                          <span className="text-[10px] font-black">★</span>
+                          <span className="text-[10px] font-black">{post.rating.toFixed(1)}</span>
+                        </div>
+                      )}
+                    </Link>
+                  )
                 ))}
               </div>
             )}
@@ -747,58 +798,62 @@ export default function MyPage() {
       ) : (
         <div className="px-0.5 grid grid-cols-3 gap-0.5 animate-in fade-in duration-500">
           {filteredPosts.map(post => (
-            <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
-              {post.image_url ? (
-                <Image src={getImageUrl(post.image_url)} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
-              ) : post.status === 'want_to_go' ? (
-                <MiniNoImageMap post={post} />
-              ) : (
-                <div className={`w-full h-full flex flex-col items-center justify-center p-2 transition-transform duration-500 group-hover:scale-105 bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100`}>
-                  <span className="text-2xl mb-1">🍽️</span>
-                  <span className="text-[9px] font-black text-center leading-tight text-gray-700 line-clamp-2 px-1">{post.title}</span>
-                  {post.store_name && <span className="text-[7px] font-bold text-gray-400 mt-0.5 truncate w-full text-center">{post.store_name}</span>}
-                  {post.user?.name && (activeTab === 'liked' || post.user_id !== myProfileData?.id) && (
-                    <span className="text-[8px] font-black text-orange-500 mt-0.5 truncate">by {post.user.name}</span>
-                  )}
-                </div>
-              )}
+            post.is_restricted ? (
+              <RestrictedCard key={post.id} post={post} />
+            ) : (
+              <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
+                {post.image_url ? (
+                  <Image src={getImageUrl(post.image_url)} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
+                ) : post.status === 'want_to_go' ? (
+                  <MiniNoImageMap post={post} />
+                ) : (
+                  <div className={`w-full h-full flex flex-col items-center justify-center p-2 transition-transform duration-500 group-hover:scale-105 bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100`}>
+                    <span className="text-2xl mb-1">🍽️</span>
+                    <span className="text-[9px] font-black text-center leading-tight text-gray-700 line-clamp-2 px-1">{post.title}</span>
+                    {post.store_name && <span className="text-[7px] font-bold text-gray-400 mt-0.5 truncate w-full text-center">{post.store_name}</span>}
+                    {post.user?.name && (activeTab === 'liked' || post.user_id !== myProfileData?.id) && (
+                      <span className="text-[8px] font-black text-orange-500 mt-0.5 truncate">by {post.user.name}</span>
+                    )}
+                  </div>
+                )}
 
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
 
-              <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
-                <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
-                <div className="flex flex-col gap-0.5 mt-0.5">
-                  {post.store_name && (
-                    <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate opacity-80">
-                      {post.store_name} {post.visited_at ? `• ${formatDate(post.visited_at).split('-').slice(1).join('/')}` : ''}
-                    </span>
-                  )}
-                  {post.user?.name && (activeTab === 'liked' || post.user_id !== myProfileData?.id) && (
-                    <span className="text-orange-300 font-black text-[8px] drop-shadow-md truncate">
-                      by {post.user.name}
-                    </span>
-                  )}
+                <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
+                  <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
+                  <div className="flex flex-col gap-0.5 mt-0.5">
+                    {post.store_name && (
+                      <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate opacity-80">
+                        {post.store_name} {post.visited_at ? `• ${formatDate(post.visited_at).split('-').slice(1).join('/')}` : ''}
+                      </span>
+                    )}
+                    {post.user?.name && (activeTab === 'liked' || post.user_id !== myProfileData?.id) && (
+                      <span className="text-orange-300 font-black text-[8px] drop-shadow-md truncate">
+                        by {post.user.name}
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
 
-              {post.rating && (
-                <div className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur-sm text-orange-500 px-1 py-0.5 rounded flex items-center gap-0.5 shadow-sm scale-75 origin-top-left">
-                   <span className="text-[10px] font-black">★</span>
-                   <span className="text-[10px] font-black">{post.rating.toFixed(1)}</span>
-                </div>
-              )}
+                {post.rating && (
+                  <div className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur-sm text-orange-500 px-1 py-0.5 rounded flex items-center gap-0.5 shadow-sm scale-75 origin-top-left">
+                    <span className="text-[10px] font-black">★</span>
+                    <span className="text-[10px] font-black">{post.rating.toFixed(1)}</span>
+                  </div>
+                )}
 
-              {post.is_favorite && (
-                <div className="absolute top-1.5 right-1.5 bg-pink-500/90 text-white w-4 h-4 rounded-full flex items-center justify-center shadow-sm scale-75 origin-top-right">
-                   <span className="text-[10px] font-black">♥</span>
-                </div>
-              )}
-              {post.user_id !== myProfileData?.id && activeTab !== 'liked' && (
-                <div className="absolute bottom-1.5 right-1.5 bg-gray-800/80 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full z-10 shadow-sm opacity-90 scale-90 origin-bottom-right">
-                  みんなの投稿
-                </div>
-              )}
-            </Link>
+                {post.is_favorite && (
+                  <div className="absolute top-1.5 right-1.5 bg-pink-500/90 text-white w-4 h-4 rounded-full flex items-center justify-center shadow-sm scale-75 origin-top-right">
+                    <span className="text-[10px] font-black">♥</span>
+                  </div>
+                )}
+                {post.user_id !== myProfileData?.id && activeTab !== 'liked' && (
+                  <div className="absolute bottom-1.5 right-1.5 bg-gray-800/80 text-white text-[8px] font-black px-1.5 py-0.5 rounded-full z-10 shadow-sm opacity-90 scale-90 origin-bottom-right">
+                    みんなの投稿
+                  </div>
+                )}
+              </Link>
+            )
           ))}
         </div>
       )}
