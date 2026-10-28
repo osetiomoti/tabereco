@@ -159,7 +159,7 @@ export function VisitedModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div 
         className="w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col max-h-[85dvh] sm:max-h-[85vh] h-auto overflow-hidden animate-in slide-in-from-bottom duration-300"
         onClick={(e) => e.stopPropagation()}
@@ -260,7 +260,7 @@ export function VisitedModal({
         </div>
 
         {/* Footer Actions (shrink-0で下部に常時固定 & セーフエリア余白) */}
-        <div className="shrink-0 px-5 pt-3.5 pb-[max(1.25rem,env(safe-area-inset-bottom))] border-t border-gray-100 bg-white/95 backdrop-blur shadow-[0_-4px_16px_rgba(0,0,0,0.06)] flex flex-col gap-2 z-10">
+        <div className="shrink-0 px-5 pt-3.5 pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.5rem))] border-t border-gray-100 bg-white/95 backdrop-blur shadow-[0_-4px_16px_rgba(0,0,0,0.06)] flex flex-col gap-2 z-10">
           {uploadStatusText && (
             <div className="text-center text-xs font-bold text-orange-500 flex items-center justify-center gap-2 py-1">
               <Loader2 size={14} className="animate-spin" />

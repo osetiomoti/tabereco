@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import { X, BookmarkCheck, ClipboardList, Loader2 } from 'lucide-react';
@@ -35,11 +35,11 @@ export function VisitChoiceModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm"
+      className="fixed inset-0 z-[110] flex items-end justify-center bg-black/50 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg bg-white rounded-t-[2rem] pb-safe px-5 pt-5 pb-8 shadow-2xl animate-in slide-in-from-bottom-4 duration-300"
+        className="w-full max-w-lg bg-white rounded-t-[2rem] px-5 pt-5 pb-[max(2rem,calc(env(safe-area-inset-bottom)+1rem))] shadow-2xl animate-in slide-in-from-bottom-4 duration-300"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

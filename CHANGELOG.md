@@ -23,11 +23,15 @@
    - `google_place_id` が存在する場合は `&query_place_id` を最優先で付与。
    - `google_place_id` が欠損している場合でも、店名単体の一致による別店舗誤認を防ぐため、`store_name + address` を重視した検索クエリを生成。
    - DBへ勝手に `google_place_id` を上書き書き込みしない安全な仕様を担保。
+5. **`VisitedModal` / `VisitChoiceModal` の z-index 引き上げ（下部メニュー被り解消）**
+   - 下部固定ナビゲーションバー（`BottomNav`: `z-50`）がモーダル前面に重なって表示され、モーダル下部のアクションボタン（「記録を保存」「あとで入力」「削除」）が隠れて押せなくなる問題を修正。
+   - `VisitedModal` および `VisitChoiceModal` の z-index を `z-50` から `z-[110]` に引き上げ、暗幕（backdrop）ごと画面最前面に展開されるように修正。
+   - フッター下部のパディングを `pb-[max(1.25rem,calc(env(safe-area-inset-bottom)+0.5rem))]` に最適化し、iOSホームバーとのタップ干渉を解消。
 ### 影響範囲
-- `src/components/VisitChoiceModal.tsx`（新規作成）
+- `src/components/VisitedModal.tsx`
+- `src/components/VisitChoiceModal.tsx`
 - `src/components/PostCard.tsx`
 - `src/components/PostSocial.tsx`
-- `src/components/VisitedModal.tsx`
 - `src/lib/utils.ts`
 - `src/app/posts/[id]/page.tsx`
 - `src/app/mypage/page.tsx`
