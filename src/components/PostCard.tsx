@@ -1,7 +1,7 @@
 'use client';
 
 import type { Post } from '@/lib/types';
-import { formatDate } from '@/lib/utils';
+import { formatDate, getGoogleMapsUrl } from '@/lib/utils';
 import Image from 'next/image';
 import Link from 'next/link';
 import { getImageUrl } from '@/lib/image';
@@ -9,6 +9,7 @@ import { Heart, CheckCircle2, User, MoreHorizontal, Star, MapPin, X, Bookmark, U
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { VisitedModal } from '@/components/VisitedModal';
+import { VisitChoiceModal } from '@/components/VisitChoiceModal';
 import { StarInput, StarDisplay } from '@/components/StarRating';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -235,6 +236,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isVisitedModalOpen, setIsVisitedModalOpen] = useState(false);
+  const [isChoiceModalOpen, setIsChoiceModalOpen] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const handleScroll = () => {
@@ -298,7 +300,35 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
   const toggleVisited = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsVisitedModalOpen(true);
+    if (isVisited) {
+      // 行った済み → VisitedModal を直接開く（編集）
+      setIsVisitedModalOpen(true);
+    } else {
+      // 未登録 → 記録方法の選択モーダルを開く
+      setIsChoiceModalOpen(true);
+    }
+  };
+
+  const handleQuickVisit = async () => {
+    // 「行ったのみ記録」: 詳細なしで即座に登録
+    try {
+      const res = await fetch(`/api/posts/${post.id}/visited`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isMarked: true }),
+      });
+      if (res.ok) {
+        setIsVisited(true);
+        setIsWantToGo(false);
+        setIsChoiceModalOpen(false);
+        bumpDetail();
+        if (_isMine && post.status === 'want_to_go') {
+          window.location.reload();
+        }
+      }
+    } catch (err) {
+      console.error('Quick visit failed:', err);
+    }
   };
 
   const saveRating = async () => {
@@ -584,7 +614,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
         {/* マップ - 右端 */}
         {hasCoords ? (
           <a 
-            href={`https://www.google.com/maps/search/?api=1&query=${post.latitude},${post.longitude}${post.google_place_id ? `&query_place_id=${post.google_place_id}` : ''}`}
+            href={getGoogleMapsUrl(post)}
             target="_blank"
             rel="noopener noreferrer"
             onClick={e => e.stopPropagation()}
@@ -659,6 +689,17 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
             行ってきた！記録する
           </button>
         </div>
+      )}
+
+      {/* 記録方法選択モーダル（未登録時） */}
+      {isChoiceModalOpen && (
+        <VisitChoiceModal
+          isOpen={isChoiceModalOpen}
+          storeName={post.store_name || post.title}
+          onClose={() => setIsChoiceModalOpen(false)}
+          onDetailRecord={() => setIsVisitedModalOpen(true)}
+          onQuickVisit={handleQuickVisit}
+        />
       )}
 
       {isVisitedModalOpen && (

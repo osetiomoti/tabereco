@@ -11,9 +11,28 @@
    - モーダル最大高さを `max-h-[85dvh]` に設定し、フッターに `shrink-0` と `safe-area-inset-bottom` 対応パディングを適用して常時固定表示化。
    - スクロールしなくても即座に保存できるよう、ヘッダー右上（閉じるボタンの左）にクイック「保存」ボタンを追加配置。
    - コンテンツ部分に `min-h-0` と `overscroll-contain` を追加し、縦スクロールがフッターを画面外へ押し出さないようレイアウトを最適化。
+2. **「行った」ボタン押下時のステップ選択機能（`VisitChoiceModal`）の新設**
+   - 未登録の投稿で「行った」ボタンを押下した際、即座に詳細入力画面を開くのではなく、ワンクッション選択モーダル（`VisitChoiceModal`）を起動するように改善。
+   - 「詳細を記録する（写真・日付・コメント・評価を入力）」と「行ったのみ記録（詳細入力不要で即座にAPI登録）」の2つの選択肢を提供。
+   - これにより、手軽にチェックだけ付けたいユーザーと、じっくり詳細を記録したいユーザーの双方に対応。
+3. **既存「行った」データの編集・追記導線の整備**
+   - すでに「行った」に登録済みの投稿でボタンを押下した場合は、選択ステップをスキップして直接 `VisitedModal` を開き、保存済みの写真・評価・コメント・日付をフォーム初期値として自動展開。
+   - 既存データの修正・写真の追加・再評価・記録の解除（削除）をスムーズに行える導線を確立。
+4. **`google_place_id` 欠損データの救済・フォールバック共通ユーティリティ実装**
+   - `src/lib/utils.ts` に `getGoogleMapsUrl` を新設し、タイムラインカード (`PostCard`)、投稿詳細 (`/posts/[id]`)、マイページ (`/mypage`) で共通化。
+   - `google_place_id` が存在する場合は `&query_place_id` を最優先で付与。
+   - `google_place_id` が欠損している場合でも、店名単体の一致による別店舗誤認を防ぐため、`store_name + address` を重視した検索クエリを生成。
+   - DBへ勝手に `google_place_id` を上書き書き込みしない安全な仕様を担保。
 ### 影響範囲
+- `src/components/VisitChoiceModal.tsx`（新規作成）
+- `src/components/PostCard.tsx`
+- `src/components/PostSocial.tsx`
 - `src/components/VisitedModal.tsx`
+- `src/lib/utils.ts`
+- `src/app/posts/[id]/page.tsx`
+- `src/app/mypage/page.tsx`
 - `APP_SPECIFICATION.md`
+- `IMPLEMENTATION_STATUS.md`
 
 ---
 

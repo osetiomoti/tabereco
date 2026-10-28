@@ -9,7 +9,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { getPosts } from '@/lib/api/posts';
 import type { Post } from '@/lib/types';
-import { formatDate } from '@/lib/utils';
+import { formatDate, getGoogleMapsUrl } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { useSharedFilter } from '@/hooks/useSharedFilter';
 import { useScrollRestore } from '@/hooks/useScrollRestore';
@@ -64,12 +64,6 @@ function StarRating({ rating }: { rating: number }) {
   );
 }
 
-/** Build a Google Maps search URL for a post */
-function getGoogleMapsUrl(post: any) {
-  const query = post.store_name || post.title || '';
-  const base = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
-  return post.google_place_id ? `${base}&query_place_id=${post.google_place_id}` : base;
-}
 
 /** Restricted card shown to strangers instead of the real post card */
 function RestrictedCard({ post }: { post: any }) {

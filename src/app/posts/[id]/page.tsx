@@ -1,6 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { Header } from '@/components/Header';
-import { formatDate } from '@/lib/utils';
+import { formatDate, getGoogleMapsUrl } from '@/lib/utils';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { User, ChevronDown, MapPin } from 'lucide-react';
@@ -378,7 +378,7 @@ export default async function PostDetailPage({ params }: Props) {
 
         <div className="bg-[#f9f9f9] px-4 py-5 flex justify-center border-b border-gray-200/50">
            <a 
-             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(post.store_name + ' ' + (post.address || ''))}${post.google_place_id ? `&query_place_id=${post.google_place_id}` : ''}`}
+             href={getGoogleMapsUrl(post)}
              target="_blank"
              rel="noreferrer"
              className="w-full sm:w-[85%] mx-auto py-3.5 border border-[#5d4037] text-[#5d4037] rounded-md text-[13px] tracking-wide flex justify-center items-center bg-white shadow-sm hover:bg-[#5d4037] hover:text-white transition-all"

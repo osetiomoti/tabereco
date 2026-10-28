@@ -36,5 +36,6 @@ setup_db.cjs
 find_user.ts
 find_id.cjs
 migrate-images-log.json
+*.zip
 
 /src/generated/prisma
