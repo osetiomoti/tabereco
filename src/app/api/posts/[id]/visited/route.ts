@@ -189,7 +189,7 @@ export async function PUT(
 
 /**
  * GET /api/posts/[id]/visited
- * Get visited count, list, and ratings for a post.
+ * Get visited count, list, and ratings for a post, aggregated by store.
  */
 export async function GET(
   request: NextRequest,
@@ -198,39 +198,164 @@ export async function GET(
   const { id: postId } = await params;
   return withAuth(request, async (auth) => {
     try {
-      const visiteds = await prisma.postVisited.findMany({
-        where: { post_id: postId },
+      const currentPost = await prisma.post.findUnique({
+        where: { id: postId },
         include: {
           user: { select: { id: true, name: true, avatar_url: true } },
         },
-        orderBy: { created_at: 'asc' },
       });
 
-      const myRecord = visiteds.find((w) => w.user_id === auth.userId);
+      if (!currentPost) {
+        return NextResponse.json({ success: false, error: 'Post not found' }, { status: 404 });
+      }
+
+      // 1. 同一店舗の投稿を検索（google_place_id優先、なければ store_name + address）
+      let sameStorePosts: any[] = [];
+      if (currentPost.google_place_id?.trim()) {
+        sameStorePosts = await prisma.post.findMany({
+          where: {
+            google_place_id: currentPost.google_place_id.trim(),
+            app_type: currentPost.app_type,
+          },
+          include: {
+            user: { select: { id: true, name: true, avatar_url: true } },
+          },
+        });
+      } else if (currentPost.store_name?.trim() && currentPost.address?.trim()) {
+        sameStorePosts = await prisma.post.findMany({
+          where: {
+            store_name: currentPost.store_name.trim(),
+            address: currentPost.address.trim(),
+            app_type: currentPost.app_type,
+          },
+          include: {
+            user: { select: { id: true, name: true, avatar_url: true } },
+          },
+        });
+      } else {
+        sameStorePosts = [currentPost];
+      }
+
+      const postIds = sameStorePosts.map((p) => p.id);
+
+      // 2. 該当店舗に紐づくすべての PostVisited レコードを取得
+      const visiteds = await prisma.postVisited.findMany({
+        where: { post_id: { in: postIds } },
+        include: {
+          user: { select: { id: true, name: true, avatar_url: true } },
+        },
+        orderBy: { created_at: 'desc' },
+      });
+
+      // 3. 身内（フレンド・共通グループ）判定用データを一括取得
+      const friendships = await prisma.friendship.findMany({
+        where: {
+          status: 'accepted',
+          OR: [
+            { user_id: auth.userId },
+            { friend_id: auth.userId },
+          ],
+        },
+      });
+      const friendIds = new Set(
+        friendships.map((f) => (f.user_id === auth.userId ? f.friend_id : f.user_id))
+      );
+
+      const myGroupMembers = await prisma.groupMember.findMany({
+        where: { user_id: auth.userId },
+        select: { group_id: true },
+      });
+      const myGroupIds = myGroupMembers.map((g) => g.group_id);
+
+      let groupMemberIds = new Set<string>();
+      if (myGroupIds.length > 0) {
+        const sharedMembers = await prisma.groupMember.findMany({
+          where: { group_id: { in: myGroupIds } },
+          select: { user_id: true },
+        });
+        groupMemberIds = new Set(sharedMembers.map((m) => m.user_id));
+      }
+
+      // 4. 訪問者をユーザー単位でマージ（ユニーク化）
+      const visitorMap = new Map<string, any>();
+
+      // A. 元投稿の投稿者（status === 'visited' の場合）
+      for (const p of sameStorePosts) {
+        if (p.status === 'visited' && p.user) {
+          const isMe = p.user_id === auth.userId;
+          const isInsider = isMe || friendIds.has(p.user_id) || groupMemberIds.has(p.user_id);
+          const isRestricted = !isInsider && (p.is_mine_only || false);
+          const images = p.image_urls && p.image_urls.length > 0 ? p.image_urls : (p.image_url ? [p.image_url] : []);
+
+          visitorMap.set(p.user_id, {
+            id: p.user.id,
+            name: p.user.name,
+            avatar_url: p.user.avatar_url,
+            rating: p.rating,
+            comment: isRestricted ? null : p.comment,
+            image_url: isRestricted ? null : (images[0] || null),
+            image_urls: isRestricted ? [] : images,
+            visited_at: p.visited_at,
+            visit_count: p.visit_count || 1,
+            isAuthor: true,
+            postId: p.id,
+            isMe,
+            is_restricted: isRestricted,
+          });
+        }
+      }
+
+      // B. PostVisited 登録ユーザー
+      for (const v of visiteds) {
+        if (!v.user) continue;
+        const isMe = v.user_id === auth.userId;
+        const isInsider = isMe || friendIds.has(v.user_id) || groupMemberIds.has(v.user_id);
+        const isRestricted = !isInsider;
+        const images = v.image_urls && v.image_urls.length > 0 ? v.image_urls : (v.image_url ? [v.image_url] : []);
+
+        const existing = visitorMap.get(v.user_id);
+        if (!existing || (!existing.comment && v.comment) || (existing.image_urls.length === 0 && images.length > 0)) {
+          visitorMap.set(v.user_id, {
+            id: v.user.id,
+            name: v.user.name,
+            avatar_url: v.user.avatar_url,
+            rating: v.rating ?? existing?.rating ?? null,
+            comment: isRestricted ? null : (v.comment || existing?.comment || null),
+            image_url: isRestricted ? null : (images[0] || existing?.image_url || null),
+            image_urls: isRestricted ? [] : (images.length > 0 ? images : (existing?.image_urls || [])),
+            visited_at: v.visited_at || existing?.visited_at || null,
+            visit_count: v.visit_count || existing?.visit_count || 1,
+            isAuthor: existing?.isAuthor || false,
+            postId: v.post_id,
+            visitedId: v.id,
+            isMe,
+            is_restricted: isRestricted,
+          });
+        }
+      }
+
+      const visitorsList = Array.from(visitorMap.values());
+
+      // 5. ログインユーザー自身の記録判定
+      const mySpecificVisited = visiteds.find((w) => w.user_id === auth.userId && w.post_id === postId);
+      const myAnyStoreRecord = visitorMap.get(auth.userId);
 
       return NextResponse.json({
         success: true,
         data: {
-          count: visiteds.length,
-          isMarked: !!myRecord,
-          myRating: myRecord?.rating ?? null,
-          myVisitCount: myRecord?.visit_count ?? 1,
-          myComment: myRecord?.comment ?? null,
-          myImageUrl: myRecord?.image_url ?? null,
-          myImageUrls: myRecord?.image_urls ?? [],
-          myVisitedAt: myRecord?.visited_at ?? null,
-          users: visiteds.map((w) => ({
-            ...w.user,
-            rating: w.rating,
-            visit_count: w.visit_count,
-            comment: w.comment,
-            image_url: w.image_url,
-            image_urls: w.image_urls,
-            visited_at: w.visited_at,
-          })),
+          count: visitorsList.length,
+          isMarked: !!mySpecificVisited || (currentPost.user_id === auth.userId && currentPost.status === 'visited') || !!myAnyStoreRecord,
+          myRating: mySpecificVisited?.rating ?? myAnyStoreRecord?.rating ?? null,
+          myVisitCount: mySpecificVisited?.visit_count ?? myAnyStoreRecord?.visit_count ?? 1,
+          myComment: mySpecificVisited?.comment ?? myAnyStoreRecord?.comment ?? null,
+          myImageUrl: mySpecificVisited?.image_url ?? myAnyStoreRecord?.image_url ?? null,
+          myImageUrls: mySpecificVisited?.image_urls ?? myAnyStoreRecord?.image_urls ?? [],
+          myVisitedAt: mySpecificVisited?.visited_at ?? myAnyStoreRecord?.visited_at ?? null,
+          users: visitorsList,
         },
       });
     } catch (e: any) {
+      console.error('[GET /api/posts/[id]/visited] Error:', e);
       return NextResponse.json({ success: false, error: e.message }, { status: 500 });
     }
   });

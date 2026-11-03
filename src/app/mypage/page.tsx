@@ -16,6 +16,7 @@ import { useScrollRestore } from '@/hooks/useScrollRestore';
 import { useMyProfile } from '@/hooks/useAppData';
 import { useAppType } from '@/contexts/AppTypeContext';
 import { getImageUrl } from '@/lib/image';
+import { getStoreKey, pickRepresentativeImage } from '@/lib/storeUtils';
 
 function MiniNoImageMap({ post }: { post: Post }) {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '';
@@ -302,6 +303,105 @@ export default function MyPage() {
   const filteredOwnWant = applyFilters(ownWantToGoPosts);
   const filteredMarkedWant = applyFilters(markedWantToGoPosts);
   filteredPosts = applyFilters(filteredPosts);
+
+  // 「みんなの投稿の『行った』」を店舗単位にグルーピング
+  const groupedMarkedVisitedStores = (() => {
+    const storeMap = new Map<string, {
+      storeKey: string;
+      posts: any[];
+      storeName: string;
+      address: string | null;
+      representativePost: any;
+      representativeImage: string | null;
+      uniqueVisitorsCount: number;
+      avgRating: number | null;
+      allRestricted: boolean;
+    }>();
+
+    for (const post of filteredMarkedVisited) {
+      const key = getStoreKey(post);
+      const existing = storeMap.get(key);
+      if (existing) {
+        existing.posts.push(post);
+      } else {
+        storeMap.set(key, {
+          storeKey: key,
+          posts: [post],
+          storeName: post.store_name || post.title || '店舗',
+          address: post.address || null,
+          representativePost: post,
+          representativeImage: null,
+          uniqueVisitorsCount: 1,
+          avgRating: null,
+          allRestricted: false,
+        });
+      }
+    }
+
+    return Array.from(storeMap.values()).map((group) => {
+      // 最新の投稿を代表とする
+      const sortedPosts = [...group.posts].sort((a, b) => {
+        const tA = new Date(a.created_at).getTime();
+        const tB = new Date(b.created_at).getTime();
+        return tB - tA;
+      });
+      const repPost = sortedPosts[0];
+
+      // 代表画像の選定
+      const imageItems: Array<{ image_url?: string | null; image_urls?: string[]; created_at?: any }> = [];
+      for (const p of group.posts) {
+        imageItems.push({
+          image_url: p.image_url,
+          image_urls: p.image_urls,
+          created_at: p.created_at,
+        });
+        if (p.visiteds && Array.isArray(p.visiteds)) {
+          for (const v of p.visiteds) {
+            imageItems.push({
+              image_url: v.image_url,
+              image_urls: v.image_urls,
+              created_at: v.created_at,
+            });
+          }
+        }
+      }
+      const repImage = pickRepresentativeImage(imageItems) || repPost.image_url || null;
+
+      // ユニーク訪問者数の計算（投稿者 + postVisited 登録者）
+      const visitorUserIds = new Set<string>();
+      for (const p of group.posts) {
+        if (p.user_id) visitorUserIds.add(p.user_id);
+        if (p.visiteds && Array.isArray(p.visiteds)) {
+          for (const v of p.visiteds) {
+            if (v.user_id) visitorUserIds.add(v.user_id);
+          }
+        }
+      }
+      const uniqueCount = Math.max(1, visitorUserIds.size);
+
+      // 平均評価の計算
+      const ratings: number[] = [];
+      for (const p of group.posts) {
+        if (p.rating != null && p.rating > 0) ratings.push(p.rating);
+        if (p.visiteds && Array.isArray(p.visiteds)) {
+          for (const v of p.visiteds) {
+            if (v.rating != null && v.rating > 0) ratings.push(v.rating);
+          }
+        }
+      }
+      const avg = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
+      const allRestricted = group.posts.every((p) => p.is_restricted);
+
+      return {
+        ...group,
+        representativePost: repPost,
+        representativeImage: repImage,
+        uniqueVisitorsCount: uniqueCount,
+        avgRating: avg,
+        allRestricted,
+      };
+    });
+  })();
 
   const goToMap = async () => {
     if (targetUserId) {
@@ -740,40 +840,77 @@ export default function MyPage() {
             <div className="px-4 py-2 flex items-center gap-2">
               <Bookmark size={12} className="text-orange-400" />
               <span className="text-[11px] font-black text-gray-400 tracking-wider uppercase">みんなの投稿の「行った」</span>
-              <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">{filteredMarkedVisited.length}</span>
+              <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">
+                {groupedMarkedVisitedStores.length}店舗
+              </span>
             </div>
             {markedVisLoading ? (
               <div className="px-0.5 grid grid-cols-3 gap-0.5">
                 {[1,2,3].map(i => <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />)}
               </div>
-            ) : filteredMarkedVisited.length === 0 ? (
+            ) : groupedMarkedVisitedStores.length === 0 ? (
               <div className="py-8 text-center text-gray-300 text-[12px] font-bold">他の人の投稿で「行った」を押してみよう</div>
             ) : (
               <div className="px-0.5 grid grid-cols-3 gap-0.5 pb-4">
-                {filteredMarkedVisited.map(post => (
-                  post.is_restricted ? (
-                    <RestrictedCard key={post.id} post={post} />
-                  ) : (
-                    <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
-                      {post.image_url ? (
-                        <Image src={getImageUrl(post.image_url)} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
+                {groupedMarkedVisitedStores.map(store => {
+                  const post = store.representativePost;
+                  if (store.allRestricted) {
+                    return <RestrictedCard key={store.storeKey} post={post} />;
+                  }
+                  return (
+                    <Link
+                      href={`/posts/${post.id}`}
+                      key={store.storeKey}
+                      className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation block"
+                    >
+                      {store.representativeImage ? (
+                        <Image
+                          src={getImageUrl(store.representativeImage)}
+                          alt={store.storeName}
+                          fill
+                          className="object-cover transition-transform duration-500 group-hover:scale-110"
+                          sizes="33vw"
+                        />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-indigo-50"><span className="text-2xl opacity-50">🍽️</span></div>
-                      )}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
-                      <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
-                        <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
-                        {post.user?.name && <span className="text-orange-300 font-black text-[8px] drop-shadow-md truncate mt-0.5">by {post.user.name}</span>}
-                      </div>
-                      {post.rating && (
-                        <div className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur-sm text-orange-500 px-1 py-0.5 rounded flex items-center gap-0.5 shadow-sm scale-75 origin-top-left">
-                          <span className="text-[10px] font-black">★</span>
-                          <span className="text-[10px] font-black">{post.rating.toFixed(1)}</span>
+                        <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 group-hover:scale-105 transition-transform duration-500">
+                          <span className="text-xl mb-1">🍽️</span>
+                          <span className="text-[9px] font-black text-center leading-tight text-gray-700 line-clamp-2 px-1">
+                            {store.storeName}
+                          </span>
                         </div>
                       )}
+
+                      {/* 暗いグラデーション */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent opacity-90 pointer-events-none" />
+
+                      {/* 左上: 訪問人数バッジ */}
+                      <div className="absolute top-1.5 left-1.5 bg-black/70 backdrop-blur-xs text-white text-[9px] font-black px-1.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                        <User size={10} className="text-orange-400" />
+                        <span>{store.uniqueVisitorsCount}</span>
+                      </div>
+
+                      {/* 右上: 平均評価バッジ */}
+                      {store.avgRating != null && (
+                        <div className="absolute top-1.5 right-1.5 bg-white/95 backdrop-blur-sm text-orange-500 px-1 py-0.5 rounded flex items-center gap-0.5 shadow-sm scale-90 origin-top-right">
+                          <span className="text-[9px] font-black">★</span>
+                          <span className="text-[9px] font-black">{store.avgRating.toFixed(1)}</span>
+                        </div>
+                      )}
+
+                      {/* 下部: 店舗名・住所 */}
+                      <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
+                        <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">
+                          {store.storeName}
+                        </span>
+                        {store.address && (
+                          <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate mt-0.5 opacity-80">
+                            {store.address}
+                          </span>
+                        )}
+                      </div>
                     </Link>
-                  )
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

@@ -12,7 +12,7 @@ import React from 'react';
 type Props = { params: Promise<{ id: string }> };
 
 export const metadata: Metadata = {
-  title: '投稿を編集 | モグレコ',
+  title: '投稿を編集 | 食べレコ',
 };
 
 export default async function EditPostPage({ params }: Props) {

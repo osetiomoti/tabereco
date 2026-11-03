@@ -16,11 +16,11 @@ export function ShareButton({ post, onShare }: Props) {
 
   const shareUrl = `${window.location.origin}/share/${post.id}`;
   const getShareText = () => {
-    return `${post.store_name ? `@${post.store_name}` : ''} で「${post.title}」を${appType === 'tabereco' ? '食べました' : '記録しました'}！評価: ${post.rating} 皿をつぶやいています。 #モグレコ #${appType === 'tabereco' ? 'グルメ' : '旅'}`;
+    return `${post.store_name ? `@${post.store_name}` : ''} で「${post.title}」を${appType === 'tabereco' ? '食べました' : '記録しました'}！評価: ${post.rating} 皿をつぶやいています。 #食べレコ #${appType === 'tabereco' ? 'グルメ' : '旅'}`;
   };
 
   const shareData = {
-    title: `${post.title} | モグレコ`,
+    title: `${post.title} | 食べレコ`,
     text: getShareText(),
     url: shareUrl,
   };

@@ -12,7 +12,7 @@ export function SchemaSetupHelp({ onCheckAgain }: Props) {
   const [checking, setChecking] = useState(false);
 
   const sqlCode = `-- =============================================
--- MoguReco 拡張機能用スキーマ (グループ & ソーシャル共有)
+-- Tabereco 拡張機能用スキーマ (グループ & ソーシャル共有)
 -- =============================================
 
 -- profiles テーブル (表示名とアイコン用)

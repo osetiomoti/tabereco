@@ -62,6 +62,18 @@ export async function GET(request: NextRequest) {
               include: {
                 user: { select: { id: true, name: true, avatar_url: true } },
                 tags: { include: { tag: true } },
+                visiteds: {
+                  select: {
+                    user_id: true,
+                    rating: true,
+                    comment: true,
+                    image_url: true,
+                    image_urls: true,
+                    visited_at: true,
+                    visit_count: true,
+                    user: { select: { id: true, name: true, avatar_url: true } },
+                  },
+                },
               },
             },
           },
@@ -87,6 +99,7 @@ export async function GET(request: NextRequest) {
               visited_at: effectiveVisitedAt,
               visit_count: v.visit_count,
               tags: base.tags.map((pt: any) => pt.tag),
+              visiteds: base.visiteds || [],
               _isMarkedVisited: true,
               _markedVisitedAt: v.created_at,
               _visitedRecordId: v.id,

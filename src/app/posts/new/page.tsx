@@ -4,7 +4,7 @@ import type { Metadata } from 'next';
 import React from 'react';
 
 export const metadata: Metadata = {
-  title: '新規投稿 | モグレコ',
+  title: '新規投稿 | 食べレコ',
 };
 
 export default function NewPostPage() {

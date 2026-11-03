@@ -12,6 +12,7 @@ import { FavoriteToggle } from '@/components/FavoriteToggle';
 import { StarDisplay } from '@/components/StarRating';
 import { ImageCarousel } from '@/components/ImageCarousel';
 import { CommentsSection, RatingAndActions } from '@/components/PostSocial';
+import { StoreVisitorsSection } from '@/components/StoreVisitorsSection';
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -37,7 +38,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     where: { id },
     select: { title: true, store_name: true },
   });
-  return { title: post ? `${post.title || post.store_name} | モグレコ` : 'モグレコ' };
+  return { title: post ? `${post.title || post.store_name} | 食べレコ` : '食べレコ' };
 }
 
 export default async function PostDetailPage({ params }: Props) {
@@ -398,7 +399,15 @@ export default async function PostDetailPage({ params }: Props) {
       {/* 6. 行動・評価 */}
       <RatingAndActions postId={post.id} isOwner={isOwner} ownerRating={post.rating} ownerVisitCount={post.visit_count} />
 
-      {/* 7. コメント */}
+      {/* 7. 同じ店に行った人の記録 */}
+      <StoreVisitorsSection
+        postId={post.id}
+        storeName={post.store_name || post.title}
+        currentUserId={currentUserId}
+        isOwner={isOwner}
+      />
+
+      {/* 8. コメント */}
       <CommentsSection
         postId={post.id}
         postOwnerId={post.user_id}

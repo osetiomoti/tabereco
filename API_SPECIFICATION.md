@@ -1,6 +1,6 @@
 # 食べレコ API仕様書 (API_SPECIFICATION.md)
 
-本ドキュメントは、「食べレコ（mogureco）」の全 REST API エンドポイントのメソッド、リクエスト/レスポンス形式、クエリパラメータ、バリデーション、認証要件、エラーレスポンスをまとめた仕様書です。
+本ドキュメントは、「食べレコ（tabereco）」の全 REST API エンドポイントのメソッド、リクエスト/レスポンス形式、クエリパラメータ、バリデーション、認証要件、エラーレスポンスをまとめた仕様書です。
 
 ---
 
@@ -288,7 +288,10 @@ Cookie をクリアしてログアウト。
   *(トグル解除時は `{ "success": true, "marked": false }`)*
 
 ### 4.10.1 `GET /api/posts/[id]/visited`
-該当投稿に対する訪問件数、訪問ユーザー一覧、および閲覧者自身の訪問記録を取得。
+該当投稿と**同一店舗**（`google_place_id` または `store_name + address` 一致）に対するすべての訪問者（元投稿者および `PostVisited` 登録者）を集約し、重複排除したユニーク訪問件数、訪問ユーザー一覧、および閲覧者自身の訪問記録を取得。
+
+- **プライバシー保護 (`is_restricted`):**
+  - 閲覧者が投稿者本人・フレンド・共通グループ所属（身内）でない場合、非公開設定（`is_mine_only`）の記録や身外者の写真・感想コメントは `null` / `[]` にマスクされ、`is_restricted: true` が付与される。
 - **レスポンス (200):**
   ```json
   {
@@ -312,7 +315,11 @@ Cookie をクリアしてログアウト。
           "comment": "...",
           "image_url": "...",
           "image_urls": [],
-          "visited_at": "..."
+          "visited_at": "...",
+          "isAuthor": true,
+          "postId": "uuid",
+          "isMe": false,
+          "is_restricted": false
         }
       ]
     }

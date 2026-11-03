@@ -1,6 +1,43 @@
 # 食べレコ 変更履歴 (CHANGELOG.md)
 
-本ドキュメントは、「食べレコ（mogureco）」における機能追加、仕様変更、リファクタリング、バグ修正の履歴を記録するものです。
+本ドキュメントは、「食べレコ（tabereco）」における機能追加、仕様変更、リファクタリング、バグ修正の履歴を記録するものです。
+
+---
+
+## 2026-10-30
+### 変更内容
+1. **「みんなの投稿の『行った』」店舗単位グルーピング表示へのUX改善**
+   - これまで投稿ごとに個別表示されていた他人の「行った」投稿を、同一店舗単位で1枚の店舗カードに集約表示するようマイページ（`/mypage`）を改修。
+   - 同一店舗の識別ロジックを共通ユーティリティ（`src/lib/storeUtils.ts`）に集約：
+     - ① `google_place_id` が存在する場合はプレイスIDで厳密に同一判定。
+     - ② プレイスIDがない場合は `store_name + address` の組み合わせで判定（店名単体での全国チェーン誤統合を防止）。
+     - ③ 情報が不十分な場合は個別扱い。
+   - 店舗カード上に代表写真（最新の訪問・投稿写真）、店舗名、住所、ユニーク訪問人数バッジ（`👤 〇人`）、平均評価を表示。
+2. **投稿・店舗詳細画面（`/posts/[id]`）における「同じ店に行った人の記録」セクション新設**
+   - 新規コンポーネント `StoreVisitorsSection` を作成し、投稿詳細ページに配置。
+   - 同一店舗に対するすべての訪問者（元投稿者 + `PostVisited` 登録者）を重複排除（ユニーク化）してリスト表示。
+   - 各訪問者のアバター、ユーザー名、訪問日、評価（星）、訪問回数、コメント、写真サムネイル（タップで全画面プレビュー可能）を一覧表示。
+   - プライバシー制御（`is_restricted`）：本人・フレンド・共通グループ以外の閲覧者に対しては、非公開記録の写真やコメントを非表示（「身内限定」表示）にする保護を徹底。
+   - ログインユーザー自身の記録カードには「編集」ボタンを常時提供し、`VisitedModal` から日付・写真・コメント・評価を直接修正・削除可能。
+   - 未記録のユーザーには「自分も記録」ボタンを提供し、ワンタップで記録フローを開始可能。
+3. **バックエンド API（`/api/posts/[id]/visited`）の店舗横断集約・プライバシー制御強化**
+   - 該当投稿と同一店舗（`google_place_id` または `store_name + address`）のすべての投稿・訪問記録を検索し、ユーザー単位でマージして返却。
+   - フレンドシップ・グループ所属判定に基づき、身外者アクセス時の写真・コメントのマスク処理をAPI側で厳格に適用。
+4. **ブランド名称の「食べレコ（tabereco）」への完全統一（mogureco の徹底排除）**
+   - 各画面のメタデータタイトル（`/posts/[id]`, `/posts/[id]/edit`, `/posts/new`）や SNS シェア文言（`ShareButton.tsx`）等に残存していた「モグレコ」「MoguReco」をすべて「食べレコ」「tabereco」に修正。
+
+### 影響範囲
+- `src/lib/storeUtils.ts` (新規作成)
+- `src/components/StoreVisitorsSection.tsx` (新規作成)
+- `src/app/mypage/page.tsx`
+- `src/app/posts/[id]/page.tsx`
+- `src/app/posts/[id]/edit/page.tsx`
+- `src/app/posts/new/page.tsx`
+- `src/components/ShareButton.tsx`
+- `src/components/SchemaSetupHelp.tsx`
+- `src/app/api/posts/[id]/visited/route.ts`
+- `src/app/api/posts/route.ts`
+- `src/app/api/profiles/[id]/route.ts`
 
 ---
 
