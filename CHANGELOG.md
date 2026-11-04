@@ -4,6 +4,33 @@
 
 ---
 
+## 2026-11-04
+### 変更内容
+1. **`storeUtils.ts` に `buildNewPostUrlFromStore` 関数を追加**
+   - 既存投稿の店舗情報（店名・住所・PlaceID・座標・タグ）を引き継いで `/posts/new` へ遷移するURLを生成するユーティリティ関数を追加。
+   - `StoreVisitorsSection` の「詳細を記録する」ボタンからこの関数を呼び出し、`status=visited` パラメータ付きで `PostForm` を開くフローを確立。
+
+2. **「行った」詳細記録の2パターンを明確化**
+   - `VisitChoiceModal` → 「詳細を記録する」 → `/posts/new?status=visited&name=...&tags=...` → `PostForm`（通常の新規投稿フォーム：タグ・写真・評価・住所・コメントなど全フィールドあり）
+   - `VisitChoiceModal` → 「行ったのみ記録」 → `PostVisited` テーブルへ直接登録（評価・訪問日・写真・コメントのみ）
+   - これにより「行った」登録時に通常投稿と同じ全フィールドでの記録が可能になった。
+
+3. **`StoreVisitorsSection` の「自分も記録」ボタンの遷移フロー改善**
+   - 「自分も記録」ボタンタップ時に `VisitChoiceModal` を経由して、詳細 (`PostForm`) またはクイック (`PostVisited`) を選択できるようにした。
+
+4. **ビルド確認**
+   - `npm run build` が全ルートエラーなしで成功することを確認済み。
+
+### 影響範囲
+- `src/lib/storeUtils.ts`（`buildNewPostUrlFromStore` 追加）
+- `src/components/StoreVisitorsSection.tsx`（`VisitChoiceModal` 連携）
+- `src/components/PostForm.tsx`（URLパラメータ読み込み確認）
+- `src/components/PostCard.tsx`
+- `src/components/PostSocial.tsx`
+- `src/components/VisitChoiceModal.tsx`
+
+---
+
 ## 2026-10-30
 ### 変更内容
 1. **「みんなの投稿の『行った』」店舗単位グルーピング表示へのUX改善**
