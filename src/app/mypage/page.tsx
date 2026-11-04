@@ -304,8 +304,15 @@ export default function MyPage() {
   const filteredMarkedWant = applyFilters(markedWantToGoPosts);
   filteredPosts = applyFilters(filteredPosts);
 
-  // 「みんなの投稿の『行った』」を店舗単位にグルーピング
-  const groupedMarkedVisitedStores = (() => {
+  // 自分の「行った」＋他の人の「行った」を店舗単位にグルーピング（統合）
+  const groupedAllVisitedStores = (() => {
+    // 自分の投稿とみんなの投稿の「行った」を統合（IDベースで重複排除）
+    const allVisitedMap = new Map<string, any>();
+    for (const p of [...filteredOwnVisited, ...filteredMarkedVisited]) {
+      if (!allVisitedMap.has(p.id)) allVisitedMap.set(p.id, p);
+    }
+    const allVisitedPosts = Array.from(allVisitedMap.values());
+
     const storeMap = new Map<string, {
       storeKey: string;
       posts: any[];
@@ -316,13 +323,16 @@ export default function MyPage() {
       uniqueVisitorsCount: number;
       avgRating: number | null;
       allRestricted: boolean;
+      hasOwnPost: boolean;
     }>();
 
-    for (const post of filteredMarkedVisited) {
+    for (const post of allVisitedPosts) {
       const key = getStoreKey(post);
+      const isOwn = post.user_id === myProfileData?.id;
       const existing = storeMap.get(key);
       if (existing) {
         existing.posts.push(post);
+        if (isOwn) existing.hasOwnPost = true;
       } else {
         storeMap.set(key, {
           storeKey: key,
@@ -334,16 +344,18 @@ export default function MyPage() {
           uniqueVisitorsCount: 1,
           avgRating: null,
           allRestricted: false,
+          hasOwnPost: isOwn,
         });
       }
     }
 
     return Array.from(storeMap.values()).map((group) => {
-      // 最新の投稿を代表とする
+      // 自分の投稿を優先、なければ最新の投稿を代表とする
       const sortedPosts = [...group.posts].sort((a, b) => {
-        const tA = new Date(a.created_at).getTime();
-        const tB = new Date(b.created_at).getTime();
-        return tB - tA;
+        const aIsOwn = a.user_id === myProfileData?.id ? 1 : 0;
+        const bIsOwn = b.user_id === myProfileData?.id ? 1 : 0;
+        if (aIsOwn !== bIsOwn) return bIsOwn - aIsOwn;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
       const repPost = sortedPosts[0];
 
@@ -390,7 +402,7 @@ export default function MyPage() {
         }
       }
       const avg = ratings.length > 0 ? ratings.reduce((a, b) => a + b, 0) / ratings.length : null;
-      const allRestricted = group.posts.every((p) => p.is_restricted);
+      const allRestricted = group.posts.every((p) => p.is_restricted || false);
 
       return {
         ...group,
@@ -784,136 +796,81 @@ export default function MyPage() {
         </div>
       ) : activeTab === 'visited' && !targetUserId ? (
         <div className="animate-in fade-in duration-500">
-          <div className="mb-2">
-            <div className="px-4 py-2 flex items-center gap-2">
-              <span className="text-[11px] font-black text-gray-400 tracking-wider uppercase">自分の「行った」</span>
-              <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">{filteredOwnVisited.length}</span>
-            </div>
-            {loading ? (
-              <div className="px-0.5 grid grid-cols-3 gap-0.5">
-                {[1,2,3].map(i => <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />)}
-              </div>
-            ) : filteredOwnVisited.length === 0 ? (
-              <div className="py-8 text-center text-gray-300 text-[12px] font-bold">まだ記録がありません</div>
-            ) : (
-              <div className="px-0.5 grid grid-cols-3 gap-0.5">
-                {filteredOwnVisited.map(post => (
-                  <Link href={`/posts/${post.id}`} key={post.id} className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation">
-                    {post.image_url ? (
-                      <Image src={getImageUrl(post.image_url)} alt={post.title} fill className="object-cover transition-transform duration-500 group-hover:scale-110" sizes="33vw" />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-gradient-to-br from-pink-50 via-rose-50 to-pink-100 group-hover:scale-105 transition-transform duration-500">
-                        <span className="text-xl mb-1">🍽️</span>
-                        <span className="text-[9px] font-black text-center leading-tight text-gray-700 line-clamp-2 px-1">{post.title}</span>
-                        {post.store_name && <span className="text-[7px] font-bold text-gray-400 mt-0.5 truncate w-full text-center">{post.store_name}</span>}
-                      </div>
-                    )}
-                    {post.image_url && (
-                      <>
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-80 pointer-events-none" />
-                        <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
-                          <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">{post.title}</span>
-                          <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate mt-0.5 opacity-80">
-                            {post.store_name} • {post.visited_at ? formatDate(post.visited_at).split('-').slice(1).join('/') : ''}
-                          </span>
-                        </div>
-                      </>
-                    )}
-                    {post.rating && (
-                      <div className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur-sm text-orange-500 px-1 py-0.5 rounded flex items-center gap-0.5 shadow-sm scale-75 origin-top-left">
-                        <span className="text-[10px] font-black">★</span>
-                        <span className="text-[10px] font-black">{post.rating.toFixed(1)}</span>
-                      </div>
-                    )}
-                    {post.is_favorite && (
-                      <div className="absolute top-1.5 right-1.5 bg-pink-500/90 text-white w-4 h-4 rounded-full flex items-center justify-center shadow-sm">
-                        <span className="text-[10px] font-black">♥</span>
-                      </div>
-                    )}
-                  </Link>
-                ))}
-              </div>
-            )}
+          <div className="px-4 py-2 flex items-center gap-2">
+            <span className="text-[11px] font-black text-gray-400 tracking-wider uppercase">行った記録</span>
+            <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">
+              {groupedAllVisitedStores.length}店舗
+            </span>
           </div>
-          <div className="mx-4 my-3 border-t border-gray-100" />
-          <div>
-            <div className="px-4 py-2 flex items-center gap-2">
-              <Bookmark size={12} className="text-orange-400" />
-              <span className="text-[11px] font-black text-gray-400 tracking-wider uppercase">みんなの投稿の「行った」</span>
-              <span className="bg-orange-100 text-orange-500 text-[10px] font-black px-1.5 py-0.5 rounded-full">
-                {groupedMarkedVisitedStores.length}店舗
-              </span>
+          {(loading || markedVisLoading) ? (
+            <div className="px-0.5 grid grid-cols-3 gap-0.5">
+              {[1,2,3,4,5,6].map(i => <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />)}
             </div>
-            {markedVisLoading ? (
-              <div className="px-0.5 grid grid-cols-3 gap-0.5">
-                {[1,2,3].map(i => <div key={i} className="relative aspect-square bg-gray-100 animate-pulse" />)}
-              </div>
-            ) : groupedMarkedVisitedStores.length === 0 ? (
-              <div className="py-8 text-center text-gray-300 text-[12px] font-bold">他の人の投稿で「行った」を押してみよう</div>
-            ) : (
-              <div className="px-0.5 grid grid-cols-3 gap-0.5 pb-4">
-                {groupedMarkedVisitedStores.map(store => {
-                  const post = store.representativePost;
-                  if (store.allRestricted) {
-                    return <RestrictedCard key={store.storeKey} post={post} />;
-                  }
-                  return (
-                    <Link
-                      href={`/posts/${post.id}`}
-                      key={store.storeKey}
-                      className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation block"
-                    >
-                      {store.representativeImage ? (
-                        <Image
-                          src={getImageUrl(store.representativeImage)}
-                          alt={store.storeName}
-                          fill
-                          className="object-cover transition-transform duration-500 group-hover:scale-110"
-                          sizes="33vw"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 group-hover:scale-105 transition-transform duration-500">
-                          <span className="text-xl mb-1">🍽️</span>
-                          <span className="text-[9px] font-black text-center leading-tight text-gray-700 line-clamp-2 px-1">
-                            {store.storeName}
-                          </span>
-                        </div>
-                      )}
-
-                      {/* 暗いグラデーション */}
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent opacity-90 pointer-events-none" />
-
-                      {/* 左上: 訪問人数バッジ */}
-                      <div className="absolute top-1.5 left-1.5 bg-black/70 backdrop-blur-xs text-white text-[9px] font-black px-1.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
-                        <User size={10} className="text-orange-400" />
-                        <span>{store.uniqueVisitorsCount}</span>
-                      </div>
-
-                      {/* 右上: 平均評価バッジ */}
-                      {store.avgRating != null && (
-                        <div className="absolute top-1.5 right-1.5 bg-white/95 backdrop-blur-sm text-orange-500 px-1 py-0.5 rounded flex items-center gap-0.5 shadow-sm scale-90 origin-top-right">
-                          <span className="text-[9px] font-black">★</span>
-                          <span className="text-[9px] font-black">{store.avgRating.toFixed(1)}</span>
-                        </div>
-                      )}
-
-                      {/* 下部: 店舗名・住所 */}
-                      <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
-                        <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">
+          ) : groupedAllVisitedStores.length === 0 ? (
+            <div className="py-20 text-center text-gray-300 text-[12px] font-bold">まだ記録がありません</div>
+          ) : (
+            <div className="px-0.5 grid grid-cols-3 gap-0.5 pb-4">
+              {groupedAllVisitedStores.map(store => {
+                const post = store.representativePost;
+                if (store.allRestricted) {
+                  return <RestrictedCard key={store.storeKey} post={post} />;
+                }
+                return (
+                  <Link
+                    href={`/posts/${post.id}`}
+                    key={store.storeKey}
+                    className="relative aspect-square bg-gray-50 group overflow-hidden touch-manipulation block"
+                  >
+                    {store.representativeImage ? (
+                      <Image
+                        src={getImageUrl(store.representativeImage)}
+                        alt={store.storeName}
+                        fill
+                        className="object-cover transition-transform duration-500 group-hover:scale-110"
+                        sizes="33vw"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-gradient-to-br from-orange-50 via-amber-50 to-orange-100 group-hover:scale-105 transition-transform duration-500">
+                        <span className="text-xl mb-1">🍽️</span>
+                        <span className="text-[9px] font-black text-center leading-tight text-gray-700 line-clamp-2 px-1">
                           {store.storeName}
                         </span>
-                        {store.address && (
-                          <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate mt-0.5 opacity-80">
-                            {store.address}
-                          </span>
-                        )}
                       </div>
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+                    )}
+
+                    {/* 暗いグラデーション */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent opacity-90 pointer-events-none" />
+
+                    {/* 左上: 訪問人数バッジ */}
+                    <div className="absolute top-1.5 left-1.5 bg-black/70 backdrop-blur-xs text-white text-[9px] font-black px-1.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                      <User size={10} className="text-orange-400" />
+                      <span>{store.uniqueVisitorsCount}</span>
+                    </div>
+
+                    {/* 右上: 平均評価バッジ */}
+                    {store.avgRating != null && (
+                      <div className="absolute top-1.5 right-1.5 bg-white/95 backdrop-blur-sm text-orange-500 px-1 py-0.5 rounded flex items-center gap-0.5 shadow-sm scale-90 origin-top-right">
+                        <span className="text-[9px] font-black">★</span>
+                        <span className="text-[9px] font-black">{store.avgRating.toFixed(1)}</span>
+                      </div>
+                    )}
+
+                    {/* 下部: 店舗名・住所 */}
+                    <div className="absolute bottom-1.5 left-1.5 right-1.5 flex flex-col pointer-events-none">
+                      <span className="text-white font-black text-[10px] leading-tight drop-shadow-md truncate tracking-tight">
+                        {store.storeName}
+                      </span>
+                      {store.address && (
+                        <span className="text-gray-300 font-medium text-[8px] drop-shadow-md truncate mt-0.5 opacity-80">
+                          {store.address}
+                        </span>
+                      )}
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          )}
         </div>
 
       ) : (activeTab === 'liked' ? likedPostsLoading : loading) ? (

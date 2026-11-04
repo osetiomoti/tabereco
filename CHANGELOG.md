@@ -18,10 +18,16 @@
 3. **`StoreVisitorsSection` の「自分も記録」ボタンの遷移フロー改善**
    - 「自分も記録」ボタンタップ時に `VisitChoiceModal` を経由して、詳細 (`PostForm`) またはクイック (`PostVisited`) を選択できるようにした。
 
-4. **ビルド確認**
+4. **マイページ「行った」タブの店舗単位統合集約表示（二段構成・区切り線の撤廃）**
+   - 「自分の行った」と「みんなの投稿の行った」の区切り線を撤廃し、同一店舗（Google Place ID または店名+住所）単位で1つのグリッドに完全集約して表示。
+   - 自分の投稿が存在する店舗は自分の投稿が代表として優先され、他ユーザーの投稿のみの店舗は最新の投稿が代表表示される（同一店舗の重複排除）。
+   - 各店舗カード上に代表写真、店舗名、住所、ユニーク訪問人数バッジ（`👤 〇人`）、平均評価を表示。
+
+5. **ビルド確認**
    - `npm run build` が全ルートエラーなしで成功することを確認済み。
 
 ### 影響範囲
+- `src/app/mypage/page.tsx`（「行った」タブのグルーピングロジックおよびUI表示の統合）
 - `src/lib/storeUtils.ts`（`buildNewPostUrlFromStore` 追加）
 - `src/components/StoreVisitorsSection.tsx`（`VisitChoiceModal` 連携）
 - `src/components/PostForm.tsx`（URLパラメータ読み込み確認）
