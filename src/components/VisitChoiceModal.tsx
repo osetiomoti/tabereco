@@ -73,7 +73,7 @@ export function VisitChoiceModal({
             <div className="flex-1 min-w-0">
               <p className="font-black text-[14px] text-gray-900 mb-0.5">詳細を記録する</p>
               <p className="text-[11px] font-medium text-gray-500 leading-snug">
-                日付・コメント・写真・評価を入力できます
+                タグ・写真・評価・金額・メモなどをしっかり記録できます
               </p>
             </div>
             <div className="text-orange-400 text-[11px] font-bold flex-shrink-0">おすすめ</div>

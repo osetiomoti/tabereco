@@ -9,6 +9,8 @@ import { VisitedModal } from './VisitedModal';
 import { VisitChoiceModal } from './VisitChoiceModal';
 import { formatDate } from '@/lib/utils';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { buildNewPostUrlFromStore } from '@/lib/storeUtils';
 
 type VisitorUser = {
   id: string;
@@ -29,6 +31,7 @@ type VisitorUser = {
 
 type StoreVisitorsSectionProps = {
   postId: string;
+  post?: any;
   storeName?: string | null;
   currentUserId: string | null;
   isOwner: boolean;
@@ -37,11 +40,13 @@ type StoreVisitorsSectionProps = {
 
 export function StoreVisitorsSection({
   postId,
+  post,
   storeName,
   currentUserId,
   isOwner,
   onDataChanged,
 }: StoreVisitorsSectionProps) {
+  const router = useRouter();
   const [visitors, setVisitors] = useState<VisitorUser[]>([]);
   const [visitorCount, setVisitorCount] = useState(0);
   const [isMarked, setIsMarked] = useState(false);
@@ -215,9 +220,15 @@ export function StoreVisitorsSection({
                         </span>
                       </div>
                     )}
-                    {v.isMe && !v.isAuthor && (
+                    {v.isMe && (
                       <button
-                        onClick={() => setIsVisitedModalOpen(true)}
+                        onClick={() => {
+                          if (v.postId) {
+                            router.push(`/posts/${v.postId}/edit`);
+                          } else {
+                            setIsVisitedModalOpen(true);
+                          }
+                        }}
                         className="text-[11px] font-bold text-orange-600 bg-orange-100 hover:bg-orange-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors active:scale-95"
                       >
                         <Pencil size={11} />
@@ -302,9 +313,13 @@ export function StoreVisitorsSection({
       {isChoiceModalOpen && (
         <VisitChoiceModal
           isOpen={isChoiceModalOpen}
-          storeName={storeName || undefined}
+          storeName={post?.store_name || post?.title || storeName || undefined}
           onClose={() => setIsChoiceModalOpen(false)}
-          onDetailRecord={() => setIsVisitedModalOpen(true)}
+          onDetailRecord={() => {
+            setIsChoiceModalOpen(false);
+            const target = post || { id: postId, store_name: storeName };
+            router.push(buildNewPostUrlFromStore(target));
+          }}
           onQuickVisit={handleQuickVisit}
         />
       )}

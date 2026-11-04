@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { getImageUrl } from '@/lib/image';
 import { Bookmark, BookmarkCheck, Star, Send, Trash2, User, ChevronDown, Pencil, X, ThumbsUp } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { buildNewPostUrlFromStore } from '@/lib/storeUtils';
 import { StarDisplay, StarInput } from './StarRating';
 import { VisitedModal } from './VisitedModal';
 import { VisitChoiceModal } from './VisitChoiceModal';
@@ -11,12 +13,14 @@ import { VisitChoiceModal } from './VisitChoiceModal';
 // ── Rating and Actions (Visited / Want-to-Go) ────────────────────────────────────
 type RatingAndActionsProps = {
   postId: string;
+  post?: any;
   isOwner: boolean;
   ownerRating: number | null;
   ownerVisitCount?: number;
 };
 
-export function RatingAndActions({ postId, isOwner, ownerRating, ownerVisitCount = 1 }: RatingAndActionsProps) {
+export function RatingAndActions({ postId, post, isOwner, ownerRating, ownerVisitCount = 1 }: RatingAndActionsProps) {
+  const router = useRouter();
   const [wtgMarked, setWtgMarked] = useState(false);
   const [wtgCount, setWtgCount] = useState(0);
   const [wtgUsers, setWtgUsers] = useState<any[]>([]);

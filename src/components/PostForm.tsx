@@ -36,12 +36,15 @@ export function PostForm({ post }: Props) {
   const precompressedCacheRef = useRef<Map<File, File>>(new Map());
   const isEdit = Boolean(post);
 
-  // Fallback initial values from URL query parameters (Map navigation)
+  // Fallback initial values from URL query parameters (Map navigation or store visited registration)
   const queryName = searchParams.get('name') || '';
   const queryAddress = searchParams.get('address') || '';
   const queryLat = searchParams.get('lat') ? parseFloat(searchParams.get('lat')!) : undefined;
   const queryLng = searchParams.get('lng') ? parseFloat(searchParams.get('lng')!) : undefined;
   const queryPlaceId = searchParams.get('placeId') || '';
+  const queryTags = searchParams.get('tags') ? searchParams.get('tags')!.split(',').map(s => s.trim()).filter(Boolean) : [];
+  const queryStatus = (searchParams.get('status') as PostStatus) || 'visited';
+  const queryFromPostId = searchParams.get('fromPostId') || '';
 
   const cleanAddress = (addr: string) =>
     (addr || '').replace(/^日本、\s*/, '').replace(/^〒\d{3}-\d{4}\s*/, '');
@@ -55,7 +58,7 @@ export function PostForm({ post }: Props) {
   };
 
   const [values, setValues] = useState<PostFormValues>({
-    title: post?.title ?? '',
+    title: post?.title ?? (queryName || ''),
     store_name: post?.store_name ?? queryName,
     comment: post?.comment ?? '',
     rating: post?.rating ?? (post?.status === 'want_to_go' ? null : 3),
@@ -65,13 +68,13 @@ export function PostForm({ post }: Props) {
         : (post.visited_at as any) instanceof Date
         ? (post.visited_at as any).toISOString().split('T')[0]
         : ''
-      : '',
+      : (queryStatus === 'visited' ? todayString() : ''),
     images: [] as File[],
     image_urls: post?.image_urls ?? (post?.image_url ? [post.image_url] : []),
-    status: post?.status ?? 'visited',
+    status: post?.status ?? queryStatus,
     is_public: post?.is_public ?? false,
     is_favorite: post?.is_favorite ?? false,
-    tags: post?.tags?.map(t => t.name) ?? [],
+    tags: post?.tags?.map(t => t.name) ?? (queryTags.length > 0 ? queryTags : []),
     address: cleanAddress(post?.address ?? queryAddress),
     google_place_id: post?.google_place_id ?? queryPlaceId,
     latitude: post?.latitude ?? queryLat,
@@ -411,8 +414,12 @@ export function PostForm({ post }: Props) {
         thumbnailUrl,
       });
 
-      // 投稿ボタンを押したらタイムライン画面に即座に遷移！
-      router.push('/posts');
+      // 投稿ボタンを押したら遷移（元投稿からの登録なら詳細画面へ、そうでなければタイムラインへ）
+      if (queryFromPostId) {
+        router.push(`/posts/${queryFromPostId}`);
+      } else {
+        router.push('/posts');
+      }
       return;
     }
 

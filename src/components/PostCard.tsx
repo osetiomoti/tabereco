@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { VisitedModal } from '@/components/VisitedModal';
 import { VisitChoiceModal } from '@/components/VisitChoiceModal';
 import { StarInput, StarDisplay } from '@/components/StarRating';
+import { buildNewPostUrlFromStore } from '@/lib/storeUtils';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
@@ -678,7 +679,11 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
       {isMine && post.status === 'want_to_go' && (
         <div className="px-4 pb-2">
           <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsVisitedModalOpen(true); }}
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              router.push(buildNewPostUrlFromStore(post));
+            }}
             className="w-full py-3 text-white font-black text-[13px] rounded-2xl flex items-center justify-center gap-2 shadow-sm active:scale-[0.98] transition-all"
             style={{
               background: 'linear-gradient(to right, var(--color-primary), var(--color-primary-hover))',
@@ -697,7 +702,10 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
           isOpen={isChoiceModalOpen}
           storeName={post.store_name || post.title}
           onClose={() => setIsChoiceModalOpen(false)}
-          onDetailRecord={() => setIsVisitedModalOpen(true)}
+          onDetailRecord={() => {
+            setIsChoiceModalOpen(false);
+            router.push(buildNewPostUrlFromStore(post));
+          }}
           onQuickVisit={handleQuickVisit}
         />
       )}

@@ -108,3 +108,36 @@ export function pickRepresentativeImage(
   if (best.image_urls && best.image_urls.length > 0) return best.image_urls[0];
   return best.image_url || null;
 }
+
+/**
+ * 既存の投稿から新規投稿作成画面（/posts/new）への遷移URLを生成する。
+ * 店舗情報（店名・住所・Google Place ID・座標・タグ）を引き継ぐ。
+ */
+export function buildNewPostUrlFromStore(post: {
+  id?: string;
+  store_name?: string | null;
+  title?: string | null;
+  address?: string | null;
+  google_place_id?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
+  tags?: any[];
+}): string {
+  const params = new URLSearchParams();
+  const name = post.store_name?.trim() || post.title?.trim();
+  if (name) params.set('name', name);
+  if (post.address?.trim()) params.set('address', post.address.trim());
+  if (post.google_place_id?.trim()) params.set('placeId', post.google_place_id.trim());
+  if (post.latitude != null) params.set('lat', String(post.latitude));
+  if (post.longitude != null) params.set('lng', String(post.longitude));
+  if (post.tags && post.tags.length > 0) {
+    const tagNames = post.tags
+      .map((t) => (typeof t === 'string' ? t : t.name || t.tag?.name))
+      .filter(Boolean);
+    if (tagNames.length > 0) params.set('tags', tagNames.join(','));
+  }
+  if (post.id) params.set('fromPostId', post.id);
+  params.set('status', 'visited');
+  return `/posts/new?${params.toString()}`;
+}
+
