@@ -91,6 +91,9 @@ export async function GET(
               tag: true,
             },
           },
+          _count: {
+            select: { visiteds: true },
+          },
         },
         orderBy: {
           visited_at: 'desc',
@@ -161,6 +164,7 @@ export async function GET(
           image_urls: restrictThis ? [] : post.image_urls,
           comment: restrictThis ? null : post.comment,
           is_restricted: restrictThis,
+          _visitedCount: post._count?.visiteds ?? 0,
         };
       });
 

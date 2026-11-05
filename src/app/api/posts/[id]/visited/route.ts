@@ -334,7 +334,14 @@ export async function GET(
         }
       }
 
-      const visitorsList = Array.from(visitorMap.values());
+      const visitorsList = Array.from(visitorMap.values()).sort((a, b) => {
+        // isMe（自分）を最優先、次に isAuthor（投稿者）、残りはそのまま
+        if (a.isMe && !b.isMe) return -1;
+        if (!a.isMe && b.isMe) return 1;
+        if (a.isAuthor && !b.isAuthor) return -1;
+        if (!a.isAuthor && b.isAuthor) return 1;
+        return 0;
+      });
 
       // 5. ログインユーザー自身の記録判定
       const mySpecificVisited = visiteds.find((w) => w.user_id === auth.userId && w.post_id === postId);

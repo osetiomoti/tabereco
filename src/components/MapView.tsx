@@ -50,6 +50,30 @@ const createMarkerSvgUrl = (color: string, isSelected = false) => {
 const COLOR_VISITED = '#EA4335'; // Google Red (訪問済み)
 const COLOR_WANT = '#1A73E8';    // Google Blue (行きたい)
 const COLOR_TEMP = '#9333EA';    // Purple (新規指定地点)
+const COLOR_MIXED = '#F59E0B';   // Amber (訪問済み+行きたい混在)
+
+// 同一座標に複数投稿がある場合のクラスターピン SVG
+const createClusterMarkerSvgUrl = (color: string, count: number, isSelected = false) => {
+  const size = isSelected ? 42 : 34;
+  const fontSize = count >= 10 ? 11 : 13;
+  const svg = `<svg width="${size}" height="${size}" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <filter id="cshadow" x="-4" y="-4" width="42" height="42" filterUnits="userSpaceOnUse">
+        <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#000000" flood-opacity="0.30"/>
+      </filter>
+    </defs>
+    <circle cx="17" cy="17" r="15" fill="${color}" filter="url(#cshadow)" stroke="#FFFFFF" stroke-width="2.5"/>
+    <text x="17" y="22" text-anchor="middle" font-size="${fontSize}" font-weight="900" fill="#FFFFFF" font-family="system-ui,-apple-system,sans-serif">${count}</text>
+  </svg>`;
+  return {
+    url: `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`,
+    size,
+  };
+};
+
+// 座標キー（小数点4桁丸め）
+const getCoordKey = (lat: number, lng: number) =>
+  `${Math.round(lat * 10000) / 10000},${Math.round(lng * 10000) / 10000}`;
 
 type Props = {
   posts: Post[];
@@ -117,47 +141,110 @@ export default function MapView({ posts, center, zoom = 5, tempMarker, setTempMa
       }
     });
 
-    // マーカーを追加または更新
+    // 座標グループ: 同一座標の投稿をまとめる
+    const coordGroups = new Map<string, Post[]>();
     posts.forEach(post => {
       if (!post.latitude || !post.longitude) return;
+      const key = getCoordKey(post.latitude, post.longitude);
+      if (!coordGroups.has(key)) coordGroups.set(key, []);
+      coordGroups.get(key)!.push(post);
+    });
 
-      const isSelected = selectedPost?.id === post.id;
-      const color = post.status === 'visited' ? COLOR_VISITED : COLOR_WANT;
-      const { url, width: w, height: h } = createMarkerSvgUrl(color, isSelected);
-      const icon = {
-        url,
-        scaledSize: new window.google.maps.Size(w, h),
-        anchor: new window.google.maps.Point(w / 2, h),
-      };
+    // マーカーを追加または更新
+    coordGroups.forEach((groupPosts, coordKey) => {
+      const isCluster = groupPosts.length > 1;
+      const representativePost = groupPosts[0]; // クラスターの代表投稿
 
-      let marker = markersRef.current.get(post.id);
-      if (!marker) {
-        marker = new window.google.maps.Marker({
-          position: { lat: post.latitude, lng: post.longitude },
-          map,
-          icon,
-          title: post.store_name || post.title,
-          zIndex: isSelected ? 999 : 1,
-        });
+      if (isCluster) {
+        // --- クラスターピン ---
+        // 混在革╋訪問済みのみか行きたいのみかで色を決める
+        const hasVisited = groupPosts.some(p => p.status === 'visited');
+        const hasWant = groupPosts.some(p => p.status === 'want_to_go');
+        const clusterColor = (hasVisited && hasWant) ? COLOR_MIXED : hasVisited ? COLOR_VISITED : COLOR_WANT;
+        const isSelected = groupPosts.some(p => selectedPost?.id === p.id);
+        const { url, size } = createClusterMarkerSvgUrl(clusterColor, groupPosts.length, isSelected);
+        const icon = {
+          url,
+          scaledSize: new window.google.maps.Size(size, size),
+          anchor: new window.google.maps.Point(size / 2, size / 2),
+        };
 
-        marker.addListener('click', () => {
-          setSelectedPost(post);
-          setTempMarker?.(null);
+        // クラスターマーカーのキーは coordKey で管理
+        const clusterId = `cluster:${coordKey}`;
+        let clusterMarker = markersRef.current.get(clusterId);
+        if (!clusterMarker) {
+          clusterMarker = new window.google.maps.Marker({
+            position: { lat: representativePost.latitude!, lng: representativePost.longitude! },
+            map,
+            icon,
+            title: `${groupPosts.length}件の記録 / ${representativePost.store_name || representativePost.title}`,
+            zIndex: isSelected ? 999 : 10,
+          });
+          clusterMarker.addListener('click', () => {
+            setSelectedPost(representativePost);
+            setTempMarker?.(null);
+            if (mapRef.current) {
+              mapRef.current.panTo({ lat: representativePost.latitude!, lng: representativePost.longitude! });
+              setTimeout(() => { mapRef.current?.panBy(0, 80); }, 80);
+            }
+          });
+          markersRef.current.set(clusterId, clusterMarker);
+        } else {
+          clusterMarker.setIcon(icon);
+          clusterMarker.setZIndex(isSelected ? 999 : 10);
+        }
 
-          // Google Maps 風にマーカーを画面上寄りにオフセット表示（カードと被らない）
-          if (mapRef.current) {
-            mapRef.current.panTo({ lat: post.latitude!, lng: post.longitude! });
-            setTimeout(() => {
-              mapRef.current?.panBy(0, 80);
-            }, 80);
+        // 個別投稿のマーカーは非表示にする（クラスターピンが代替）
+        groupPosts.forEach(post => {
+          const existing = markersRef.current.get(post.id);
+          if (existing) {
+            existing.setMap(null);
+            markersRef.current.delete(post.id);
           }
         });
-
-        markersRef.current.set(post.id, marker);
       } else {
-        marker.setIcon(icon);
-        marker.setZIndex(isSelected ? 999 : 1);
-        marker.setTitle(post.store_name || post.title);
+        // --- 通常の単一ピン ---
+        const post = representativePost;
+        const clusterId = `cluster:${coordKey}`;
+        // クラスターマーカーがあれば削除
+        const existingCluster = markersRef.current.get(clusterId);
+        if (existingCluster) {
+          existingCluster.setMap(null);
+          markersRef.current.delete(clusterId);
+        }
+
+        const isSelected = selectedPost?.id === post.id;
+        const color = post.status === 'visited' ? COLOR_VISITED : COLOR_WANT;
+        const { url, width: w, height: h } = createMarkerSvgUrl(color, isSelected);
+        const icon = {
+          url,
+          scaledSize: new window.google.maps.Size(w, h),
+          anchor: new window.google.maps.Point(w / 2, h),
+        };
+
+        let marker = markersRef.current.get(post.id);
+        if (!marker) {
+          marker = new window.google.maps.Marker({
+            position: { lat: post.latitude!, lng: post.longitude! },
+            map,
+            icon,
+            title: post.store_name || post.title,
+            zIndex: isSelected ? 999 : 1,
+          });
+          marker.addListener('click', () => {
+            setSelectedPost(post);
+            setTempMarker?.(null);
+            if (mapRef.current) {
+              mapRef.current.panTo({ lat: post.latitude!, lng: post.longitude! });
+              setTimeout(() => { mapRef.current?.panBy(0, 80); }, 80);
+            }
+          });
+          markersRef.current.set(post.id, marker);
+        } else {
+          marker.setIcon(icon);
+          marker.setZIndex(isSelected ? 999 : 1);
+          marker.setTitle(post.store_name || post.title);
+        }
       }
     });
 

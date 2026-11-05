@@ -843,7 +843,7 @@ export default function MyPage() {
 
                     {/* 左上: 訪問人数バッジ */}
                     <div className="absolute top-1.5 left-1.5 bg-black/70 backdrop-blur-xs text-white text-[9px] font-black px-1.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
-                      <User size={10} className="text-orange-400" />
+                      <User size={10} className="text-white/70" />
                       <span>{store.uniqueVisitorsCount}</span>
                     </div>
 
@@ -923,7 +923,20 @@ export default function MyPage() {
                   </div>
                 </div>
 
-                {post.rating && (
+                {/* 訪問者数バッジ（他人のマイページで visited のとき） */}
+                {targetUserId && post.status === 'visited' && (post._visitedCount ?? 0) > 0 && (
+                  <div className="absolute top-1.5 left-1.5 bg-black/70 backdrop-blur-xs text-white text-[9px] font-black px-1.5 py-0.5 rounded-full flex items-center gap-1 shadow-sm">
+                    <User size={10} className="text-white/70" />
+                    <span>{(post._visitedCount ?? 0) + 1}</span>
+                  </div>
+                )}
+                {post.rating && !targetUserId && (
+                  <div className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur-sm text-orange-500 px-1 py-0.5 rounded flex items-center gap-0.5 shadow-sm scale-75 origin-top-left">
+                    <span className="text-[10px] font-black">★</span>
+                    <span className="text-[10px] font-black">{post.rating.toFixed(1)}</span>
+                  </div>
+                )}
+                {post.rating && targetUserId && (post._visitedCount ?? 0) === 0 && (
                   <div className="absolute top-1.5 left-1.5 bg-white/90 backdrop-blur-sm text-orange-500 px-1 py-0.5 rounded flex items-center gap-0.5 shadow-sm scale-75 origin-top-left">
                     <span className="text-[10px] font-black">★</span>
                     <span className="text-[10px] font-black">{post.rating.toFixed(1)}</span>
