@@ -19,7 +19,18 @@
    - 権限のないユーザーの写真や情報はレスポンスから完全に除外。
    - 新しい訪問日/作成日の記録を優先ソートし、画像URL単位で重複排除を実施。
 
+3. **下部メニュー「マップ」を「検索」に変更＆リスト・マップ切り替え機能の実装**
+   - 下部ナビゲーション（`BottomNav`）のラベルを「検索」、アイコンを `Search` に変更。
+   - 検索画面（`/map`）の初期表示をカード形式の「リスト」に変更。
+   - 上部に「思い出」画面と完全に同一デザイン・サイズ・余白（`bg-gray-100/80 rounded-[14px] p-1 border border-black/5 shadow-inner`）の「リスト」「マップ」切り替えUIを配置。
+   - リスト表示時は `groupPostsByStore` により店舗単位で集約した `SearchStoreCard` 一覧を表示し、同一店舗の重複カード発生を防止。
+   - フィルター・検索状態（店名/住所、キーワード、絞り込みモーダル、チップ）を共通の `useFilteredPosts` state で管理し、リスト ⇄ マップの切り替え時も完全に状態を維持。
+   - マップ上のピン・クラスタリング・現在地・下部カードプレビュー等の既存マップ機能はそのまま維持。
+
 ### 影響範囲
+- `src/components/BottomNav.tsx`（メニューラベル・アイコン変更）
+- `src/components/SearchStoreCard.tsx`（新規店舗カードコンポーネント）
+- `src/app/map/page.tsx`（検索画面リニューアル・リスト/マップ切り替え・フィルター連動）
 - `src/app/api/posts/[id]/store-photos/route.ts`（新規APIエンドポイント）
 - `src/components/PostPhotoSection.tsx`（新規タブ切り替え・ギャラリー・拡大モーダルコンポーネント）
 - `src/app/posts/[id]/page.tsx`（写真エリアを `PostPhotoSection` に統合）

@@ -2,13 +2,13 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import { useTransition, useRef, useLayoutEffect, useState, useEffect } from 'react';
-import { Clock, User, Trophy, MapPin, Home } from 'lucide-react';
+import { Clock, User, Trophy, Search, Home } from 'lucide-react';
 
 const NAV_ITEMS = [
   { href: '/',         icon: Home,   label: 'ホーム',       match: (p: string) => p === '/'               },
   { href: '/posts',    icon: Clock,  label: 'タイムライン',  match: (p: string) => p === '/posts'          },
   { href: '/mypage',   icon: User,   label: 'マイページ',    match: (p: string) => p.startsWith('/mypage') },
-  { href: '/map',      icon: MapPin, label: 'マップ',        match: (p: string) => p === '/map'            },
+  { href: '/map',      icon: Search, label: '検索',          match: (p: string) => p === '/map'            },
   { href: '/rankings', icon: Trophy, label: 'ランキング',    match: (p: string) => p.startsWith('/rankings') },
 ];
 
