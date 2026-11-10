@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { getImageUrl } from '@/lib/image';
-import { MapPin, Star, Bookmark, BookmarkCheck, Map } from 'lucide-react';
+import { MapPin, Star, Bookmark, BookmarkCheck, Map, MessageCircle, ThumbsUp, ChevronDown, X } from 'lucide-react';
 import type { Post } from '@/lib/types';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -11,6 +11,8 @@ import { VisitedModal } from '@/components/VisitedModal';
 import { VisitChoiceModal } from '@/components/VisitChoiceModal';
 import { buildNewPostUrlFromStore } from '@/lib/storeUtils';
 import { getGoogleMapsUrl } from '@/lib/utils';
+import { StarInput } from '@/components/StarRating';
+import { InlineCommentPanel, InlineDetailPanel } from '@/components/PostCard';
 
 export type StoreGroupItem = {
   storeKey: string;
@@ -52,6 +54,53 @@ export function SearchStoreCard({ store }: { store: StoreGroupItem }) {
   const [isVisitedModalOpen, setIsVisitedModalOpen] = useState(false);
   const [isChoiceModalOpen, setIsChoiceModalOpen] = useState(false);
   const [toggling, setToggling] = useState(false);
+
+  const _isMine = (post as any).__is_mine !== false;
+  const [likedByMe, setLikedByMe] = useState(!!((post as any)._is_liked || (post as any).liked_by_me));
+  const initialRatingVal = (post as any)._myRating ?? (_isMine ? post.rating : null);
+  const [myRating, setMyRating] = useState<number | null>(initialRatingVal ?? null);
+  const [pendingRating, setPendingRating] = useState<number>(initialRatingVal ?? 3.0);
+  const [ratingSaving, setRatingSaving] = useState(false);
+  const [activePanel, setActivePanel] = useState<null | 'rating' | 'comment' | 'detail'>(null);
+  const [detailRefreshKey, setDetailRefreshKey] = useState(0);
+
+  const bumpDetail = () => setDetailRefreshKey(k => k + 1);
+
+  const togglePanel = (panel: 'rating' | 'comment' | 'detail') => {
+    setActivePanel(p => p === panel ? null : panel);
+  };
+
+  const handleLikeClick = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const nextVal = !likedByMe;
+    setLikedByMe(nextVal);
+    try {
+      const res = await fetch(`/api/posts/${post.id}/like`, { method: 'POST' });
+      if (!res.ok) setLikedByMe(!nextVal);
+      else bumpDetail();
+    } catch {
+      setLikedByMe(!nextVal);
+    }
+  };
+
+  const saveRating = async () => {
+    setRatingSaving(true);
+    try {
+      await fetch(`/api/posts/${post.id}/visited`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rating: pendingRating }),
+      });
+      setMyRating(pendingRating);
+      setActivePanel(null);
+      bumpDetail();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setRatingSaving(false);
+    }
+  };
 
   const handleVisitedClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -194,6 +243,30 @@ export function SearchStoreCard({ store }: { store: StoreGroupItem }) {
       {/* アクションバー（タイムラインと同一デザイン） */}
       <div className="px-4 py-2 flex items-center justify-between border-t border-gray-50">
         <div className="flex items-center gap-5">
+          {/* コメント */}
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePanel('comment'); bumpDetail(); }}
+            className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
+          >
+            <MessageCircle
+              size={22}
+              className={`transition-colors ${activePanel === 'comment' ? 'fill-blue-400 text-blue-400' : 'text-gray-300'}`}
+            />
+            <span className={`text-[9px] font-bold leading-none ${activePanel === 'comment' ? 'text-blue-400' : 'text-gray-300'}`}>コメント</span>
+          </button>
+
+          {/* いいね */}
+          <button
+            onClick={handleLikeClick}
+            className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
+          >
+            <ThumbsUp
+              size={22}
+              className={`transition-colors ${likedByMe ? 'fill-pink-500 text-pink-500' : 'text-gray-300'}`}
+            />
+            <span className={`text-[9px] font-bold leading-none ${likedByMe ? 'text-pink-400' : 'text-gray-300'}`}>いいね</span>
+          </button>
+
           {/* 行った */}
           <button
             onClick={handleVisitedClick}
@@ -218,6 +291,24 @@ export function SearchStoreCard({ store }: { store: StoreGroupItem }) {
             />
             <span className={`text-[9px] font-bold leading-none ${isWantToGo ? 'text-orange-400' : 'text-gray-300'}`}>行きたい</span>
           </button>
+
+          {/* 評価 */}
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePanel('rating'); }}
+            className="flex flex-col items-center gap-0.5 transition-all active:scale-90"
+          >
+            <Star
+              size={22}
+              className={`transition-colors ${
+                (myRating != null && myRating > 0) || activePanel === 'rating'
+                  ? 'fill-yellow-400 text-yellow-400'
+                  : 'text-gray-300'
+              }`}
+            />
+            <span className={`text-[9px] font-bold leading-none ${
+              (myRating != null && myRating > 0) || activePanel === 'rating' ? 'text-yellow-400' : 'text-gray-300'
+            }`}>評価</span>
+          </button>
         </div>
 
         {/* マップ - 右端 */}
@@ -236,6 +327,52 @@ export function SearchStoreCard({ store }: { store: StoreGroupItem }) {
           <div className="w-10" />
         )}
       </div>
+
+      {/* 詳細を見るボタン */}
+      <div className="px-4 mt-1 mb-1">
+        <button
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); togglePanel('detail'); }}
+          className="text-[12px] font-bold text-gray-400 hover:text-gray-600 transition-colors flex items-center gap-1"
+        >
+          詳細を見る
+          <ChevronDown size={12} className={`transition-transform ${activePanel === 'detail' ? 'rotate-180' : ''}`} />
+        </button>
+      </div>
+
+      {/* ── Inline Rating Panel ── */}
+      {activePanel === 'rating' && (
+        <div className="mx-4 mb-3 bg-orange-50 border border-orange-100 rounded-2xl p-4 animate-in slide-in-from-top-2 duration-200">
+          <div className="flex items-center justify-between mb-3">
+            <label className="text-[12px] font-bold text-orange-800">あなたの評価</label>
+            <button onClick={() => setActivePanel(null)} className="text-gray-400 hover:text-gray-600">
+              <X size={16} />
+            </button>
+          </div>
+          <StarInput value={pendingRating} onChange={setPendingRating} />
+          <button
+            onClick={saveRating}
+            disabled={ratingSaving}
+            className="mt-3 w-full py-2.5 rounded-xl font-black text-[13px] flex items-center justify-center gap-2 bg-orange-500 text-white shadow-sm shadow-orange-200 active:scale-95 transition-all disabled:opacity-60"
+          >
+            <Star size={14} />
+            {ratingSaving ? '保存中...' : '評価を保存'}
+          </button>
+        </div>
+      )}
+
+      {/* ── Inline Comment Panel ── */}
+      {activePanel === 'comment' && (
+        <div className="mx-4 mb-3 animate-in slide-in-from-top-2 duration-200">
+          <InlineCommentPanel postId={post.id} onClose={() => setActivePanel(null)} />
+        </div>
+      )}
+
+      {/* ── Inline Detail Panel ── */}
+      {activePanel === 'detail' && (
+        <div className="mx-4 mb-3 bg-gray-50 border border-gray-100 rounded-2xl overflow-hidden animate-in slide-in-from-top-2 duration-200">
+          <InlineDetailPanel key={`${post.id}-${detailRefreshKey}`} post={post} refreshTrigger={detailRefreshKey} />
+        </div>
+      )}
 
       {/* 記録方法選択モーダル（未登録時） */}
       {isChoiceModalOpen && (

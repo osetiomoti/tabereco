@@ -238,6 +238,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isVisitedModalOpen, setIsVisitedModalOpen] = useState(false);
   const [isChoiceModalOpen, setIsChoiceModalOpen] = useState(false);
+  const [isCommentExpanded, setIsCommentExpanded] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   const handleScroll = () => {
@@ -522,6 +523,28 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
               {post.tags.length > 3 && <span className="text-[10px] text-gray-300">...</span>}
             </div>
           )}
+
+          {/* 投稿者のコメント（感想・メモ: 初期1行表示、詳細を見るで全文表示） */}
+          {post.comment && (
+            <div className="mt-2.5 pt-2 border-t border-gray-50/80">
+              <p className={`text-[13px] text-gray-700 leading-relaxed whitespace-pre-wrap ${!isCommentExpanded ? 'line-clamp-1' : ''}`}>
+                {post.comment}
+              </p>
+              {(post.comment.length > 35 || post.comment.includes('\n')) && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setIsCommentExpanded(!isCommentExpanded);
+                  }}
+                  className="text-[11px] font-bold text-orange-500 hover:text-orange-600 mt-1 inline-flex items-center gap-0.5"
+                >
+                  {isCommentExpanded ? '閉じる' : '詳細を見る'}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </Link>
 
@@ -752,7 +775,7 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
 
 
 // ── Inline Comment Panel ──────────────────────────────────────────
-function InlineCommentPanel({ postId, onClose }: { postId: string; onClose: () => void }) {
+export function InlineCommentPanel({ postId, onClose }: { postId: string; onClose: () => void }) {
   const [comments, setComments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [content, setContent] = useState('');
@@ -843,7 +866,7 @@ function InlineCommentPanel({ postId, onClose }: { postId: string; onClose: () =
 
 
 // ── Inline Detail Panel ──────────────────────────────────────────
-function InlineDetailPanel({ post, refreshTrigger }: { post: Post; refreshTrigger?: number }) {
+export function InlineDetailPanel({ post, refreshTrigger }: { post: Post; refreshTrigger?: number }) {
   const [data, setData] = useState<{
     likedUsers: any[];
     visitedUsers: any[];

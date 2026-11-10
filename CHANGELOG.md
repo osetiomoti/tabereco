@@ -58,8 +58,21 @@
    - `map/page.tsx` の `storeGroups` 集計時に、店舗内の全投稿から最小金額（`priceMin`）と最大金額（`priceMax`）を算出し、未設定時は代表投稿からフォールバックしてカードに連携。
    - 単一金額の場合は「¥1,000」、幅がある場合は「¥1,000〜2,000」、上限または下限のみの場合は「¥1,000〜」「〜¥2,000」形式で直感的に表示。
 
+7. **タイムライン画面（PostCard）に投稿コメント表示＆「詳細を見る」インライン展開を追加**
+   - タイムライン上のカード内に投稿者の感想・メモ（`post.comment`）を表示。
+   - デフォルトは1行表示（`line-clamp-1`）とし、長いコメントには「詳細を見る」ボタンを表示。
+   - タップ時に親カード遷移を防ぎつつその場で全文展開 ⇄「閉じる」ができるアコーディオンUIを実装。
+
+8. **検索画面（リスト表示）の SearchStoreCard にフルアクションバー＆インラインパネルを追加**
+   - タイムライン（PostCard）と同一のフルアクションバー（コメント / いいね / 行った / 行きたい / 評価 / マップ / 詳細を見る ∨）を実装。
+   - 「コメント」ボタン：`InlineCommentPanel` を展開し、スレッド閲覧およびコメント投稿が可能。
+   - 「いいね」ボタン：ワンタップでいいねトグル（楽観的UI）。
+   - 「評価」ボタン：星評価スライダーパネルを展開しインライン保存。
+   - 「詳細を見る ∨」ボタン：`InlineDetailPanel` を展開し、メモやいいね・行った・行きたい・評価したユーザー一覧を表示。
+
 ### 影響範囲（追記分）
-- `src/components/SearchStoreCard.tsx`（訪問人数バッジ・アクションバー・価格帯バッジ追加、型更新）
+- `src/components/SearchStoreCard.tsx`（訪問人数バッジ・価格帯バッジ・フルアクションバー・インラインパネル追加、型更新）
+- `src/components/PostCard.tsx`（コメント1行プレビュー＋詳細を見る展開追加、`InlineCommentPanel` / `InlineDetailPanel` をエクスポート）
 - `src/components/PostSocial.tsx`（`RatingAndActions` の `onDetailRecord` をタイムライン同一動作に修正、`post` prop 追加）
 - `src/app/posts/[id]/page.tsx`（`RatingAndActions` に `post` を渡すよう修正）
 - `src/app/map/page.tsx`（`userCount` 計算、価格帯最小・最大値の計算を追加）
