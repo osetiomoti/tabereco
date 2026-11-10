@@ -11,6 +11,7 @@ import { PostMenu } from '@/components/PostMenu';
 import { FavoriteToggle } from '@/components/FavoriteToggle';
 import { StarDisplay } from '@/components/StarRating';
 import { ImageCarousel } from '@/components/ImageCarousel';
+import { PostPhotoSection } from '@/components/PostPhotoSection';
 import { CommentsSection, RatingAndActions } from '@/components/PostSocial';
 import { StoreVisitorsSection } from '@/components/StoreVisitorsSection';
 
@@ -86,48 +87,16 @@ export default async function PostDetailPage({ params }: Props) {
         </div>
       </Header>
 
-      {/* 2. 画像カルーセルエリア */}
-      {allImages.length > 0 ? (
-        <div className="relative">
-          <ImageCarousel images={allImages} alt={post.store_name || post.title || ''} />
-          {/* お気に入りボタン: 画像右上（自分の投稿のみ） */}
-          {isOwner && (
-            <div className="absolute top-3 right-3 z-20">
-              <FavoriteToggle postId={post.id} initialValue={post.is_favorite} />
-            </div>
-          )}
-        </div>
-      ) : post.status === 'want_to_go' ? (
-        <div className="w-full aspect-square bg-gray-100 flex items-center justify-center relative">
-          {staticMapUrl ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={staticMapUrl} alt="Map" className="w-full h-full object-cover opacity-80" />
-              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none p-4">
-                <span className="text-gray-600 font-bold text-sm bg-white/80 px-4 py-2 rounded-full shadow-sm backdrop-blur-sm">
-                  画像が登録されていません
-                </span>
-              </div>
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center gap-2">
-              <span className="text-4xl">📍</span>
-              <p className="text-sm font-bold text-gray-500">画像が登録されていません</p>
-            </div>
-          )}
-          <div className="absolute top-3 right-3 z-20">
-            <FavoriteToggle postId={post.id} initialValue={post.is_favorite} />
-          </div>
-        </div>
-      ) : (
-        <div className="w-full aspect-square bg-gray-50 flex flex-col items-center justify-center text-gray-300 gap-2 relative">
-          <span className="text-5xl">🍽️</span>
-          <span className="text-sm font-bold">写真なし</span>
-          <div className="absolute top-3 right-3 z-20">
-            <FavoriteToggle postId={post.id} initialValue={post.is_favorite} />
-          </div>
-        </div>
-      )}
+      {/* 2. 画像エリア（この投稿 ⇄ みんなの写真切り替え） */}
+      <PostPhotoSection
+        postId={post.id}
+        postTitle={post.store_name || post.title || ''}
+        postImages={allImages}
+        postStatus={post.status}
+        staticMapUrl={staticMapUrl}
+        isOwner={isOwner}
+        isFavorite={post.is_favorite}
+      />
 
       {/* ドットインジケーター（ImageCarousel内蔵なので削除済み） */}
 

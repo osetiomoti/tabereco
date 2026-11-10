@@ -130,7 +130,9 @@ flowchart TD
 * **対応ファイル:** `src/app/posts/[id]/page.tsx`
 * **目的:** 登録された記録のすべての詳細情報・写真・位置・リアクション・コメントの閲覧。
 * **表示情報:**
-  - 高画質写真ビューアー（スワイプカルーセル、ピンチズーム対応）
+  - 写真表示切り替えタブ（`PostPhotoSection`）：
+    - 「この投稿」タブ：開いている投稿の写真カルーセル（`ImageCarousel`、ピンチズーム・スワイプ対応）、お気に入りボタン。写真なし時はプレースホルダー表示。
+    - 「みんなの写真」タブ：同一店舗に属する自分・フレンド・所属グループメンバーの写真をグリッド一覧表示。各サムネイルに投稿者アバターを表示し、タップで拡大プレビューモーダル（投稿者名、訪問日、コメント、元投稿へのリンク、前後スライド）を起動。第三者・非公開投稿の写真は厳密に除外。
   - 店名、総合評価、訪問日、訪問回数（リピートカウント）
   - 住所、Google Maps埋め込みプレビュー、「Google Mapsアプリで開く」外部リンク（`google_place_id` を最優先、欠損時は `store_name + address` を組み合わせたフォールバックURL生成）
   - 支払い価格帯、タグ一覧
@@ -147,7 +149,7 @@ flowchart TD
     - 身内（本人・フレンド・共通グループ）以外の閲覧者に対しては写真・コメントを伏せるプライバシー制御（`is_restricted`）を適用。
   - コメント一覧 & 新規コメント投稿フォーム
   - 投稿者本人の場合: 「編集」「削除」メニュー
-* **主要コンポーネント:** `ImageCarousel`, `MapThumbnail`, `RatingAndActions`, `StoreVisitorsSection`, `CommentsSection`, `VisitChoiceModal`, `VisitedModal`
+* **主要コンポーネント:** `PostPhotoSection`, `ImageCarousel`, `MapThumbnail`, `RatingAndActions`, `StoreVisitorsSection`, `CommentsSection`, `VisitChoiceModal`, `VisitedModal`
 * **ユーザー操作:**
   - 編集ボタンタップ（`/posts/[id]/edit` へ遷移）
   - 削除ボタンタップ（確認ダイアログ表示後、論理/物理削除して一覧へ戻る）

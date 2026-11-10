@@ -328,6 +328,45 @@ Cookie をクリアしてログアウト。
   }
   ```
 
+### 4.10.2 `GET /api/posts/[id]/store-photos`
+指定された投稿と同じ店舗（`google_place_id` または `store_name + address`）に属する、閲覧権限のあるユーザー（ログインユーザー本人、相互フレンド、同一グループメンバー）の写真一覧を取得。
+
+- **閲覧権限・セキュリティ:**
+  - ログインユーザー本人、相互フレンド、または共通所属グループのメンバーの写真のみを返却。第三者（ストレンジャー）の写真はレスポンスに含まれない。
+  - 本人以外の非公開投稿（`is_mine_only = true`）の写真は除外。
+- **対象データ:**
+  - 同一店舗の通常投稿（`Post`）および訪問記録（`PostVisited`）に登録されたすべての写真（単一URL `image_url` および配列 `image_urls`）。
+- **重複排除とソート:**
+  - 訪問日（`visited_at`）または作成日（`created_at`）の新しい順にソート。
+  - 画像URL単位で重複排除を実施。
+- **レスポンス (200):**
+  ```json
+  {
+    "success": true,
+    "data": {
+      "photos": [
+        {
+          "id": "post_uuid_0",
+          "url": "s3-key-or-url",
+          "author": {
+            "id": "uuid",
+            "name": "ユーザー名",
+            "avatar_url": "url"
+          },
+          "comment": "感想コメント",
+          "visited_at": "2026-10-27T00:00:00.000Z",
+          "created_at": "2026-10-27T12:00:00.000Z",
+          "postId": "uuid",
+          "visitedId": "uuid-or-undefined",
+          "sourceType": "post" | "visited",
+          "isMe": true
+        }
+      ],
+      "totalCount": 12
+    }
+  }
+  ```
+
 ### 4.11 `POST /api/posts/[id]/share`
 指定したグループへ投稿を共有する。
 - **Body:** `{ "group_ids": ["uuid1", "uuid2"] }`
