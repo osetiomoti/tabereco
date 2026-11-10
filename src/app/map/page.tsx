@@ -102,10 +102,13 @@ function SearchPageInner() {
     for (const [storeKey, storePosts] of map.entries()) {
       if (storePosts.length === 0) continue;
 
-      // 自分の投稿を優先、なければ写真がある投稿、それもなければ最新の投稿
-      const myPost = storePosts.find(p => (p as any).__is_mine !== false);
+      // 自分の投稿（__is_mine === true）を優先
+      const myVisitedPost = storePosts.find(p => (p as any).__is_mine === true && p.status === 'visited');
+      const myWantToGoPost = storePosts.find(p => (p as any).__is_mine === true && p.status === 'want_to_go');
+      const anyMyPost = myVisitedPost || myWantToGoPost || storePosts.find(p => (p as any).__is_mine === true);
+
       const postWithImg = storePosts.find(p => p.image_url || (p.image_urls && p.image_urls.length > 0));
-      const repPost = myPost || postWithImg || storePosts[0];
+      const repPost = anyMyPost || postWithImg || storePosts[0];
 
       // 代表画像
       const repImage = pickRepresentativeImage(storePosts) || repPost.image_url || (repPost.image_urls && repPost.image_urls[0]) || null;
@@ -116,9 +119,12 @@ function SearchPageInner() {
         ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10
         : null;
 
-      // ステータス判定
-      const hasVisited = storePosts.some(p => p.status === 'visited' || (p as any)._isMarkedVisited);
-      const hasWantToGo = storePosts.some(p => p.status === 'want_to_go' || (p as any)._isMarkedWantToGo);
+      // ステータス判定（ログインユーザー自身の投稿・マークのみを判定）
+      const hasVisited = !!myVisitedPost || storePosts.some(p => !!(p as any)._isMarkedVisited);
+      const hasWantToGo = !hasVisited && (!!myWantToGoPost || storePosts.some(p => !!(p as any)._isMarkedWantToGo));
+
+      // 自分が詳細登録した投稿のID（詳細登録時の編集画面遷移用）
+      const myPostId = myVisitedPost?.id || (anyMyPost && (anyMyPost.status === 'visited' || (anyMyPost as any)._isMarkedVisited) ? anyMyPost.id : null);
 
       // タグの収集（重複なし）
       const tagSet = new Set<string>();
@@ -150,6 +156,7 @@ function SearchPageInner() {
         userCount: userIds.size,
         hasVisited,
         hasWantToGo,
+        myPostId,
         avgRating,
         tags: Array.from(tagSet),
         latitude: repPost.latitude || null,

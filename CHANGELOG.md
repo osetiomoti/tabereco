@@ -70,12 +70,18 @@
    - 「評価」ボタン：星評価スライダーパネルを展開しインライン保存。
    - 「詳細を見る ∨」ボタン：`InlineDetailPanel` を展開し、メモやいいね・行った・行きたい・評価したユーザー一覧を表示。
 
+9. **「行った」ステータス判定バグ修正＆「行った」ボタン押下時の動作最適化**
+   - 検索画面リスト表示（`map/page.tsx`）で、他人の訪問投稿がある店舗もすべて `hasVisited = true` になってしまっていた判定不具合を修正。ログインユーザー自身の投稿（`__is_mine === true` かつ `status === 'visited'`）または他人の投稿に対する自身の訪問マーク（`_isMarkedVisited`）のみで正しく判定するよう是正。
+   - 「行った」登録済み状態で「行った」ボタンを押したときの挙動を改善：
+     - 詳細を登録している場合（自身のPost投稿がある場合）: その投稿の編集画面（`/posts/${id}/edit`）へ遷移
+     - 訪問記録に写真やコメントの詳細がある場合: `VisitedModal` を開いて編集
+     - 単に行動記録（クイック訪問）のみの場合: ワンタップで単純に「行った」を解除（外す）するトグル動作に変更（`/api/posts/[id]/visited` の `DELETE` エンドポイントを新設対応）。
+
 ### 影響範囲（追記分）
-- `src/components/SearchStoreCard.tsx`（訪問人数バッジ・価格帯バッジ・フルアクションバー・インラインパネル追加、型更新）
-- `src/components/PostCard.tsx`（コメント1行プレビュー＋詳細を見る展開追加、`InlineCommentPanel` / `InlineDetailPanel` をエクスポート）
-- `src/components/PostSocial.tsx`（`RatingAndActions` の `onDetailRecord` をタイムライン同一動作に修正、`post` prop 追加）
-- `src/app/posts/[id]/page.tsx`（`RatingAndActions` に `post` を渡すよう修正）
-- `src/app/map/page.tsx`（`userCount` 計算、価格帯最小・最大値の計算を追加）
+- `src/app/map/page.tsx`（`hasVisited` / `hasWantToGo` のユーザー自身判定への修正、`myPostId` 追加）
+- `src/components/SearchStoreCard.tsx`（「行った」解除トグルおよび詳細登録時の編集画面遷移分岐の実装）
+- `src/components/PostCard.tsx`（クイック訪問時の「行った」解除トグルの実装）
+- `src/app/api/posts/[id]/visited/route.ts`（`DELETE` ハンドラの新設）
 
 ---
 

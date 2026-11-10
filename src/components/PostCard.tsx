@@ -299,15 +299,40 @@ export function PostCard({ post, layout = 'vertical', onLike, likedByMe, likesCo
     }
   };
 
-  const toggleVisited = (e: React.MouseEvent) => {
+  const toggleVisited = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (isVisited) {
-      // 行った済み → VisitedModal を直接開く（編集）
-      setIsVisitedModalOpen(true);
-    } else {
+    if (!isVisited) {
       // 未登録 → 記録方法の選択モーダルを開く
       setIsChoiceModalOpen(true);
+      return;
+    }
+
+    // 行った済みの場合
+    // 詳細（写真やコメント）がある場合 → VisitedModal を開いて編集
+    const hasVisitedDetails = !!(
+      (post as any)._myComment ||
+      (post as any)._myImageUrl ||
+      ((post as any)._myImageUrls && (post as any)._myImageUrls.length > 0)
+    );
+
+    if (hasVisitedDetails) {
+      setIsVisitedModalOpen(true);
+    } else {
+      // 行ったに登録だけしている場合 → 単純に行ったを外す
+      setIsVisited(false);
+      try {
+        const res = await fetch(`/api/posts/${post.id}/visited`, {
+          method: 'DELETE',
+        });
+        if (!res.ok) {
+          setIsVisited(true);
+        } else {
+          bumpDetail();
+        }
+      } catch {
+        setIsVisited(true);
+      }
     }
   };
 

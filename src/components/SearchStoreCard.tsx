@@ -30,6 +30,7 @@ export type StoreGroupItem = {
   longitude: number | null;
   priceMin?: number | null;
   priceMax?: number | null;
+  myPostId?: string | null;
 };
 
 function formatPriceRange(min?: number | null, max?: number | null): string | null {
@@ -102,13 +103,52 @@ export function SearchStoreCard({ store }: { store: StoreGroupItem }) {
     }
   };
 
-  const handleVisitedClick = (e: React.MouseEvent) => {
+  const handleVisitedClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (isVisited) {
-      setIsVisitedModalOpen(true);
-    } else {
+
+    // 未登録時 → 記録方法選択モーダル（詳細を記録する or 行ったのみ記録）を開く
+    if (!isVisited) {
       setIsChoiceModalOpen(true);
+      return;
+    }
+
+    // ── 登録済みの時 ──
+    // 1. 詳細を登録している場合（自分が作成した投稿がある） → その編集画面へ遷移
+    if (store.myPostId) {
+      router.push(`/posts/${store.myPostId}/edit`);
+      return;
+    }
+
+    // 2. 他人の投稿に PostVisited で詳細（写真やコメント）を登録している場合 → 編集モーダルを開く
+    const hasDetailedVisited = !!(
+      (post as any)._myComment || 
+      (post as any)._myImageUrl || 
+      ((post as any)._myImageUrls && (post as any)._myImageUrls.length > 0)
+    );
+    if (hasDetailedVisited) {
+      setIsVisitedModalOpen(true);
+      return;
+    }
+
+    // 3. 行ったに登録だけしている場合 → 単純に行ったを外す
+    if (toggling) return;
+    setToggling(true);
+    setIsVisited(false);
+    setVisitorCount(c => Math.max(0, c - 1));
+    try {
+      const res = await fetch(`/api/posts/${post.id}/visited`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        setIsVisited(true);
+        setVisitorCount(c => c + 1);
+      }
+    } catch {
+      setIsVisited(true);
+      setVisitorCount(c => c + 1);
+    } finally {
+      setToggling(false);
     }
   };
 

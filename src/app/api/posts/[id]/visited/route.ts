@@ -188,6 +188,28 @@ export async function PUT(
 }
 
 /**
+ * DELETE /api/posts/[id]/visited
+ * Remove visited record.
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id: postId } = await params;
+  return withAuth(request, async (auth) => {
+    try {
+      await prisma.postVisited.deleteMany({
+        where: { post_id: postId, user_id: auth.userId },
+      });
+      return NextResponse.json({ success: true, marked: false });
+    } catch (e: any) {
+      console.error('[DELETE /api/posts/[id]/visited] Error:', e);
+      return NextResponse.json({ success: false, error: e.message }, { status: 500 });
+    }
+  });
+}
+
+/**
  * GET /api/posts/[id]/visited
  * Get visited count, list, and ratings for a post, aggregated by store.
  */
