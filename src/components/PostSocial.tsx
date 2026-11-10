@@ -13,7 +13,7 @@ import { VisitChoiceModal } from './VisitChoiceModal';
 // ── Rating and Actions (Visited / Want-to-Go) ────────────────────────────────────
 type RatingAndActionsProps = {
   postId: string;
-  post?: any;
+  post?: any;  // 新規投稿フォームへの遷移に使用
   isOwner: boolean;
   ownerRating: number | null;
   ownerVisitCount?: number;
@@ -418,8 +418,18 @@ export function RatingAndActions({ postId, post, isOwner, ownerRating, ownerVisi
       {isChoiceModalOpen && (
         <VisitChoiceModal
           isOpen={isChoiceModalOpen}
+          storeName={post?.store_name || post?.title}
           onClose={() => setIsChoiceModalOpen(false)}
-          onDetailRecord={() => setIsVisitedModalOpen(true)}
+          onDetailRecord={() => {
+            setIsChoiceModalOpen(false);
+            if (post) {
+              // タイムラインと同じ動作：新規投稿フォームへ遷移（タグなど全入力可能）
+              router.push(buildNewPostUrlFromStore(post));
+            } else {
+              // post情報がない場合は従来のVisitedModalにフォールバック
+              setIsVisitedModalOpen(true);
+            }
+          }}
           onQuickVisit={handleQuickVisit}
         />
       )}
@@ -428,6 +438,7 @@ export function RatingAndActions({ postId, post, isOwner, ownerRating, ownerVisi
         <VisitedModal
           isOpen={isVisitedModalOpen}
           postId={postId}
+          storeName={post?.store_name || post?.title}
           onClose={() => setIsVisitedModalOpen(false)}
           initialData={{
             rating: myRating,

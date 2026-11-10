@@ -37,6 +37,36 @@
 
 ---
 
+## 2026-11-10（追記）
+### 変更内容
+
+4. **詳細画面「行った」→「詳細を記録する」をタイムラインと同一動作に修正**
+   - 店舗詳細画面（`/posts/[id]`）の `RatingAndActions` コンポーネントで、未登録時に `VisitChoiceModal` → 「詳細を記録する」を選ぶと、タイムラインと同様に `buildNewPostUrlFromStore()` で投稿フォーム（`/posts/new?...`）へ遷移するように修正。
+   - これにより、タグ・温泉情報・写真・金額・メモなどすべてのフィールドを入力可能になった。
+   - `RatingAndActions` に `post` プロパティを追加し、詳細画面から渡すよう変更。
+
+5. **検索画面（リスト表示）の SearchStoreCard を強化**
+   - 画像左上のバッジを「行った」テキストから「👤 N人」（行った人数）表示に変更（マイページと同様）。
+   - タイムラインと同一デザインのアクションバー（行った / 行きたい / マップ）を追加。
+   - 「行った」ボタン：未登録時は `VisitChoiceModal` を表示し、詳細記録は投稿フォームへ遷移。登録済みの場合は `VisitedModal` を開いて編集可能。
+   - 「行きたい」ボタン：楽観的UIでトグル更新。
+   - 「マップ」ボタン：座標がある場合に Google Maps 外部リンクを表示。
+   - `StoreGroupItem` 型に `userCount` フィールドを追加し、`map/page.tsx` のグルーピング時にユニークユーザー数を計算。
+
+6. **検索画面（リスト表示）に価格帯（¥min〜max）表示を追加**
+   - `SearchStoreCard` の評価・件数エリアに価格帯バッジ（`formatPriceRange`）を追加。
+   - `map/page.tsx` の `storeGroups` 集計時に、店舗内の全投稿から最小金額（`priceMin`）と最大金額（`priceMax`）を算出し、未設定時は代表投稿からフォールバックしてカードに連携。
+   - 単一金額の場合は「¥1,000」、幅がある場合は「¥1,000〜2,000」、上限または下限のみの場合は「¥1,000〜」「〜¥2,000」形式で直感的に表示。
+
+### 影響範囲（追記分）
+- `src/components/SearchStoreCard.tsx`（訪問人数バッジ・アクションバー・価格帯バッジ追加、型更新）
+- `src/components/PostSocial.tsx`（`RatingAndActions` の `onDetailRecord` をタイムライン同一動作に修正、`post` prop 追加）
+- `src/app/posts/[id]/page.tsx`（`RatingAndActions` に `post` を渡すよう修正）
+- `src/app/map/page.tsx`（`userCount` 計算、価格帯最小・最大値の計算を追加）
+
+---
+
+
 ## 2026-11-05
 ### 変更内容
 1. **他人のマイページ「行った」カードに訪問者数バッジを追加**

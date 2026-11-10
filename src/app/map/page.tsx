@@ -128,6 +128,18 @@ function SearchPageInner() {
         });
       });
 
+      // ユニークユーザー数（行った人の数）
+      const userIds = new Set<string>();
+      storePosts.forEach(p => {
+        if (p.user_id) userIds.add(p.user_id);
+      });
+
+      // 価格帯（店舗内の全投稿から最小・最大を算出）
+      const pricesMin = storePosts.map(p => p.price_min).filter((p): p is number => p != null);
+      const pricesMax = storePosts.map(p => p.price_max).filter((p): p is number => p != null);
+      const priceMin = pricesMin.length > 0 ? Math.min(...pricesMin) : (repPost.price_min ?? null);
+      const priceMax = pricesMax.length > 0 ? Math.max(...pricesMax) : (repPost.price_max ?? null);
+
       items.push({
         storeKey,
         storeName: repPost.store_name || repPost.title || '店舗名未設定',
@@ -135,12 +147,15 @@ function SearchPageInner() {
         representativePost: repPost,
         representativeImage: repImage,
         postCount: storePosts.length,
+        userCount: userIds.size,
         hasVisited,
         hasWantToGo,
         avgRating,
         tags: Array.from(tagSet),
         latitude: repPost.latitude || null,
         longitude: repPost.longitude || null,
+        priceMin,
+        priceMax,
       });
     }
 
