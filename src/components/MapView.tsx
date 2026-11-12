@@ -75,16 +75,34 @@ const createClusterMarkerSvgUrl = (color: string, count: number, isSelected = fa
 const getCoordKey = (lat: number, lng: number) =>
   `${Math.round(lat * 10000) / 10000},${Math.round(lng * 10000) / 10000}`;
 
+export type MapBounds = {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+};
+
 type Props = {
   posts: Post[];
   center: { lat: number; lng: number };
   zoom?: number;
+  initialBounds?: MapBounds | null;
+  onBoundsChange?: (bounds: MapBounds) => void;
   tempMarker?: { lat: number; lng: number; placeId?: string; name?: string; address?: string } | null;
   setTempMarker?: React.Dispatch<React.SetStateAction<{ lat: number; lng: number; placeId?: string; name?: string; address?: string } | null>>;
   initialSelectedPostId?: string | null;
 };
 
-export default function MapView({ posts, center, zoom = 5, tempMarker, setTempMarker, initialSelectedPostId }: Props) {
+export default function MapView({
+  posts,
+  center,
+  zoom = 5,
+  initialBounds,
+  onBoundsChange,
+  tempMarker,
+  setTempMarker,
+  initialSelectedPostId,
+}: Props) {
   const apiKey = (process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '').trim();
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -110,12 +128,35 @@ export default function MapView({ posts, center, zoom = 5, tempMarker, setTempMa
   selectedPostRef.current = selectedPost;
   const tempMarkerRefState = useRef(tempMarker);
   tempMarkerRefState.current = tempMarker;
+  const onBoundsChangeRef = useRef(onBoundsChange);
+  onBoundsChangeRef.current = onBoundsChange;
+  const hasFitInitialBoundsRef = useRef(false);
+
+  // ─── 外部 props (initialBounds) の適用 ───
+  useEffect(() => {
+    if (!mapRef.current || !mapReady || !initialBounds) return;
+    if (initialSelectedPostId) return; // 個別投稿詳細へのフォーカスが優先
+
+    try {
+      const latLngBounds = new window.google.maps.LatLngBounds(
+        { lat: initialBounds.south, lng: initialBounds.west },
+        { lat: initialBounds.north, lng: initialBounds.east }
+      );
+      mapRef.current.fitBounds(latLngBounds, { top: 50, bottom: 20, left: 15, right: 15 });
+      hasFitInitialBoundsRef.current = true;
+    } catch (e) {
+      console.error('[MapView] fitBounds error:', e);
+    }
+  }, [initialBounds, mapReady, initialSelectedPostId]);
 
   // ─── 外部 props (center, zoom) 変更時の追従 ───
   const prevCenterRef = useRef(center);
   const prevZoomRef = useRef(zoom);
   useEffect(() => {
     if (!mapRef.current || !mapReady) return;
+    // initialBounds が優先されている初回は center/zoom による上書きをスキップ
+    if (initialBounds && !hasFitInitialBoundsRef.current) return;
+
     if (prevCenterRef.current.lat !== center.lat || prevCenterRef.current.lng !== center.lng) {
       mapRef.current.panTo(center);
       prevCenterRef.current = center;
@@ -124,7 +165,7 @@ export default function MapView({ posts, center, zoom = 5, tempMarker, setTempMa
       mapRef.current.setZoom(zoom);
       prevZoomRef.current = zoom;
     }
-  }, [center, zoom, mapReady]);
+  }, [center, zoom, mapReady, initialBounds]);
 
   // ─── 投稿ピンの命令的管理 ───
   useEffect(() => {
@@ -312,9 +353,42 @@ export default function MapView({ posts, center, zoom = 5, tempMarker, setTempMa
     };
   }, []);
 
+  const idleListenerRef = useRef<google.maps.MapsEventListener | null>(null);
+
   const onLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
     setMapReady(true);
+
+    // 初期Boundsがあれば fitBounds を適用
+    if (initialBounds && !initialSelectedPostId && !hasFitInitialBoundsRef.current) {
+      try {
+        const latLngBounds = new window.google.maps.LatLngBounds(
+          { lat: initialBounds.south, lng: initialBounds.west },
+          { lat: initialBounds.north, lng: initialBounds.east }
+        );
+        map.fitBounds(latLngBounds, { top: 50, bottom: 20, left: 15, right: 15 });
+        hasFitInitialBoundsRef.current = true;
+      } catch (e) {
+        console.error('[MapView] initial fitBounds error:', e);
+      }
+    }
+
+    // 地図の移動・ズーム停止時 (idle) に現在の表示範囲 Bounds を通知
+    if (idleListenerRef.current) {
+      window.google.maps.event.removeListener(idleListenerRef.current);
+    }
+    idleListenerRef.current = window.google.maps.event.addListener(map, 'idle', () => {
+      const b = map.getBounds();
+      if (!b) return;
+      const ne = b.getNorthEast();
+      const sw = b.getSouthWest();
+      onBoundsChangeRef.current?.({
+        north: ne.lat(),
+        south: sw.lat(),
+        east: ne.lng(),
+        west: sw.lng(),
+      });
+    });
 
     const cleanAddress = (addr: string) =>
       addr.replace(/^日本、\s*/, '').replace(/^〒\d{3}-\d{4}\s*/, '');
@@ -364,6 +438,10 @@ export default function MapView({ posts, center, zoom = 5, tempMarker, setTempMa
   }, [setTempMarker]);
 
   const onUnmount = useCallback(() => {
+    if (idleListenerRef.current) {
+      window.google.maps.event.removeListener(idleListenerRef.current);
+      idleListenerRef.current = null;
+    }
     mapRef.current = null;
     setMapReady(false);
   }, []);

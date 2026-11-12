@@ -154,6 +154,90 @@ Cookie をクリアしてログアウト。
 
 ---
 
+### 3.2 `GET /api/posts/search`
+検索画面（`/map`）のリスト表示用API。DB/Prisma側で100件ずつページネーションを行い、トータル件数と次ページ有無を返却する。
+
+**クエリパラメータ:**
+| パラメータ | 型 | 初期値 | 説明 |
+| :--- | :--- | :--- | :--- |
+| `page` | int | `1` | ページ番号（1から開始） |
+| `limit` | int | `100` | 1ページ当たりの取得件数（最大100） |
+| `keyword` | string | - | キーワード検索文字列 |
+| `search_mode` | string | `store_name` | 検索対象: `store_name`（店名・タイトル）/ `address`（住所） |
+| `status` | string | - | ステータス: `visited` / `want_to_go` / `all` |
+| `filter_mode` | string | `group` | 絞り込みモード: `group` / `registrant` |
+| `active_groups` | string | - | コンマ区切りのグループIDリスト（または `all`） |
+| `registrant_user_ids` | string | - | コンマ区切りの投稿者ユーザーIDリスト |
+| `tags` | string | - | コンマ区切りのタグ名リスト |
+| `tag_match_mode` | string | `AND` | タグ一致条件: `AND` / `OR` |
+| `active_map_tag` | string | - | マップアクティブタグ名 |
+| `is_favorite` | boolean | - | お気に入りのみ |
+| `period` | string | - | 期間: `this_month` / `last_3_months` / `this_year` / `last_year` / `custom` |
+| `period_start` / `end` | string | - | カスタム期間の日付（ISO文字列） |
+| `rating_min` / `max` | float | - | 評価値範囲フィルター |
+| `rating_unrated` | boolean | - | 未評価のみ表示 |
+| `price_min` / `max` | int | - | 価格帯範囲フィルター |
+| `sort_order` | string | `created_desc` | ソート順（`created_desc` / `rating_desc` / `rating_asc` / `price_desc` / `price_asc`、第2ソートにIDを指定して順序を安定化） |
+| *(旅レコ温泉フィルター群)* | | | 各種温泉絞り込み項目 |
+
+**レスポンス (200):**
+```json
+{
+  "success": true,
+  "items": [ /* Post[] - リレーション・拡張フィールド付き */ ],
+  "total": 536,
+  "page": 1,
+  "limit": 100,
+  "hasMore": true,
+  "nextCursor": "2"
+}
+```
+
+---
+
+### 3.3 `GET /api/posts/map`
+検索画面（`/map`）のマップ表示用API。Google Mapsの表示範囲（Bounds: north, south, east, west）に基づいて緯度経度を持つ店舗ピンのみをDB側で絞り込み、ピン描画に必要な最小限の軽量データ構造のみを返却する。
+
+**クエリパラメータ:**
+| パラメータ | 型 | 説明 |
+| :--- | :--- | :--- |
+| `north` | float | 地図表示範囲の北端緯度（必須） |
+| `south` | float | 地図表示範囲の南端緯度（必須） |
+| `east` | float | 地図表示範囲の東端経度（必須） |
+| `west` | float | 地図表示範囲の西端経度（必須） |
+| *(その他フィルター群)* | | `GET /api/posts/search` と同一の全フィルター項目（keyword, status, tags, etc.）を共有 |
+
+**レスポンス (200):**
+```json
+{
+  "success": true,
+  "items": [
+    {
+      "id": "uuid",
+      "user_id": "uuid",
+      "title": "店舗名またはタイトル",
+      "store_name": "店舗名",
+      "address": "住所",
+      "latitude": 35.1814,
+      "longitude": 136.9064,
+      "status": "visited",
+      "rating": 4.5,
+      "image_url": "users/.../sample.webp",
+      "image_urls": ["users/.../sample.webp"],
+      "tags": [{ "id": "uuid", "name": "ラーメン" }],
+      "__is_mine": true,
+      "_isMarkedVisited": true,
+      "_myRating": 4.5,
+      "_avgRating": 4.3,
+      "_ratingCount": 3
+    }
+  ],
+  "count": 42
+}
+```
+
+---
+
 ## 4. 投稿 API (`/api/posts`)
 
 ### 4.1 `GET /api/posts`

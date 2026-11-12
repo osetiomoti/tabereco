@@ -1,19 +1,27 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo, Suspense } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/Header';
 import type { Post } from '@/lib/types';
-import { MapPin, Search, Filter, X, UtensilsCrossed } from 'lucide-react';
-import { useFilteredPosts } from '@/hooks/useFilteredPosts';
+import { MapPin, Search, Filter, X, UtensilsCrossed, Loader2 } from 'lucide-react';
+import { useSharedFilter } from '@/hooks/useSharedFilter';
+import { useGroupMembers } from '@/hooks/useGroupMembers';
 import { FilterModal } from '@/components/FilterModal';
 import { FilterChips } from '@/components/PostCard';
 import { useAppType } from '@/contexts/AppTypeContext';
 import { SearchStoreCard, type StoreGroupItem } from '@/components/SearchStoreCard';
 import { groupPostsByStore, pickRepresentativeImage } from '@/lib/storeUtils';
+import { appendFilterSearchParams } from '@/lib/searchQuery';
+import {
+  PREFECTURE_BOUNDS,
+  getBoundsForPrefecture,
+  getPrefectureFromCoords,
+} from '@/lib/prefectures';
+import type { MapBounds } from '@/components/MapView';
 
-// Leaflet / Google Maps は `window` を使うため、SSR をオフにして動的インポートする
+// Google Maps は `window` を使うため、SSR をオフにして動的インポートする
 const MapView = dynamic(() => import('@/components/MapView'), {
   ssr: false,
   loading: () => (
@@ -25,11 +33,13 @@ const MapView = dynamic(() => import('@/components/MapView'), {
 
 const JAPAN_CENTER = { lat: 37.0, lng: 137.5 };
 const JAPAN_ZOOM = 5;
+const PAGE_SIZE = 100;
 
 function SearchPageInner() {
   const { appType } = useAppType();
-  const { posts, loading, filterState, updateFilter, activeFilterCount, removeFilter, memberUsers, joinedGroups } = useFilteredPosts();
-  const { activeTab, keyword, searchMode, activeGroups, advancedFilters, activeMapTag } = filterState;
+  const { filterState, updateFilter } = useSharedFilter();
+  const { activeTab, keyword, searchMode, activeGroups, advancedFilters, activeMapTag, filterMode } = filterState;
+  const { memberUsers, joinedGroups } = useGroupMembers();
 
   // 初期表示は「リスト」
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
@@ -46,7 +56,7 @@ function SearchPageInner() {
     }
   }, [queryLat, queryLng]);
 
-  const [center, setCenter] = useState<{ lat: number, lng: number }>(() => {
+  const [center, setCenter] = useState<{ lat: number; lng: number }>(() => {
     if (queryLat && queryLng) {
       return { lat: parseFloat(queryLat), lng: parseFloat(queryLng) };
     }
@@ -56,7 +66,7 @@ function SearchPageInner() {
     return (queryLat && queryLng) || queryPostId ? 16 : JAPAN_ZOOM;
   });
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
-  const [tempMarker, setTempMarker] = useState<{ lat: number, lng: number, placeId?: string, name?: string, address?: string } | null>(null);
+  const [tempMarker, setTempMarker] = useState<{ lat: number; lng: number; placeId?: string; name?: string; address?: string } | null>(null);
 
   // 投稿絞り込み用のキーワード入力（ローカル状態：デバウンスで shared filter に反映）
   const [localKeyword, setLocalKeyword] = useState(keyword);
@@ -87,48 +97,278 @@ function SearchPageInner() {
     }
   }, [queryLat, queryLng]);
 
-  // 絞り込み済み投稿リスト（アクティブなタグがあればさらにフィルタ）
-  const displayedPosts = useMemo(() => {
-    return activeMapTag 
-      ? posts.filter((p: Post) => p.tags?.some((t: any) => t.name === activeMapTag))
-      : posts;
-  }, [posts, activeMapTag]);
+  // ═══════════════════════════════════════════════════
+  // 1. リスト表示データ取得（100件ずつページネーション＆無限スクロール）
+  // ═══════════════════════════════════════════════════
+  const [listPosts, setListPosts] = useState<Post[]>([]);
+  const [listTotal, setListTotal] = useState<number>(0);
+  const [listPage, setListPage] = useState<number>(1);
+  const [listHasMore, setListHasMore] = useState<boolean>(true);
+  const [listLoading, setListLoading] = useState<boolean>(true);
+  const [listLoadingMore, setListLoadingMore] = useState<boolean>(false);
 
-  // 店舗単位でのグルーピング（リスト表示用）
+  const listRequestIdRef = useRef<number>(0);
+  const observerTargetRef = useRef<HTMLDivElement | null>(null);
+
+  // 初回取得 / フィルター変更時の再取得
+  const fetchInitialList = useCallback(async () => {
+    const reqId = ++listRequestIdRef.current;
+    setListLoading(true);
+    setListPage(1);
+
+    const params = new URLSearchParams();
+    params.append('page', '1');
+    params.append('limit', String(PAGE_SIZE));
+    appendFilterSearchParams(params, filterState);
+
+    try {
+      const res = await fetch(`/api/posts/search?${params.toString()}`);
+      const json = await res.json();
+      if (reqId === listRequestIdRef.current && json.success) {
+        setListPosts(json.items || []);
+        setListTotal(json.total || 0);
+        setListHasMore(!!json.hasMore);
+        setListPage(1);
+      }
+    } catch (e) {
+      console.error('[SearchPage] fetchInitialList error:', e);
+    } finally {
+      if (reqId === listRequestIdRef.current) {
+        setListLoading(false);
+      }
+    }
+  }, [filterState]);
+
+  // 追加取得（次の100件）
+  const fetchMoreList = useCallback(async () => {
+    if (listLoadingMore || !listHasMore || listLoading) return;
+    setListLoadingMore(true);
+
+    const nextPage = listPage + 1;
+    const reqId = listRequestIdRef.current;
+
+    const params = new URLSearchParams();
+    params.append('page', String(nextPage));
+    params.append('limit', String(PAGE_SIZE));
+    appendFilterSearchParams(params, filterState);
+
+    try {
+      const res = await fetch(`/api/posts/search?${params.toString()}`);
+      const json = await res.json();
+      if (reqId === listRequestIdRef.current && json.success) {
+        const newItems: Post[] = json.items || [];
+        setListPosts((prev) => {
+          const map = new Map<string, Post>();
+          prev.forEach((p) => map.set(p.id, p));
+          newItems.forEach((p) => map.set(p.id, p));
+          return Array.from(map.values());
+        });
+        setListTotal(json.total || 0);
+        setListHasMore(!!json.hasMore);
+        setListPage(nextPage);
+      }
+    } catch (e) {
+      console.error('[SearchPage] fetchMoreList error:', e);
+    } finally {
+      setListLoadingMore(false);
+    }
+  }, [filterState, listHasMore, listLoading, listLoadingMore, listPage]);
+
+  // フィルター変更時に初回取得を実行
+  useEffect(() => {
+    fetchInitialList();
+  }, [fetchInitialList]);
+
+  // 投稿作成・更新・削除などのイベント通知を受信した際に自動再フェッチ
+  useEffect(() => {
+    const handleUpdate = () => {
+      fetchInitialList();
+    };
+    window.addEventListener('app:post-updated', handleUpdate);
+    window.addEventListener('app:post-created', handleUpdate);
+    return () => {
+      window.removeEventListener('app:post-updated', handleUpdate);
+      window.removeEventListener('app:post-created', handleUpdate);
+    };
+  }, [fetchInitialList]);
+
+  // IntersectionObserver による無限スクロール監視
+  useEffect(() => {
+    if (viewMode !== 'list') return;
+    const target = observerTargetRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && listHasMore && !listLoading && !listLoadingMore) {
+          fetchMoreList();
+        }
+      },
+      { rootMargin: '350px' }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [viewMode, listHasMore, listLoading, listLoadingMore, fetchMoreList]);
+
+  // ═══════════════════════════════════════════════════
+  // 2. マップ表示データ取得（都道府県全体Bounds＆表示範囲に応じた軽量ピン取得）
+  // ═══════════════════════════════════════════════════
+
+  // 初期表示の都道府県Bounds（愛知県、東京都などの都道府県全体範囲）
+  const [mapInitialBounds, setMapInitialBounds] = useState<MapBounds | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const cachedPref = sessionStorage.getItem('tabereco_user_pref');
+    if (cachedPref) {
+      const b = getBoundsForPrefecture(cachedPref);
+      if (b) return b;
+    }
+    return null;
+  });
+
+  // 現在地取得と都道府県判定
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    // URLに個別地点クエリがある場合はそちらが優先
+    if (queryLat && queryLng) return;
+
+    // すでにキャッシュがある場合はそれを使用
+    if (sessionStorage.getItem('tabereco_user_pref')) return;
+    if (!navigator.geolocation) return;
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        try {
+          sessionStorage.setItem('tabereco_user_loc', JSON.stringify({ lat, lng }));
+        } catch (e) {}
+
+        const prefName = getPrefectureFromCoords(lat, lng);
+        if (prefName) {
+          try {
+            sessionStorage.setItem('tabereco_user_pref', prefName);
+          } catch (e) {}
+          const b = getBoundsForPrefecture(prefName);
+          if (b) {
+            setMapInitialBounds(b);
+          }
+        }
+      },
+      (err) => {
+        console.log('[SearchPage] Geolocation fallback:', err.message);
+        // フォールバック: キャッシュ位置または愛知県Bounds
+        const fallbackBounds = getBoundsForPrefecture('愛知県') || PREFECTURE_BOUNDS['愛知県'];
+        if (!mapInitialBounds) {
+          setMapInitialBounds(fallbackBounds);
+        }
+      },
+      { timeout: 6000, enableHighAccuracy: false }
+    );
+  }, [mapInitialBounds, queryLat, queryLng]);
+
+  // マップ用ピンデータ
+  const [mapPosts, setMapPosts] = useState<Post[]>([]);
+  const [mapLoading, setMapLoading] = useState<boolean>(false);
+  const [currentBounds, setCurrentBounds] = useState<MapBounds | null>(null);
+  const mapRequestIdRef = useRef<number>(0);
+  const mapDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // マップデータ取得関数（表示範囲Boundsに基づく軽量ピン取得）
+  const fetchMapPosts = useCallback(
+    async (bounds: MapBounds) => {
+      const reqId = ++mapRequestIdRef.current;
+      setMapLoading(true);
+
+      const params = new URLSearchParams();
+      params.append('north', String(bounds.north));
+      params.append('south', String(bounds.south));
+      params.append('east', String(bounds.east));
+      params.append('west', String(bounds.west));
+      appendFilterSearchParams(params, filterState);
+
+      try {
+        const res = await fetch(`/api/posts/map?${params.toString()}`);
+        const json = await res.json();
+        if (reqId === mapRequestIdRef.current && json.success) {
+          setMapPosts(json.items || []);
+        }
+      } catch (e) {
+        console.error('[SearchPage] fetchMapPosts error:', e);
+      } finally {
+        if (reqId === mapRequestIdRef.current) {
+          setMapLoading(false);
+        }
+      }
+    },
+    [filterState]
+  );
+
+  // 地図の移動・ズーム停止時 (idle) コールバック
+  const handleBoundsChange = useCallback(
+    (bounds: MapBounds) => {
+      setCurrentBounds(bounds);
+      if (mapDebounceTimerRef.current) clearTimeout(mapDebounceTimerRef.current);
+      mapDebounceTimerRef.current = setTimeout(() => {
+        fetchMapPosts(bounds);
+      }, 350);
+    },
+    [fetchMapPosts]
+  );
+
+  // フィルター変更時に現在の表示範囲（または初期Bounds）でマップデータを再取得
+  useEffect(() => {
+    if (currentBounds) {
+      fetchMapPosts(currentBounds);
+    } else if (mapInitialBounds) {
+      fetchMapPosts(mapInitialBounds);
+    }
+  }, [fetchMapPosts, currentBounds, mapInitialBounds]);
+
+  // ═══════════════════════════════════════════════════
+  // 3. 店舗単位でのグルーピング（リスト表示用）
+  // ═══════════════════════════════════════════════════
   const storeGroups = useMemo<StoreGroupItem[]>(() => {
-    const map = groupPostsByStore(displayedPosts);
+    const map = groupPostsByStore(listPosts);
     const items: StoreGroupItem[] = [];
 
     for (const [storeKey, storePosts] of map.entries()) {
       if (storePosts.length === 0) continue;
 
       // 自分の投稿（__is_mine === true）を優先
-      const myVisitedPost = storePosts.find(p => (p as any).__is_mine === true && p.status === 'visited');
-      const myWantToGoPost = storePosts.find(p => (p as any).__is_mine === true && p.status === 'want_to_go');
-      const anyMyPost = myVisitedPost || myWantToGoPost || storePosts.find(p => (p as any).__is_mine === true);
+      const myVisitedPost = storePosts.find((p) => (p as any).__is_mine === true && p.status === 'visited');
+      const myWantToGoPost = storePosts.find((p) => (p as any).__is_mine === true && p.status === 'want_to_go');
+      const anyMyPost = myVisitedPost || myWantToGoPost || storePosts.find((p) => (p as any).__is_mine === true);
 
-      const postWithImg = storePosts.find(p => p.image_url || (p.image_urls && p.image_urls.length > 0));
+      const postWithImg = storePosts.find((p) => p.image_url || (p.image_urls && p.image_urls.length > 0));
       const repPost = anyMyPost || postWithImg || storePosts[0];
 
       // 代表画像
-      const repImage = pickRepresentativeImage(storePosts) || repPost.image_url || (repPost.image_urls && repPost.image_urls[0]) || null;
+      const repImage =
+        pickRepresentativeImage(storePosts) ||
+        repPost.image_url ||
+        (repPost.image_urls && repPost.image_urls[0]) ||
+        null;
 
       // 評価の平均値
-      const ratings = storePosts.map(p => p.rating).filter((r): r is number => r != null && r > 0);
-      const avgRating = ratings.length > 0
-        ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10
-        : null;
+      const ratings = storePosts.map((p) => p.rating).filter((r): r is number => r != null && r > 0);
+      const avgRating =
+        ratings.length > 0
+          ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10
+          : null;
 
       // ステータス判定（ログインユーザー自身の投稿・マークのみを判定）
-      const hasVisited = !!myVisitedPost || storePosts.some(p => !!(p as any)._isMarkedVisited);
-      const hasWantToGo = !hasVisited && (!!myWantToGoPost || storePosts.some(p => !!(p as any)._isMarkedWantToGo));
+      const hasVisited = !!myVisitedPost || storePosts.some((p) => !!(p as any)._isMarkedVisited);
+      const hasWantToGo = !hasVisited && (!!myWantToGoPost || storePosts.some((p) => !!(p as any)._isMarkedWantToGo));
 
-      // 自分が詳細登録した投稿のID（詳細登録時の編集画面遷移用）
-      const myPostId = myVisitedPost?.id || (anyMyPost && (anyMyPost.status === 'visited' || (anyMyPost as any)._isMarkedVisited) ? anyMyPost.id : null);
+      // 自分が詳細登録した投稿のID
+      const myPostId =
+        myVisitedPost?.id ||
+        (anyMyPost && (anyMyPost.status === 'visited' || (anyMyPost as any)._isMarkedVisited) ? anyMyPost.id : null);
 
       // タグの収集（重複なし）
       const tagSet = new Set<string>();
-      storePosts.forEach(p => {
+      storePosts.forEach((p) => {
         p.tags?.forEach((t: any) => {
           if (t.name) tagSet.add(t.name);
         });
@@ -136,13 +376,13 @@ function SearchPageInner() {
 
       // ユニークユーザー数（行った人の数）
       const userIds = new Set<string>();
-      storePosts.forEach(p => {
+      storePosts.forEach((p) => {
         if (p.user_id) userIds.add(p.user_id);
       });
 
       // 価格帯（店舗内の全投稿から最小・最大を算出）
-      const pricesMin = storePosts.map(p => p.price_min).filter((p): p is number => p != null);
-      const pricesMax = storePosts.map(p => p.price_max).filter((p): p is number => p != null);
+      const pricesMin = storePosts.map((p) => p.price_min).filter((p): p is number => p != null);
+      const pricesMax = storePosts.map((p) => p.price_max).filter((p): p is number => p != null);
       const priceMin = pricesMin.length > 0 ? Math.min(...pricesMin) : (repPost.price_min ?? null);
       const priceMax = pricesMax.length > 0 ? Math.max(...pricesMax) : (repPost.price_max ?? null);
 
@@ -167,12 +407,61 @@ function SearchPageInner() {
     }
 
     return items;
-  }, [displayedPosts]);
+  }, [listPosts]);
+
+  // フィルター削除ヘルパー
+  const removeFilter = (key: string | string[] | Record<string, any>) => {
+    if (typeof key === 'object' && !Array.isArray(key) && 'registrantUserIds' in key) {
+      updateFilter({
+        advancedFilters: {
+          ...(advancedFilters || {}),
+          registrantUserIds: key.registrantUserIds,
+        },
+      });
+      return;
+    }
+    let next = { ...advancedFilters };
+    if (Array.isArray(key)) {
+      if (key.length === 0) {
+        next = {} as any;
+        updateFilter({ activeTab: 'all', advancedFilters: null });
+        return;
+      } else {
+        next.tags = key;
+      }
+    } else if (key === 'status') {
+      updateFilter({ activeTab: 'all' });
+      return;
+    } else {
+      delete next[key as string];
+    }
+    updateFilter({ advancedFilters: Object.keys(next).length > 0 ? next : null });
+  };
+
+  const activeFilterCount = useMemo(() => {
+    return advancedFilters
+      ? Object.entries(advancedFilters).filter(
+          ([k, v]: [string, any]) =>
+            v !== undefined &&
+            v !== null &&
+            v !== 'all' &&
+            v !== '' &&
+            v !== false &&
+            k !== 'activeGroups' &&
+            k !== 'tags' &&
+            k !== 'registrantUserIds' &&
+            k !== 'sort_order'
+        ).length +
+          (advancedFilters.tags?.length || 0) +
+          (advancedFilters.registrantUserIds?.length || 0) +
+          (activeGroups.filter((x: string) => x !== 'all').length > 0 ? 1 : 0)
+      : activeGroups.filter((x: string) => x !== 'all').length;
+  }, [advancedFilters, activeGroups]);
 
   return (
     <>
       <Header title="検索">
-        <button 
+        <button
           onClick={() => setIsFilterModalOpen(true)}
           className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-all ${
             activeFilterCount > 0
@@ -248,10 +537,10 @@ function SearchPageInner() {
 
           {/* アクティブなフィルターチップ */}
           <FilterChips
-            filters={{ 
-              ...(advancedFilters || {}), 
-              status: activeTab, 
-              filterMode: filterState.filterMode || 'group',
+            filters={{
+              ...(advancedFilters || {}),
+              status: activeTab,
+              filterMode: filterMode || 'group',
               activeGroups: activeGroups,
             }}
             onRemove={removeFilter}
@@ -289,17 +578,22 @@ function SearchPageInner() {
           <span className="text-[11px] font-black text-gray-500">
             {viewMode === 'list'
               ? `📍 ${storeGroups.length} 店舗表示中`
-              : `📍 ${displayedPosts.filter((p: Post) => p.latitude && p.longitude).length} 件のピン表示中`}
+              : `📍 ${mapPosts.filter((p: Post) => p.latitude && p.longitude).length} 件のピン表示中`}
             {localKeyword && (
               <span className="text-gray-400 font-normal"> (「{localKeyword}」で絞り込み)</span>
             )}
           </span>
+          {viewMode === 'list' && listTotal > 0 && storeGroups.length < listTotal && (
+            <span className="text-[10px] font-medium text-gray-400">
+              全 {listTotal} 件中
+            </span>
+          )}
         </div>
 
         {/* 4. メイン表示エリア（リストまたはマップ） */}
         {viewMode === 'list' ? (
           <div>
-            {loading ? (
+            {listLoading ? (
               <div className="space-y-3">
                 {[1, 2, 3].map((i) => (
                   <div key={i} className="h-28 bg-gray-100 rounded-2xl animate-pulse" />
@@ -331,25 +625,42 @@ function SearchPageInner() {
                 {storeGroups.map((store) => (
                   <SearchStoreCard key={store.storeKey} store={store} />
                 ))}
+
+                {/* 無限スクロールの監視ターゲット要素 */}
+                <div ref={observerTargetRef} className="py-4 flex items-center justify-center min-h-[48px]">
+                  {listLoadingMore && (
+                    <div className="flex items-center gap-2 text-xs font-bold text-gray-400">
+                      <Loader2 size={16} className="animate-spin text-orange-500" />
+                      <span>次の店舗を読み込み中...</span>
+                    </div>
+                  )}
+                  {!listHasMore && listPosts.length > 0 && (
+                    <p className="text-[11px] font-bold text-gray-300">
+                      すべての店舗を表示しました（全 {listTotal} 件）
+                    </p>
+                  )}
+                </div>
               </div>
             )}
           </div>
         ) : (
           <div className="w-full h-[calc(100dvh-285px)] min-h-[360px] rounded-2xl overflow-hidden border border-gray-100 relative shadow-sm">
-            {loading ? (
-              <div className="w-full h-full bg-gray-50 flex items-center justify-center">
-                <MapPin className="text-gray-200 animate-bounce" size={48} />
+            {mapLoading && (
+              <div className="absolute top-3 left-3 z-[160] bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-sm border border-gray-200/60 flex items-center gap-1.5 pointer-events-none">
+                <Loader2 size={12} className="animate-spin text-orange-500" />
+                <span className="text-[10px] font-bold text-gray-600">店舗を更新中...</span>
               </div>
-            ) : (
-              <MapView
-                posts={displayedPosts}
-                center={center}
-                zoom={zoom}
-                tempMarker={tempMarker}
-                setTempMarker={setTempMarker}
-                initialSelectedPostId={queryPostId}
-              />
             )}
+            <MapView
+              posts={mapPosts}
+              center={center}
+              zoom={zoom}
+              initialBounds={mapInitialBounds}
+              onBoundsChange={handleBoundsChange}
+              tempMarker={tempMarker}
+              setTempMarker={setTempMarker}
+              initialSelectedPostId={queryPostId}
+            />
           </div>
         )}
       </main>
@@ -360,20 +671,24 @@ function SearchPageInner() {
         onApply={(f) => {
           const { activeGroups: newGroups, ...rest } = f as any;
           const cleanedRest = Object.fromEntries(
-            Object.entries(rest).filter(([k, v]) => v !== undefined && v !== null && v !== '' && (Array.isArray(v) ? v.length > 0 : true))
+            Object.entries(rest).filter(
+              ([, v]) => v !== undefined && v !== null && v !== '' && (Array.isArray(v) ? v.length > 0 : true)
+            )
           );
-          
+
           updateFilter({
             filterMode: (f as any).filterMode || 'group',
             activeGroups: newGroups || ['all'],
-            advancedFilters: Object.keys(cleanedRest).length > 0 ? cleanedRest : undefined
+            advancedFilters: Object.keys(cleanedRest).length > 0 ? cleanedRest : undefined,
           });
         }}
-        initialFilters={{
-          ...(advancedFilters || {}),
-          filterMode: filterState.filterMode || 'group',
-          activeGroups: activeGroups,
-        } as any}
+        initialFilters={
+          {
+            ...(advancedFilters || {}),
+            filterMode: filterMode || 'group',
+            activeGroups: activeGroups,
+          } as any
+        }
         showHotSpringFilter={appType === 'tabireco'}
       />
     </>
@@ -382,11 +697,13 @@ function SearchPageInner() {
 
 export default function SearchPage() {
   return (
-    <Suspense fallback={
-      <div className="w-full h-full bg-gray-50 flex items-center justify-center min-h-screen">
-        <MapPin className="text-orange-500 animate-bounce" size={48} />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="w-full h-full bg-gray-50 flex items-center justify-center min-h-screen">
+          <MapPin className="text-orange-500 animate-bounce" size={48} />
+        </div>
+      }
+    >
       <SearchPageInner />
     </Suspense>
   );

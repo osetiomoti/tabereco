@@ -4,6 +4,39 @@
 
 ---
 
+## 2026-11-12
+### 変更内容
+1. **検索画面（/map）の高速化・リスト100件ずつページネーション & 無限スクロールの実装**
+   - リスト検索API (`GET /api/posts/search`) を新設。Prismaの `take: 100`, `skip: (page - 1) * 100` によりサーバー/DB側で取得件数を厳格に100件へ制限。
+   - `IntersectionObserver` による無限スクロールを導入し、リスト末尾到達時に次の100件を自動取得。
+   - 全フィルター条件（キーワード、住所/店名、ステータス、タグ、期間、価格、評価、グループ、温泉等）をDBクエリで適用し、全ソート順で第2ソートにIDを指定してページネーション順序を安定化。
+   - リクエストIDによる競合防止、重複排除、末尾ローディングスピナーおよび全件読み込み完了メッセージを表示。
+
+2. **マップ初期表示範囲の最適化（都道府県全体Boundsの自動適用）**
+   - 47都道府県の境界定義（Bounds: north, south, east, west）および座標からの都道府県判定ユーティリティ (`src/lib/prefectures.ts`) を新設。
+   - Geolocation APIから現在地の都道府県（愛知県、東京都等）を即座に判定し、Google Maps の `fitBounds(bounds, padding)` により、愛知県なら愛知県全体、東京都なら東京都全体が画面いっぱいに収まる適切な縮尺で初期表示するよう最適化。
+   - 位置情報未許可・取得失敗時も保存済みキャッシュまたは愛知県Boundsへ安全にフォールバック。
+
+3. **マップ表示範囲（Bounds）に応じた軽量ピンデータ取得の実装**
+   - マップ用検索API (`GET /api/posts/map`) を新設。地図の移動・ズーム停止時（`idle` イベント＋350msデバウンス）に画面内表示範囲（Bounds）のみをDB側で絞り込み取得。
+   - 画像配列や長文コメントを除外した超軽量データ構造（ピン表示に必要なID・座標・ステータス・評価・代表画像URL1枚・タグのみ）により、大量データ時でも地図操作が重くならないよう最適化。
+
+4. **リスト・マップのフィルター完全共有**
+   - 共通クエリビルダー (`src/lib/searchQuery.ts`) を新設し、リスト用APIとマップ用APIで全く同一の検索・権限・フィルター条件をDBレベルで保証。
+   - リスト／マップのタブ切り替え時も検索条件・キーワード・フィルターチップ・件数を完全に維持。
+
+### 影響範囲
+- `src/lib/prefectures.ts`（新規作成: 47都道府県境界データ・判定ロジック）
+- `src/lib/searchQuery.ts`（新規作成: 共通検索クエリ・OrderBy構築・パラメータビルダー）
+- `src/app/api/posts/search/route.ts`（新規作成: リスト表示用ページネーションAPI）
+- `src/app/api/posts/map/route.ts`（新規作成: マップ表示用表示範囲ピンAPI）
+- `src/hooks/useGroupMembers.ts`（新規作成: フィルター用軽量グループ・メンバー情報フック）
+- `src/components/MapView.tsx`（`initialBounds` の `fitBounds` 適用、`onBoundsChange` の `idle` イベント通知追加）
+- `src/app/map/page.tsx`（検索画面全体の高速化・100件ページネーション・無限スクロール・都道府県初期表示統合）
+- `APP_SPECIFICATION.md`、`API_SPECIFICATION.md`、`TECHNICAL_DOCUMENTATION.md`、`IMPLEMENTATION_STATUS.md`、`PROJECT_HANDOVER.md`、`CHANGELOG.md`
+
+---
+
 ## 2026-11-10
 ### 変更内容
 1. **店舗写真の表示切り替え・フレンド共有写真ギャラリー機能の追加**
