@@ -6,7 +6,8 @@
 
 ## 1. データベース概要
 
-* **データベースエンジン:** PostgreSQL (Supabase / AWS RDS等)
+* **データベースエンジン:** PostgreSQL (Neon Serverless PostgreSQL)
+* **データベース名:** `tabereco` (旧 `neondb` からデータ完全移行完了)
 * **ORM:** Prisma Client v6.3.1
 * **接続管理:**
   - `DATABASE_URL`: コネクションプーリング接続用 URL
