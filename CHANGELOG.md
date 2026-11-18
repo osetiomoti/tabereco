@@ -4,6 +4,35 @@
 
 ---
 
+## 2026-11-19
+### 変更内容
+1. **リポジトリ内の不要ファイル・レガシー残骸コード・一時ファイルの徹底クリーンアップ**
+   - **ルート直下の作業ログ・一時ダンプ・バッチ削除:**
+     - `build_output.txt`: 過去のビルドログ
+     - `db_dump.json`: 過去のDBダンプ
+     - `push.bat`, `setup_git.bat`: 過去の初期化・ハードコードされたバッチ
+   - **一時フォルダの削除:**
+     - `tmp/`: 過去のDBカラム追加・調査用スクリプト群（`add-columns.js`, `add-price.js`, `check_db.js`, `check_db_restore.js`, `find-schema.js`, `plan.md`）
+     - `scratch/`: 画像サイズ調査等のスクラッチスクリプト群（`check-images.js`, `measure-image-sizes.js`, `test-s3-list.js`）
+   - **不要なワンタイムスクリプトの削除:**
+     - `scripts/migrate-supabase-to-neon.js`: 旧SupabaseからNeonへの移行スクリプト（接続文字列平文含むためセキュリティ面でも削除）
+     - `scripts/debug-tags.js`, `scripts/fix-post-tags.js`: 過去のタグデバッグ・修正用
+     - `scripts/make_icon.py`, `scripts/resize-tabireco-icons.js`: 過去のアイコン生成・リサイズ用
+     - `scripts/migrate_hot_spring.js`: 過去の温泉スキーマV2移行用
+     - `scripts/check-image-urls.mjs`: 過去の画像ドメイン検証用
+     - `prisma/check-posts.ts`: 過去の確認用ログスクリプト
+   - **未使用コード・コンポーネント・フックの削除:**
+     - `src/lib/database.types.ts`: 0バイトの空ファイル
+     - `src/hooks/useFilteredPosts.ts`: 検索画面のサーバーサイドAPI移行（`/api/posts/search`）に伴い完全不要となった全件取得フック
+     - `src/hooks/usePosts.ts`, `src/hooks/useProfile.ts`: どこからも未使用の古いフック
+     - `src/components/PostDetailSheet.tsx`: 投稿詳細フルページ化に伴い完全未使用となった古いボトムシート
+     - `src/components/SchemaSetupHelp.tsx`: 旧Supabase時代の古いSQL案内コンポーネント
+     - `src/components/ShareButton.tsx`: どこからも未使用の古いシェアボタン
+   - **クリーンアップ後の検証:**
+     - `npx tsc --noEmit` および `npm run build` を実行し、全58ルートのビルドおよびTypeScript型検査が完全にエラーなく成功することを確認。
+
+---
+
 ## 2026-11-12
 ### 変更内容
 1. **検索画面（/map）の高速化・リスト100件ずつページネーション & 無限スクロールの実装**
