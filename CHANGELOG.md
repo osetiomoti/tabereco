@@ -6,7 +6,14 @@
 
 ## 2026-11-19
 ### 変更内容
-1. **Neon データベースの `neondb` から `tabereco` への完全移行**
+1. **Turbopack ビルドエラー修正（`next/font/google` から CSS `@import` + CSS変数定義へ移行）**
+   - Next.js 16 (Turbopack) 環境で `next/font/google` の `Noto_Sans_JP` / `Outfit` 解決時に発生していた `@vercel/turbopack-next/internal/font/google/font` モジュール解決エラーを解消。
+   - `futariba` (`src/app/globals.css`) と同一の実装方式に統一：
+     - `src/app/globals.css` に `@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Outfit:wght@400;500;600;700&display=swap');` を定義。
+     - `:root` で `--font-outfit` および `--font-noto` のCSS変数を定義。
+     - `src/app/layout.tsx` から `next/font/google` のインポートおよび変数を削除し、Turbopack/Webpack双方で安定してビルドが成功するように改修。
+
+2. **Neon データベースの `neondb` から `tabereco` への完全移行**
    - 移行先 `tabereco` データベースに `prisma db push` を実行し、全テーブル・インデックス・外部キー制約を同期生成。
    - 外部キー依存関係を遵守した専用移行スクリプトを実行し、`neondb` の全15テーブル（users 26件, posts 682件, tags 427件, post_tags 1326件, notifications 1493件等）を1件の欠損もなく `tabereco` へ完全コピー＆照合検証を完了。
    - `.env` の `DATABASE_URL` および `DIRECT_URL` の接続先を `/tabereco` に更新。

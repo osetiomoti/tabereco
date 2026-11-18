@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { Outfit, Noto_Sans_JP } from 'next/font/google';
 import './globals.css';
 import { BottomNav } from '@/components/BottomNav';
 import { SWRProvider } from '@/components/SWRProvider';
@@ -12,19 +11,6 @@ import { PostUploadBanner } from '@/components/PostUploadBanner';
 import { cookies } from 'next/headers';
 import { Suspense } from 'react';
 import { NavigationTracker } from '@/components/NavigationTracker';
-
-const outfit = Outfit({
-  subsets: ['latin'],
-  variable: '--font-outfit',
-  display: 'swap',
-});
-
-const notoSansJP = Noto_Sans_JP({
-  subsets: ['latin'],
-  variable: '--font-noto',
-  display: 'swap',
-  weight: ['300', '400', '500', '700'],
-});
 
 export const viewport = {
   width: 'device-width',
@@ -71,7 +57,7 @@ export default async function RootLayout({
         {/* iOS Safari でのズーム・縮小を確実に防ぐ */}
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover" />
       </head>
-      <body className={`${outfit.variable} ${notoSansJP.variable} font-sans bg-[#fcfcfc] text-gray-900 antialiased overflow-x-hidden min-h-[100dvh] flex flex-col`} suppressHydrationWarning>
+      <body className="font-sans bg-[#fcfcfc] text-gray-900 antialiased overflow-x-hidden min-h-[100dvh] flex flex-col" suppressHydrationWarning>
         <SWRProvider>
           <AppTypeProvider initialAppType={initialAppType}>
             <PostUploadProvider>

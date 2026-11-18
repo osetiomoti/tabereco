@@ -1,8 +1,15 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Outfit:wght@400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* ── アプリタイプ別テーマカラー ─────────────────────────── */
+/* ── フォント変数 & アプリタイプ別テーマカラー ─────────────────────────── */
+:root {
+  --font-outfit: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-noto: 'Noto Sans JP', -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic', sans-serif;
+}
+
 :root,
 [data-app-type="tabereco"] {
   --color-primary: #f43f5e;        /* rose-500 */
