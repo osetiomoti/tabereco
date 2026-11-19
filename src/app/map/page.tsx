@@ -542,27 +542,59 @@ function SearchPageInner() {
       </Header>
 
       <main className="max-w-2xl mx-auto w-full px-4 pt-1.5 pb-28 animate-fade-in">
-        {/* 1. 検索・フィルター操作エリア（超コンパクト設計） */}
+        {/* 1. 検索・フィルター操作エリア（1行統合型） */}
         <div className="flex flex-col gap-1.5 mb-2">
-          {/* キーワード入力バー（店名・住所スマート検索） */}
-          <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
-            <input
-              type="text"
-              placeholder="店名、住所、エリアで検索..."
-              className="w-full pl-9 pr-9 py-2 bg-gray-50/80 border border-gray-200/60 rounded-xl text-[12px] font-medium text-gray-800 placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-orange-100 focus:border-orange-300 shadow-xs transition-all"
-              value={localKeyword}
-              onChange={(e) => handleKeywordChange(e.target.value)}
-            />
-            {localKeyword && (
+          {/* 1行統合バー：店名/住所切り替えトグル ＋ キーワード入力欄 */}
+          <div className="flex items-center gap-1.5 bg-gray-50/90 border border-gray-200/70 rounded-2xl p-1 shadow-2xs focus-within:ring-2 focus-within:ring-orange-100 focus-within:border-orange-300 focus-within:bg-white transition-all">
+            {/* 店名／住所 切り替えピル */}
+            <div className="flex bg-gray-200/60 p-0.5 rounded-xl shrink-0">
               <button
-                onClick={handleClearKeyword}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
-                aria-label="検索キーワードをクリア"
+                type="button"
+                onClick={() => updateFilter({ searchMode: 'store_name' })}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-[10px] text-[11px] font-black transition-all ${
+                  searchMode !== 'address'
+                    ? 'bg-orange-500 text-white shadow-xs'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
               >
-                <X size={14} />
+                <span>🏪</span>
+                <span>店名</span>
               </button>
-            )}
+              <button
+                type="button"
+                onClick={() => updateFilter({ searchMode: 'address' })}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-[10px] text-[11px] font-black transition-all ${
+                  searchMode === 'address'
+                    ? 'bg-orange-500 text-white shadow-xs'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <span>📍</span>
+                <span>住所</span>
+              </button>
+            </div>
+
+            {/* キーワード入力欄 */}
+            <div className="relative flex-1 flex items-center min-w-0">
+              <Search className="absolute left-1.5 text-gray-400 shrink-0 pointer-events-none" size={14} />
+              <input
+                type="text"
+                placeholder={searchMode === 'address' ? '住所・エリアで検索 (東京など)...' : '店名で検索...'}
+                className="w-full pl-6 pr-6 py-1 text-[12px] font-medium text-gray-800 placeholder:text-gray-400 bg-transparent outline-none"
+                value={localKeyword}
+                onChange={(e) => handleKeywordChange(e.target.value)}
+              />
+              {localKeyword && (
+                <button
+                  type="button"
+                  onClick={handleClearKeyword}
+                  className="absolute right-1 text-gray-300 hover:text-gray-500 transition-colors p-1"
+                  aria-label="検索キーワードをクリア"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* アクティブなフィルターチップ（1行横スクロール） */}

@@ -206,30 +206,34 @@ export async function buildSearchWhereClause(
     andConditions.push({ status: params.status });
   }
 
-  // 3. キーワード検索（店名・住所スマート検索）
+  // 3. キーワード検索（スペース区切りの複数単語AND検索に対応）
   if (params.keyword && params.keyword.trim()) {
     const kw = params.keyword.trim();
-    if (params.searchMode === 'address') {
-      andConditions.push({
-        address: { contains: kw, mode: 'insensitive' },
-      });
-    } else if (params.searchMode === 'store_name') {
-      andConditions.push({
-        OR: [
-          { title: { contains: kw, mode: 'insensitive' } },
-          { store_name: { contains: kw, mode: 'insensitive' } },
-        ],
-      });
-    } else {
-      // 'all' または未指定: 店名・タイトル・住所のいずれかにヒット
-      andConditions.push({
-        OR: [
-          { title: { contains: kw, mode: 'insensitive' } },
-          { store_name: { contains: kw, mode: 'insensitive' } },
-          { address: { contains: kw, mode: 'insensitive' } },
-        ],
-      });
-    }
+    const words = kw.split(/[\s　]+/).filter(Boolean);
+
+    words.forEach((word) => {
+      if (params.searchMode === 'address') {
+        andConditions.push({
+          address: { contains: word, mode: 'insensitive' },
+        });
+      } else if (params.searchMode === 'store_name') {
+        andConditions.push({
+          OR: [
+            { title: { contains: word, mode: 'insensitive' } },
+            { store_name: { contains: word, mode: 'insensitive' } },
+          ],
+        });
+      } else {
+        // 'all' または未指定: 店名・タイトル・住所のいずれかにヒット
+        andConditions.push({
+          OR: [
+            { title: { contains: word, mode: 'insensitive' } },
+            { store_name: { contains: word, mode: 'insensitive' } },
+            { address: { contains: word, mode: 'insensitive' } },
+          ],
+        });
+      }
+    });
   }
 
   // 4. タグ検索
