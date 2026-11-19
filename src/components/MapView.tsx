@@ -471,6 +471,10 @@ export default function MapView({
       (pos) => {
         setIsLocating(false);
         const userPos = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+        try {
+          localStorage.setItem('tabereco_user_loc', JSON.stringify(userPos));
+          localStorage.setItem('tabereco_geo_status', 'granted');
+        } catch (e) {}
         if (mapRef.current) {
           mapRef.current.panTo(userPos);
           mapRef.current.setZoom(16);

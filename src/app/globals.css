@@ -16,11 +16,11 @@
 
 :root,
 [data-app-type="tabereco"] {
-  --color-primary: #f43f5e;        /* rose-500 */
-  --color-primary-hover: #e11d48;  /* rose-600 */
-  --color-primary-light: #ffe4e6;  /* rose-100 */
-  --color-primary-50: #fff1f2;     /* rose-50 */
-  --color-primary-shadow: rgba(244, 63, 94, 0.2);
+  --color-primary: #FF6F91;        /* futariba 統一メインカラー */
+  --color-primary-hover: #FF3D6B;  /* primary-600 */
+  --color-primary-light: #FFE0E8;  /* primary-100 */
+  --color-primary-50: #FFF0F3;     /* primary-50 */
+  --color-primary-shadow: rgba(255, 111, 145, 0.25);
 }
 
 [data-app-type="tabireco"] {

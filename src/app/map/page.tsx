@@ -227,37 +227,58 @@ function SearchPageInner() {
   });
 
   // 現在地取得と都道府県判定
+  // ─── ユーザー位置情報と初期Bounds設定（localStorageで永続化し次回以降は確認しない） ───
   useEffect(() => {
     if (typeof window === 'undefined') return;
     // URLに個別地点クエリがある場合はそちらが優先
     if (queryLat && queryLng) return;
 
-    // すでにキャッシュがある場合はそれを使用
-    if (sessionStorage.getItem('tabereco_user_pref')) return;
-    if (!navigator.geolocation) return;
+    // 1. すでに保存された都道府県・位置情報がある場合は即座にそれを復元（ブラウザ許可プロンプトを再発させない）
+    try {
+      const savedPref = localStorage.getItem('tabereco_user_pref');
+      if (savedPref) {
+        const b = getBoundsForPrefecture(savedPref);
+        if (b) {
+          setMapInitialBounds(b);
+          return;
+        }
+      }
+      // 過去に拒否または確認済みの場合は自動取得をスキップ
+      if (localStorage.getItem('tabereco_geo_status') === 'denied') {
+        const fallbackBounds = getBoundsForPrefecture('愛知県') || PREFECTURE_BOUNDS['愛知県'];
+        if (!mapInitialBounds) setMapInitialBounds(fallbackBounds);
+        return;
+      }
+    } catch (e) {}
 
+    if (!navigator.geolocation) {
+      const fallbackBounds = getBoundsForPrefecture('愛知県') || PREFECTURE_BOUNDS['愛知県'];
+      if (!mapInitialBounds) setMapInitialBounds(fallbackBounds);
+      return;
+    }
+
+    // 2. 初回のみ位置情報を取得（一度取得できたらlocalStorageに保存して二度と自動確認しない）
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
+        const prefName = getPrefectureFromCoords(lat, lng) || '愛知県';
         try {
-          sessionStorage.setItem('tabereco_user_loc', JSON.stringify({ lat, lng }));
+          localStorage.setItem('tabereco_user_loc', JSON.stringify({ lat, lng }));
+          localStorage.setItem('tabereco_user_pref', prefName);
+          localStorage.setItem('tabereco_geo_status', 'granted');
         } catch (e) {}
 
-        const prefName = getPrefectureFromCoords(lat, lng);
-        if (prefName) {
-          try {
-            sessionStorage.setItem('tabereco_user_pref', prefName);
-          } catch (e) {}
-          const b = getBoundsForPrefecture(prefName);
-          if (b) {
-            setMapInitialBounds(b);
-          }
+        const b = getBoundsForPrefecture(prefName);
+        if (b) {
+          setMapInitialBounds(b);
         }
       },
       (err) => {
         console.log('[SearchPage] Geolocation fallback:', err.message);
-        // フォールバック: キャッシュ位置または愛知県Bounds
+        try {
+          localStorage.setItem('tabereco_geo_status', 'denied');
+        } catch (e) {}
         const fallbackBounds = getBoundsForPrefecture('愛知県') || PREFECTURE_BOUNDS['愛知県'];
         if (!mapInitialBounds) {
           setMapInitialBounds(fallbackBounds);

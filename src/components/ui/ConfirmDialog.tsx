@@ -85,7 +85,7 @@ export default function ConfirmDialog({
             disabled={loading}
             onClick={onOk}
             className={`flex-1 text-[15px] font-black active:bg-gray-50 hover:bg-gray-50 transition-colors disabled:opacity-50 ${
-              danger ? 'text-red-500' : 'text-blue-500'
+              danger ? 'text-red-500' : 'text-primary-500'
             }`}
           >
             {loading ? (

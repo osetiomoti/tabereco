@@ -12,10 +12,23 @@ export default {
       colors: {
         background: '#fcfcfc',
         card: '#ffffff',
+        // ふたりば（futariba）統一カラーパレット
+        primary: {
+          DEFAULT: '#FF6F91',
+          50: '#FFF0F3',
+          100: '#FFE0E8',
+          200: '#FFC2D1',
+          300: '#FFA3B9',
+          400: '#FF85A2',
+          500: '#FF6F91',  // メインカラー
+          600: '#FF3D6B',
+          700: '#FF0A44',
+          800: '#D60034',
+          900: '#A30027',
+        },
         accent: {
-          DEFAULT: '#f43f5e', // rose-500
-          hover: '#e11d48',
-          muted: 'rgba(244,63,94,0.15)',
+          DEFAULT: '#C9A0DC',
+          light: '#E8D5F5',
         },
         orange: colors.rose,
         red: colors.pink,

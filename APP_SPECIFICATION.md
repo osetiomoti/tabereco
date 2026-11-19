@@ -11,18 +11,19 @@
 ```mermaid
 flowchart TD
     Start([アプリ起動 / 未認証]) -->|未ログイン| Login[/login ログイン画面/]
-    Login -->|Cognito OAuth / DevLogin| Posts[/posts タイムライン画面/]
+    Login -->|Cognito OAuth / DevLogin| Map[/map 検索画面/]
     
-    subgraph メインナビゲーション（ボトムナビゲーション）
-        Home[/ ホーム画面/]
-        Map[/map 検索・マップ画面/]
-        MyPage[/mypage マイページ/]
-        Stats[/stats 統計・振り返り画面/]
+    subgraph メインナビゲーション（ボトムナビゲーション: futariba準拠）
+        Map[/map 検索・マップ/]
+        Stats[/stats 統計・振り返り/]
+        FAB((＋ 記録・投稿))
         Rankings[/rankings ランキング/]
+        MyPage[/mypage マイページ/]
     end
     
     subgraph サブ機能・詳細画面
-        Posts[/posts タイムライン画面/]
+        Home[/home ホーム・ダッシュボード/]
+        Posts[/posts タイムライン/]
         Calendar[/calendar カレンダー画面/]
         PostDetail[/posts/:id 投稿詳細/]
         PostNew[/posts/new 新規投稿/]
