@@ -23,6 +23,17 @@ export default {
       fontFamily: {
         sans: ['var(--font-outfit)', 'var(--font-noto)', 'sans-serif'],
       },
+      borderRadius: {
+        'card': '20px',
+      },
+      boxShadow: {
+        'soft': '0 10px 40px -10px rgba(0,0,0,0.08)',
+        'soft-sm': '0 4px 20px -5px rgba(0,0,0,0.05)',
+      },
+      spacing: {
+        'safe-bottom': 'env(safe-area-inset-bottom)',
+        'safe-top': 'env(safe-area-inset-top)',
+      },
       animation: {
         'fade-in': 'fadeIn 0.4s ease-out',
         'slide-up': 'slideUp 0.4s ease-out',

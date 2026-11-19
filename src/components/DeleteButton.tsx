@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { notifyPostUpdated } from '@/lib/revalidate';
 import { deletePost } from '@/lib/api/posts';
 import { Trash2, Loader2 } from 'lucide-react';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 type Props = {
   postId: string;
@@ -40,33 +41,14 @@ export function DeleteButton({ postId }: Props) {
         この記録を削除
       </button>
 
-      {/* Confirmation Modal */}
-      {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !loading && setShowModal(false)} />
-          <div className="relative w-full max-w-[280px] bg-white rounded-3xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-            <div className="p-6 text-center">
-              <p className="text-[15px] font-black text-gray-800">削除しますか？</p>
-            </div>
-            <div className="flex border-t border-gray-100 h-14">
-              <button
-                onClick={() => setShowModal(false)}
-                disabled={loading}
-                className="flex-1 text-[14px] font-black text-blue-500 hover:bg-gray-50 transition-colors border-r border-gray-100"
-              >
-                キャンセル
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={loading}
-                className="flex-1 text-[14px] font-black text-red-500 hover:bg-gray-50 transition-colors"
-              >
-                {loading ? <Loader2 size={18} className="animate-spin mx-auto" /> : 'OK'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmDialog
+        isOpen={showModal}
+        message="削除しますか？"
+        danger
+        loading={loading}
+        onCancel={() => setShowModal(false)}
+        onOk={handleDelete}
+      />
     </>
   );
 }

@@ -6,7 +6,20 @@
 
 ## 2026-11-19
 ### 変更内容
-1. **Turbopack ビルドエラー修正（`next/font/google` から CSS `@import` + CSS変数定義へ移行）**
+1. **futariba（ふたりば）リポジトリとの実装方式・アーキテクチャ統一**
+   - **Tailwind 設定の拡充 (`tailwind.config.mjs`):**
+     - カード共通角丸 `rounded-card` (`20px`)、浮遊感シャドウ `shadow-soft`, `shadow-soft-sm`、iOS Safe Area 用の `spacing` (`safe-bottom`, `safe-top`) を追加定義。
+   - **グローバルスタイル & iOS 最適化 (`src/app/globals.css`):**
+     - Safe Area CSS変数 (`--safe-area-inset-*`)、タップハイライト無効化 (`-webkit-tap-highlight-color: transparent`)、モバイル向けスクロールバー非表示、レイヤークラス (`.pb-tab-safe`, `.pb-safe`, `.pt-safe`) を `futariba` と完全同期。
+   - **ボトムナビゲーション最適化 (`src/components/BottomNav.tsx`):**
+     - iOS Safari 復帰時の `visibilitychange` による強制リフロー処理、ハードウェアアクセラレーション (`transform: translateZ(0)`) を追加し、fixed ナビゲーションのチラつきや固まりを防止。
+   - **共通UIコンポーネント新設 (`src/components/ui/`):**
+     - `ConfirmDialog`（iOS風の統一確認ダイアログ。ESCキー・背景タップキャンセル・ローディング対応）を作成し、`DeleteButton` のインラインモーダルをこれに差し替え。
+     - `EmptyState`（アイコン・絵文字・メッセージ・アクションボタンを持つ統一空状態表示部品）を作成。
+   - **API型定義の拡充 (`src/types/api.ts`):**
+     - `futariba` と共通の `ApiResponse<T>`, `PaginationMeta`, `PaginatedResponse<T>` を追加。
+
+2. **Turbopack ビルドエラー修正（`next/font/google` から CSS `@import` + CSS変数定義へ移行）**
    - Next.js 16 (Turbopack) 環境で `next/font/google` の `Noto_Sans_JP` / `Outfit` 解決時に発生していた `@vercel/turbopack-next/internal/font/google/font` モジュール解決エラーを解消。
    - `futariba` (`src/app/globals.css`) と同一の実装方式に統一：
      - `src/app/globals.css` に `@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Outfit:wght@400;500;600;700&display=swap');` を定義。

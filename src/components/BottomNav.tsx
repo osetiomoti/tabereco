@@ -40,6 +40,22 @@ export function BottomNav() {
     setOptimisticIndex(null);
   }, [pathname]);
 
+  // iOS Safari: position:fixed + backdrop-blur のバグ対策
+  // アプリ復帰時に fixed 要素が中途半端な位置に固まる現象を防ぐ
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && navRef.current) {
+        const el = navRef.current;
+        el.style.display = 'none';
+        // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+        el.offsetHeight;
+        el.style.display = '';
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+
   // ピル位置の計測とアニメーション時間の設定
   useLayoutEffect(() => {
     if (targetIndex < 0) {
@@ -101,7 +117,10 @@ export function BottomNav() {
   };
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-2xl border-t border-gray-100 shadow-[0_-5px_20px_rgba(0,0,0,0.02)] pb-safe">
+    <div
+      className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-2xl border-t border-gray-100 shadow-[0_-5px_20px_rgba(0,0,0,0.02)] pb-safe"
+      style={{ transform: 'translateZ(0)', WebkitTransform: 'translateZ(0)' }}
+    >
       <nav ref={navRef} className="max-w-md mx-auto px-2 h-16 flex items-center relative">
 
         {/* スライドするピル背景 */}
