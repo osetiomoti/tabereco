@@ -2,11 +2,10 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from 'react';
 import dynamic from 'next/dynamic';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/Header';
 import type { Post } from '@/lib/types';
-import { MapPin, Search, Filter, X, UtensilsCrossed, Loader2, Plus } from 'lucide-react';
+import { MapPin, Search, Filter, X, UtensilsCrossed, Loader2 } from 'lucide-react';
 import { FloatingActionButton } from '@/components/FloatingActionButton';
 import { useSharedFilter } from '@/hooks/useSharedFilter';
 import { useGroupMembers } from '@/hooks/useGroupMembers';
@@ -523,77 +522,35 @@ function SearchPageInner() {
   return (
     <>
       <Header title="検索">
-        <div className="flex items-center gap-2">
-          <Link
-            href="/posts/new"
-            className="w-9 h-9 rounded-full flex items-center justify-center transition-all bg-gradient-to-tr from-primary-500 to-orange-400 text-white shadow-sm active:scale-90"
-            title="新しく記録する"
-            aria-label="新しく記録する"
-          >
-            <Plus size={20} strokeWidth={2.6} />
-          </Link>
-          <button
-            onClick={() => setIsFilterModalOpen(true)}
-            className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-              activeFilterCount > 0
-                ? 'bg-orange-500 text-white shadow-sm'
-                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-            }`}
-          >
-            <Filter size={18} />
-            {activeFilterCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-white text-orange-500 text-[9px] font-black rounded-full flex items-center justify-center border border-orange-200">
-                {activeFilterCount}
-              </span>
-            )}
-          </button>
-        </div>
+        <button
+          onClick={() => setIsFilterModalOpen(true)}
+          className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+            activeFilterCount > 0
+              ? 'bg-orange-500 text-white shadow-sm'
+              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+          }`}
+          title="絞り込みフィルター"
+          aria-label="絞り込みフィルター"
+        >
+          <Filter size={18} />
+          {activeFilterCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-white text-orange-500 text-[9px] font-black rounded-full flex items-center justify-center border border-orange-200">
+              {activeFilterCount}
+            </span>
+          )}
+        </button>
       </Header>
 
-      <main className="max-w-2xl mx-auto w-full px-4 pt-3 pb-28 animate-fade-in">
-        {/* 1. 検索・フィルター操作エリア */}
-        <div className="flex flex-col gap-2 mb-3">
-          {/* 検索モード切り替えトグル（店名 / 住所） */}
-          <div className="flex gap-1.5">
-            <button
-              onClick={() => {
-                updateFilter({ searchMode: 'store_name', keyword: '' });
-                setLocalKeyword('');
-              }}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-black transition-all ${
-                searchMode !== 'address'
-                  ? 'bg-orange-500 text-white shadow-sm shadow-orange-200/60'
-                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-              }`}
-            >
-              🏪 店名で絞り込み
-            </button>
-            <button
-              onClick={() => {
-                updateFilter({ searchMode: 'address', keyword: '' });
-                setLocalKeyword('');
-              }}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-black transition-all ${
-                searchMode === 'address'
-                  ? 'bg-orange-500 text-white shadow-sm shadow-orange-200/60'
-                  : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-              }`}
-            >
-              📍 住所で絞り込み
-            </button>
-          </div>
-
-          {/* キーワード入力バー */}
+      <main className="max-w-2xl mx-auto w-full px-4 pt-1.5 pb-28 animate-fade-in">
+        {/* 1. 検索・フィルター操作エリア（超コンパクト設計） */}
+        <div className="flex flex-col gap-1.5 mb-2">
+          {/* キーワード入力バー（店名・住所スマート検索） */}
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={15} />
             <input
               type="text"
-              placeholder={
-                searchMode === 'address'
-                  ? '住所・エリアで絞り込み（例：渋谷区、銀座...）'
-                  : '店名で絞り込み...'
-              }
-              className="w-full pl-9 pr-9 py-2.5 bg-gray-50/80 border border-gray-200/60 rounded-2xl text-[12px] font-medium text-gray-800 placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-orange-100 focus:border-orange-300 shadow-xs transition-all"
+              placeholder="店名、住所、エリアで検索..."
+              className="w-full pl-9 pr-9 py-2 bg-gray-50/80 border border-gray-200/60 rounded-xl text-[12px] font-medium text-gray-800 placeholder:text-gray-400 focus:bg-white focus:ring-2 focus:ring-orange-100 focus:border-orange-300 shadow-xs transition-all"
               value={localKeyword}
               onChange={(e) => handleKeywordChange(e.target.value)}
             />
@@ -601,13 +558,14 @@ function SearchPageInner() {
               <button
                 onClick={handleClearKeyword}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
+                aria-label="検索キーワードをクリア"
               >
                 <X size={14} />
               </button>
             )}
           </div>
 
-          {/* アクティブなフィルターチップ */}
+          {/* アクティブなフィルターチップ（1行横スクロール） */}
           <FilterChips
             filters={{
               ...(advancedFilters || {}),
@@ -621,45 +579,49 @@ function SearchPageInner() {
           />
         </div>
 
-        {/* 2. リスト／マップ 切り替えUI（思い出画面と完全同一仕様） */}
-        <div className="flex bg-gray-100/80 rounded-[14px] p-1 mb-3 border border-black/5 shadow-inner">
-          <button
-            onClick={() => setViewMode('list')}
-            className={`flex-1 py-2 text-[12px] font-black rounded-[10px] transition-all duration-300 ${
-              viewMode === 'list'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-400 hover:text-gray-600'
-            }`}
-          >
-            リスト
-          </button>
-          <button
-            onClick={() => setViewMode('map')}
-            className={`flex-1 py-2 text-[12px] font-black rounded-[10px] transition-all duration-300 ${
-              viewMode === 'map'
-                ? 'bg-white text-gray-900 shadow-sm'
-                : 'text-gray-400 hover:text-gray-600'
-            }`}
-          >
-            マップ
-          </button>
-        </div>
-
-        {/* 3. 検索結果件数表示 */}
-        <div className="flex items-center justify-between mb-3 px-1">
-          <span className="text-[11px] font-black text-gray-500">
-            {viewMode === 'list'
-              ? `📍 ${storeGroups.length} 店舗表示中`
-              : `📍 ${mapPosts.filter((p: Post) => p.latitude && p.longitude).length} 件のピン表示中`}
-            {localKeyword && (
-              <span className="text-gray-400 font-normal"> (「{localKeyword}」で絞り込み)</span>
-            )}
-          </span>
-          {viewMode === 'list' && listTotal > 0 && storeGroups.length < listTotal && (
-            <span className="text-[10px] font-medium text-gray-400">
-              全 {listTotal} 件中
+        {/* 2. 件数表示 ＆ リスト／マップ切り替え（1行に統合して省スペース化） */}
+        <div className="flex items-center justify-between mb-2.5 px-0.5">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-[12px] font-black text-gray-700">
+              {viewMode === 'list'
+                ? `📍 ${storeGroups.length} 店舗`
+                : `📍 ${mapPosts.filter((p: Post) => p.latitude && p.longitude).length} 件のピン`}
             </span>
-          )}
+            {viewMode === 'list' && listTotal > 0 && storeGroups.length < listTotal && (
+              <span className="text-[10px] font-medium text-gray-400">
+                / 全 {listTotal} 件
+              </span>
+            )}
+            {localKeyword && (
+              <span className="text-[10px] text-gray-400 truncate max-w-[120px]">
+                (「{localKeyword}」)
+              </span>
+            )}
+          </div>
+
+          {/* コンパクトなリスト/マップ切り替えピル */}
+          <div className="flex bg-gray-100/90 rounded-xl p-0.5 border border-black/5 shadow-inner">
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-1 text-[11px] font-black rounded-[9px] transition-all duration-200 ${
+                viewMode === 'list'
+                  ? 'bg-white text-gray-900 shadow-xs'
+                  : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              リスト
+            </button>
+            <button
+              onClick={() => setViewMode('map')}
+              className={`px-3 py-1 text-[11px] font-black rounded-[9px] transition-all duration-200 ${
+                viewMode === 'map'
+                  ? 'bg-white text-gray-900 shadow-xs'
+                  : 'text-gray-400 hover:text-gray-600'
+              }`}
+            >
+              マップ
+            </button>
+          </div>
         </div>
 
         {/* 4. メイン表示エリア（リストまたはマップ） */}
@@ -716,7 +678,7 @@ function SearchPageInner() {
             )}
           </div>
         ) : (
-          <div className="w-full h-[calc(100dvh-285px)] min-h-[360px] rounded-2xl overflow-hidden border border-gray-100 relative shadow-sm">
+          <div className="w-full h-[calc(100dvh-200px)] min-h-[420px] rounded-2xl overflow-hidden border border-gray-100 relative shadow-sm">
             {mapLoading && (
               <div className="absolute top-3 left-3 z-[160] bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-sm border border-gray-200/60 flex items-center gap-1.5 pointer-events-none">
                 <Loader2 size={12} className="animate-spin text-orange-500" />

@@ -1146,62 +1146,59 @@ export function FilterChips({
   const renderChip = (chip: any, onRemoveFn: () => void) => (
     <span 
       key={chip.key}
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-black border shadow-sm shrink-0 ${chip.color} animate-in zoom-in`}
+      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black border shadow-xs shrink-0 ${chip.color} animate-in zoom-in`}
     >
       {chip.label}
       {(chip.key !== 'group-all' && chip.key !== 'member-all') && (
         <button 
           onClick={onRemoveFn} 
-          className="hover:opacity-60 transition-opacity ml-1 flex items-center justify-center w-3 h-3"
+          className="hover:opacity-60 transition-opacity ml-0.5 flex items-center justify-center w-3 h-3"
           aria-label="条件を削除"
         >
-          <X size={10} strokeWidth={4} />
+          <X size={10} strokeWidth={3.5} />
         </button>
       )}
     </span>
   );
 
   return (
-    <div className={`flex flex-col gap-2 mb-3 animate-in slide-in-from-left duration-300 ${className || ''}`}>
-      {primaryChips.length > 0 && (
-        <div className="flex overflow-x-auto gap-2 pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ minWidth: 0 }}>
-          {primaryChips.map(chip => renderChip(chip, () => {
-            if (chip.isRegistrant && chip.userId) {
-              const currentIds = (filters.registrantUserIds && filters.registrantUserIds.length > 0)
-                ? filters.registrantUserIds
-                : (users || []).map(u => u.id);
-              const newIds = currentIds.filter((id: string) => id !== chip.userId);
-              onRemove({ registrantUserIds: newIds } as any);
-            } else if (chip.isGroup && chip.groupId) {
-              const currentIds = (filters.activeGroups && filters.activeGroups.length > 0 && !filters.activeGroups.includes('all'))
-                ? filters.activeGroups
-                : (groups || []).map(g => g.id);
-              const newIds = currentIds.filter((id: string) => id !== chip.groupId);
-              onRemove({ activeGroups: newIds } as any);
-            } else {
-              onRemove(chip.key);
-            }
-          }))}
-        </div>
-      )}
-      {secondaryChips.length > 0 && (
-        <div className="flex overflow-x-auto gap-2 pb-1 items-center [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ minWidth: 0 }}>
-          {secondaryChips.map(chip => renderChip(chip, () => {
-            if (chip.isTag) {
-              const newTags = filters.tags.filter((t: string) => t !== chip.tagValue);
-              onRemove(newTags);
-            } else {
-              onRemove(chip.key);
-            }
-          }))}
-          <button 
-            onClick={() => onRemove('clear_all')}
-            className="text-[11px] font-black text-gray-400 hover:text-gray-600 px-2 transition-colors shrink-0"
-          >
-            クリア
-          </button>
-        </div>
-      )}
+    <div className={`flex items-center overflow-x-auto gap-1.5 pb-1 -mx-1 px-1 mb-2 animate-in slide-in-from-left duration-300 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none] ${className || ''}`} style={{ minWidth: 0 }}>
+      {/* 1. 状態・評価・価格帯・期間・タグなどの二次フィルターチップ */}
+      {secondaryChips.map(chip => renderChip(chip, () => {
+        if (chip.isTag) {
+          const newTags = filters.tags.filter((t: string) => t !== chip.tagValue);
+          onRemove(newTags);
+        } else {
+          onRemove(chip.key);
+        }
+      }))}
+
+      {/* 2. グループ / 投稿者チップ */}
+      {primaryChips.map(chip => renderChip(chip, () => {
+        if (chip.isRegistrant && chip.userId) {
+          const currentIds = (filters.registrantUserIds && filters.registrantUserIds.length > 0)
+            ? filters.registrantUserIds
+            : (users || []).map(u => u.id);
+          const newIds = currentIds.filter((id: string) => id !== chip.userId);
+          onRemove({ registrantUserIds: newIds } as any);
+        } else if (chip.isGroup && chip.groupId) {
+          const currentIds = (filters.activeGroups && filters.activeGroups.length > 0 && !filters.activeGroups.includes('all'))
+            ? filters.activeGroups
+            : (groups || []).map(g => g.id);
+          const newIds = currentIds.filter((id: string) => id !== chip.groupId);
+          onRemove({ activeGroups: newIds } as any);
+        } else {
+          onRemove(chip.key);
+        }
+      }))}
+
+      {/* 3. クリアボタン */}
+      <button 
+        onClick={() => onRemove('clear_all')}
+        className="text-[10px] font-black text-gray-400 hover:text-gray-600 px-2 py-0.5 rounded-full hover:bg-gray-100 transition-colors shrink-0"
+      >
+        クリア
+      </button>
     </div>
   );
 }

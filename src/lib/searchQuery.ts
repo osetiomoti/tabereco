@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server';
 
 export interface SearchQueryParams {
   keyword?: string | null;
-  searchMode?: 'store_name' | 'address' | null;
+  searchMode?: 'store_name' | 'address' | 'all' | null;
   status?: string | null;
   filterMode?: 'group' | 'registrant' | null;
   activeGroups?: string | null; // comma separated or 'all'
@@ -52,7 +52,7 @@ export interface SearchQueryParams {
 export function parseSearchParams(searchParams: URLSearchParams): SearchQueryParams {
   return {
     keyword: searchParams.get('keyword'),
-    searchMode: (searchParams.get('search_mode') as any) || 'store_name',
+    searchMode: (searchParams.get('search_mode') as any) || 'all',
     status: searchParams.get('status'),
     filterMode: (searchParams.get('filter_mode') as any) || 'group',
     activeGroups: searchParams.get('active_groups'),
@@ -206,19 +206,27 @@ export async function buildSearchWhereClause(
     andConditions.push({ status: params.status });
   }
 
-  // 3. キーワード検索
+  // 3. キーワード検索（店名・住所スマート検索）
   if (params.keyword && params.keyword.trim()) {
     const kw = params.keyword.trim();
     if (params.searchMode === 'address') {
       andConditions.push({
         address: { contains: kw, mode: 'insensitive' },
       });
-    } else {
-      // store_name mode: title または store_name
+    } else if (params.searchMode === 'store_name') {
       andConditions.push({
         OR: [
           { title: { contains: kw, mode: 'insensitive' } },
           { store_name: { contains: kw, mode: 'insensitive' } },
+        ],
+      });
+    } else {
+      // 'all' または未指定: 店名・タイトル・住所のいずれかにヒット
+      andConditions.push({
+        OR: [
+          { title: { contains: kw, mode: 'insensitive' } },
+          { store_name: { contains: kw, mode: 'insensitive' } },
+          { address: { contains: kw, mode: 'insensitive' } },
         ],
       });
     }
