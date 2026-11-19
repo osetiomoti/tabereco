@@ -414,11 +414,11 @@ export function PostForm({ post }: Props) {
         thumbnailUrl,
       });
 
-      // 投稿ボタンを押したら遷移（元投稿からの登録なら詳細画面へ、そうでなければタイムラインへ）
+      // 投稿ボタンを押したら遷移（元投稿からの登録なら詳細画面へ、そうでなければ検索画面へ）
       if (queryFromPostId) {
         router.push(`/posts/${queryFromPostId}`);
       } else {
-        router.push('/posts');
+        router.push('/map');
       }
       return;
     }

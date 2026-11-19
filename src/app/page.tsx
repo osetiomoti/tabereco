@@ -232,7 +232,7 @@ export default function HomePage() {
               color="bg-white/20"
             />
             <StatPill
-              href="/posts"
+              href="/map"
               value={groupActivities.length}
               label="みんなの投稿"
               icon={<Camera size={16} className="text-white" />}
@@ -252,8 +252,7 @@ export default function HomePage() {
         {/* ── クイックアクション ── */}
         <section className="px-5 pt-4 pb-5">
           <div className="flex justify-around">
-            <QuickActionBtn href="/posts" icon={<TrendingUp size={24} />} label="タイムライン" from="from-violet-500" to="to-purple-600" />
-            <QuickActionBtn href="/map" icon={<MapIcon size={24} />} label="マップ" from="from-orange-400" to="to-rose-500" />
+            <QuickActionBtn href="/map" icon={<MapIcon size={24} />} label="検索・マップ" from="from-orange-400" to="to-rose-500" />
             <QuickActionBtn href="/calendar" icon={<Calendar size={24} />} label="カレンダー" from="from-blue-400" to="to-indigo-500" />
             <QuickActionBtn href="/stats" icon={<BarChart2 size={24} />} label="統計" from="from-emerald-400" to="to-teal-500" />
             <QuickActionBtn href="/rankings" icon={<Trophy size={24} />} label="ランキング" from="from-amber-400" to="to-orange-500" />

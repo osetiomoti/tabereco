@@ -21,7 +21,7 @@ export function DeleteButton({ postId }: Props) {
     try {
       await deletePost(postId);
       notifyPostUpdated({ action: 'delete', postId });
-      router.push('/posts');
+      router.push('/map');
       router.refresh();
     } catch {
       alert('削除に失敗しました');

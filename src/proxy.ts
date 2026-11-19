@@ -68,6 +68,11 @@ export async function proxy(request: NextRequest) {
   const isManifest = pathname.startsWith('/api/manifest') || pathname.startsWith('/manifest');
   const isStaticFile = pathname.match(/\.(svg|png|jpg|jpeg|gif|webp|ico|json|webmanifest)$/) || pathname === '/manifest.json';
 
+  // タイムライン画面（/posts）へのアクセスはホーム画面（/）へリダイレクト
+  if (pathname === '/posts') {
+    return NextResponse.redirect(new URL('/', request.url));
+  }
+
   // 1. 公開ページや静的ファイルはスルー
   if (isAuthPage || isDevPage || isSetupPage || isManifest || isStaticFile) {
     // ログイン済みなら /login から / へリダイレクト

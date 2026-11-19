@@ -78,7 +78,7 @@ export default async function PostDetailPage({ params }: Props) {
   return (
     <main className="w-full max-w-md mx-auto bg-white min-h-screen pb-32 shadow-sm border-x border-gray-50 relative">
       {/* 1. Header */}
-      <Header title={post.store_name || post.title || ''} showBackButton backUrl="/posts" hideSettings>
+      <Header title={post.store_name || post.title || ''} showBackButton backUrl="/map" hideSettings>
         <div className="flex items-center gap-2">
           {allImages.length === 0 && isOwner && (
             <FavoriteToggle postId={post.id} initialValue={post.is_favorite} />

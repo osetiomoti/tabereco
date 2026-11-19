@@ -128,13 +128,13 @@ export function Header({ children, title, showBackButton, hideSettings, backUrl,
     }
 
     // アプリ内の直前画面がある場合は前の画面へ戻る（ホームやマイページ等）
-    // 直前画面がない場合（直接URLを開いた場合等）は backUrl または /posts へフォールバック
+    // 直前画面がない場合（直接URLを開いた場合等）は backUrl または /（ホーム）へフォールバック
     if (canGoBackInApp()) {
       router.back();
     } else if (backUrl) {
       router.push(backUrl);
     } else {
-      router.push('/posts');
+      router.push('/');
     }
   };
 
