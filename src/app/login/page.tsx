@@ -7,6 +7,8 @@ function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
+  const redirectTarget = searchParams.get('redirect');
+  const destination = (redirectTarget && redirectTarget !== '/posts') ? redirectTarget : '/map';
   const [isLoading, setIsLoading] = useState(true); // 自動復元チェックのため初期値をtrueに
   const [isRestoring, setIsRestoring] = useState(false);
 
@@ -28,7 +30,7 @@ function LoginForm() {
 
         if (res.ok) {
           console.log('[Login] Session restored from localStorage');
-          router.replace('/posts');
+          router.replace(destination);
           return;
         } else {
           console.log('[Login] Restore failed, clearing localStorage');
