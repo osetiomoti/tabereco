@@ -52,8 +52,8 @@ export async function GET(request: NextRequest) {
 
     const tokens = await res.json();
 
-    // Set cookies and redirect to map
-    const response = NextResponse.redirect(`${origin}/map`);
+    // Set cookies and redirect to home
+    const response = NextResponse.redirect(`${origin}/`);
 
     const cookieOptions = (maxAge: number) => ({
       httpOnly: true,

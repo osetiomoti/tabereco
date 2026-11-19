@@ -8,7 +8,7 @@ function LoginForm() {
   const searchParams = useSearchParams();
   const error = searchParams.get('error');
   const redirectTarget = searchParams.get('redirect');
-  const destination = (redirectTarget && redirectTarget !== '/posts') ? redirectTarget : '/map';
+  const destination = (redirectTarget && redirectTarget !== '/posts') ? redirectTarget : '/';
   const [isLoading, setIsLoading] = useState(true); // 自動復元チェックのため初期値をtrueに
   const [isRestoring, setIsRestoring] = useState(false);
 

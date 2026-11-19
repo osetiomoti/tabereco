@@ -2,10 +2,12 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback, Suspense } from 'react';
 import dynamic from 'next/dynamic';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/Header';
 import type { Post } from '@/lib/types';
-import { MapPin, Search, Filter, X, UtensilsCrossed, Loader2 } from 'lucide-react';
+import { MapPin, Search, Filter, X, UtensilsCrossed, Loader2, Plus } from 'lucide-react';
+import { FloatingActionButton } from '@/components/FloatingActionButton';
 import { useSharedFilter } from '@/hooks/useSharedFilter';
 import { useGroupMembers } from '@/hooks/useGroupMembers';
 import { FilterModal } from '@/components/FilterModal';
@@ -432,71 +434,120 @@ function SearchPageInner() {
 
   // フィルター削除ヘルパー
   const removeFilter = (key: string | string[] | Record<string, any>) => {
-    if (typeof key === 'object' && !Array.isArray(key) && 'registrantUserIds' in key) {
+    // 1. 全解除（クリアボタン押下時）
+    if (key === 'clear_all' || (Array.isArray(key) && key.length === 0)) {
       updateFilter({
-        advancedFilters: {
-          ...(advancedFilters || {}),
-          registrantUserIds: key.registrantUserIds,
-        },
+        activeTab: 'all',
+        activeGroups: ['all'],
+        advancedFilters: null,
+        activeMapTag: null,
       });
       return;
     }
-    let next = { ...advancedFilters };
-    if (Array.isArray(key)) {
-      if (key.length === 0) {
-        next = {} as any;
-        updateFilter({ activeTab: 'all', advancedFilters: null });
+
+    // 2. オブジェクト指定（グループ除外や投稿者除外）
+    if (typeof key === 'object' && !Array.isArray(key)) {
+      if ('activeGroups' in key) {
+        const newGroups = key.activeGroups.length === 0 ? ['all'] : key.activeGroups;
+        updateFilter({ activeGroups: newGroups });
         return;
-      } else {
-        next.tags = key;
       }
+      if ('registrantUserIds' in key) {
+        updateFilter({
+          advancedFilters: {
+            ...(advancedFilters || {}),
+            registrantUserIds: key.registrantUserIds,
+          },
+        });
+        return;
+      }
+    }
+
+    let next = { ...(advancedFilters || {}) };
+
+    // 3. タグ配列指定
+    if (Array.isArray(key)) {
+      next.tags = key;
     } else if (key === 'status') {
-      updateFilter({ activeTab: 'all' });
+      // 4. 状態解除
+      delete next.status;
+      updateFilter({ activeTab: 'all', advancedFilters: Object.keys(next).length > 0 ? next : null });
       return;
+    } else if (key === 'price') {
+      // 5. 価格帯解除
+      delete next.price_min;
+      delete next.price_max;
+    } else if (key === 'rating') {
+      // 6. 評価解除
+      delete next.rating_min;
+      delete next.rating_max;
+      delete next.rating_unrated;
+    } else if (key === 'period') {
+      // 7. 期間解除
+      delete next.period;
+      delete next.period_start;
+      delete next.period_end;
     } else {
       delete next[key as string];
     }
+
     updateFilter({ advancedFilters: Object.keys(next).length > 0 ? next : null });
   };
 
   const activeFilterCount = useMemo(() => {
-    return advancedFilters
+    const baseCount = advancedFilters
       ? Object.entries(advancedFilters).filter(
           ([k, v]: [string, any]) =>
             v !== undefined &&
             v !== null &&
             v !== 'all' &&
+            v !== 'none' &&
             v !== '' &&
             v !== false &&
             k !== 'activeGroups' &&
             k !== 'tags' &&
             k !== 'registrantUserIds' &&
-            k !== 'sort_order'
+            k !== 'sort_order' &&
+            k !== 'status'
         ).length +
           (advancedFilters.tags?.length || 0) +
-          (advancedFilters.registrantUserIds?.length || 0) +
-          (activeGroups.filter((x: string) => x !== 'all').length > 0 ? 1 : 0)
-      : activeGroups.filter((x: string) => x !== 'all').length;
-  }, [advancedFilters, activeGroups]);
+          (advancedFilters.registrantUserIds?.length || 0)
+      : 0;
+
+    const groupCount = activeGroups.filter((x: string) => x !== 'all').length > 0 ? 1 : 0;
+    const statusCount = (activeTab && activeTab !== 'all') || (advancedFilters?.status && advancedFilters.status !== 'all') ? 1 : 0;
+
+    return baseCount + groupCount + statusCount;
+  }, [advancedFilters, activeGroups, activeTab]);
 
   return (
     <>
       <Header title="検索">
-        <button
-          onClick={() => setIsFilterModalOpen(true)}
-          className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-            activeFilterCount > 0
-              ? 'bg-orange-500 text-white shadow-sm'
-              : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-          }`}
-        >
-          <Filter size={18} />
-          {activeFilterCount > 0 && (
-            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-white text-orange-500 text-[9px] font-black rounded-full flex items-center justify-center border border-orange-200">
-              {activeFilterCount}
-            </span>
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/posts/new"
+            className="w-9 h-9 rounded-full flex items-center justify-center transition-all bg-gradient-to-tr from-primary-500 to-orange-400 text-white shadow-sm active:scale-90"
+            title="新しく記録する"
+            aria-label="新しく記録する"
+          >
+            <Plus size={20} strokeWidth={2.6} />
+          </Link>
+          <button
+            onClick={() => setIsFilterModalOpen(true)}
+            className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+              activeFilterCount > 0
+                ? 'bg-orange-500 text-white shadow-sm'
+                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            }`}
+          >
+            <Filter size={18} />
+            {activeFilterCount > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-white text-orange-500 text-[9px] font-black rounded-full flex items-center justify-center border border-orange-200">
+                {activeFilterCount}
+              </span>
+            )}
+          </button>
+        </div>
       </Header>
 
       <main className="max-w-2xl mx-auto w-full px-4 pt-3 pb-28 animate-fade-in">
@@ -686,11 +737,14 @@ function SearchPageInner() {
         )}
       </main>
 
+      {/* 画面右下のフローティングアクションボタン（＋ 記録する） */}
+      <FloatingActionButton />
+
       <FilterModal
         isOpen={isFilterModalOpen}
         onClose={() => setIsFilterModalOpen(false)}
         onApply={(f) => {
-          const { activeGroups: newGroups, ...rest } = f as any;
+          const { activeGroups: newGroups, status: newStatus, ...rest } = f as any;
           const cleanedRest = Object.fromEntries(
             Object.entries(rest).filter(
               ([, v]) => v !== undefined && v !== null && v !== '' && (Array.isArray(v) ? v.length > 0 : true)
@@ -698,6 +752,7 @@ function SearchPageInner() {
           );
 
           updateFilter({
+            activeTab: newStatus || 'all',
             filterMode: (f as any).filterMode || 'group',
             activeGroups: newGroups || ['all'],
             advancedFilters: Object.keys(cleanedRest).length > 0 ? cleanedRest : undefined,
@@ -706,6 +761,7 @@ function SearchPageInner() {
         initialFilters={
           {
             ...(advancedFilters || {}),
+            status: activeTab,
             filterMode: filterMode || 'group',
             activeGroups: activeGroups,
           } as any

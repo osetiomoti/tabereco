@@ -221,24 +221,63 @@ function PostsPageInner() {
   };
 
   const removeFilter = (key: string | string[] | Record<string, any>) => {
-    if (typeof key === 'object' && !Array.isArray(key) && 'registrantUserIds' in key) {
-      updateFilter({ advancedFilters: { ...(advancedFilters || {}), registrantUserIds: (key as any).registrantUserIds } });
+    // 1. 全解除（クリアボタン押下時）
+    if (key === 'clear_all' || (Array.isArray(key) && key.length === 0)) {
+      updateFilter({
+        activeTab: 'all',
+        activeGroups: ['all'],
+        advancedFilters: null,
+        activeMapTag: null,
+      });
       return;
     }
-    let next = { ...(advancedFilters || {}) } as any;
-    if (Array.isArray(key)) {
-      if (key.length === 0) {
-        updateFilter({ activeTab: 'all', advancedFilters: null });
+
+    // 2. オブジェクト指定（グループ除外や投稿者除外）
+    if (typeof key === 'object' && !Array.isArray(key)) {
+      if ('activeGroups' in key) {
+        const newGroups = (key as any).activeGroups.length === 0 ? ['all'] : (key as any).activeGroups;
+        updateFilter({ activeGroups: newGroups });
         return;
-      } else {
-        next.tags = key;
       }
+      if ('registrantUserIds' in key) {
+        updateFilter({
+          advancedFilters: {
+            ...(advancedFilters || {}),
+            registrantUserIds: (key as any).registrantUserIds,
+          },
+        });
+        return;
+      }
+    }
+
+    let next = { ...(advancedFilters || {}) } as any;
+
+    // 3. タグ配列指定
+    if (Array.isArray(key)) {
+      next.tags = key;
     } else if (key === 'status') {
-      updateFilter({ activeTab: 'all' });
+      // 4. 状態解除
+      delete next.status;
+      updateFilter({ activeTab: 'all', advancedFilters: Object.keys(next).length > 0 ? next : null });
       return;
+    } else if (key === 'price') {
+      // 5. 価格帯解除
+      delete next.price_min;
+      delete next.price_max;
+    } else if (key === 'rating') {
+      // 6. 評価解除
+      delete next.rating_min;
+      delete next.rating_max;
+      delete next.rating_unrated;
+    } else if (key === 'period') {
+      // 7. 期間解除
+      delete next.period;
+      delete next.period_start;
+      delete next.period_end;
     } else {
       delete next[key as string];
     }
+
     updateFilter({ advancedFilters: Object.keys(next).length > 0 ? next : null });
   };
 

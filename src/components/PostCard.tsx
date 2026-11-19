@@ -1050,26 +1050,95 @@ export function FilterChips({
     }
   }
 
+  // 1. 状態（status: visited, want_to_go, liked）
+  if (filters.status && filters.status !== 'all') {
+    const statusLabelMap: Record<string, { label: string; color: string }> = {
+      visited: { label: '✅ 行った', color: 'bg-emerald-50 text-emerald-600 border-emerald-100' },
+      want_to_go: { label: '📌 行きたい', color: 'bg-amber-50 text-amber-600 border-amber-100' },
+      liked: { label: '❤️ いいね', color: 'bg-rose-50 text-rose-500 border-rose-100' },
+    };
+    const info = statusLabelMap[filters.status] || { label: filters.status, color: 'bg-gray-100 text-gray-700 border-gray-200' };
+    secondaryChips.push({
+      key: 'status',
+      label: info.label,
+      color: info.color,
+    });
+  }
+
+  // 2. タグ (tags)
   if (filters.tags && filters.tags.length > 0) {
     filters.tags.forEach((t: string) => {
       secondaryChips.push({ key: `tag-${t}`, label: `#${t}`, color: 'bg-pink-50 text-pink-500 border-pink-100', isTag: true, tagValue: t });
     });
   }
+
+  // 3. 価格帯 (price_min / price_max)
+  if (filters.price_min != null || filters.price_max != null) {
+    let label = '💰 ';
+    if (filters.price_min != null && filters.price_max != null) {
+      label += `¥${Number(filters.price_min).toLocaleString()}〜¥${Number(filters.price_max).toLocaleString()}`;
+    } else if (filters.price_min != null) {
+      label += `¥${Number(filters.price_min).toLocaleString()}〜`;
+    } else if (filters.price_max != null) {
+      label += `〜¥${Number(filters.price_max).toLocaleString()}`;
+    }
+    secondaryChips.push({
+      key: 'price',
+      label,
+      color: 'bg-teal-50 text-teal-600 border-teal-100',
+    });
+  }
+
+  // 4. 評価 (rating_min / rating_max / rating_unrated)
+  if (filters.rating_unrated) {
+    secondaryChips.push({
+      key: 'rating',
+      label: '★ 未評価のみ',
+      color: 'bg-amber-50 text-amber-600 border-amber-100',
+    });
+  } else if (filters.rating_min != null || filters.rating_max != null) {
+    let label = '★ ';
+    if (filters.rating_min != null && filters.rating_max != null) {
+      label += `${filters.rating_min}〜${filters.rating_max}`;
+    } else if (filters.rating_min != null) {
+      label += `${filters.rating_min}以上`;
+    } else if (filters.rating_max != null) {
+      label += `${filters.rating_max}以下`;
+    }
+    secondaryChips.push({
+      key: 'rating',
+      label,
+      color: 'bg-amber-50 text-amber-600 border-amber-100',
+    });
+  }
   
-  if (filters.period && filters.period !== 'all') {
+  // 5. 期間 (period: 'none' や 'all' 以外の有効な期間のみ表示)
+  if (filters.period && filters.period !== 'all' && filters.period !== 'none') {
     const periodMap: Record<string, string> = {
       this_month: '今月',
       last_3_months: '過去3ヶ月',
       this_year: '今年',
       last_year: '昨年',
+      custom: `${filters.period_start || ''}〜${filters.period_end || ''}`,
     };
-    secondaryChips.push({ key: 'period', label: `🗓️ ${periodMap[filters.period] || filters.period}`, color: 'bg-orange-50 text-orange-500 border-orange-100' });
+    secondaryChips.push({
+      key: 'period',
+      label: `🗓️ ${periodMap[filters.period] || filters.period}`,
+      color: 'bg-orange-50 text-orange-500 border-orange-100',
+    });
   }
+
+  // 6. お気に入り / 自分のみ
   if (filters.is_favorite) {
     secondaryChips.push({ key: 'is_favorite', label: '❤️ お気に入り', color: 'bg-red-50 text-red-500 border-red-100' });
   }
   if (filters.is_mine_only) {
     secondaryChips.push({ key: 'is_mine_only', label: '🔒 自分のみ', color: 'bg-gray-100 text-gray-600 border-gray-200' });
+  }
+
+  // 7. 温泉モード（旅レコ用）
+  if (filters.is_hot_spring_mode) {
+    secondaryChips.push({ key: 'is_hot_spring_mode', label: '♨️ 温泉モード', color: 'bg-teal-50 text-teal-600 border-teal-100' });
   }
 
   if (primaryChips.length === 0 && secondaryChips.length === 0) return null;
@@ -1084,6 +1153,7 @@ export function FilterChips({
         <button 
           onClick={onRemoveFn} 
           className="hover:opacity-60 transition-opacity ml-1 flex items-center justify-center w-3 h-3"
+          aria-label="条件を削除"
         >
           <X size={10} strokeWidth={4} />
         </button>
@@ -1092,7 +1162,7 @@ export function FilterChips({
   );
 
   return (
-    <div className={`flex flex-col gap-2 mb-6 animate-in slide-in-from-left duration-500 ${className || ''}`}>
+    <div className={`flex flex-col gap-2 mb-3 animate-in slide-in-from-left duration-300 ${className || ''}`}>
       {primaryChips.length > 0 && (
         <div className="flex overflow-x-auto gap-2 pb-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]" style={{ minWidth: 0 }}>
           {primaryChips.map(chip => renderChip(chip, () => {
@@ -1125,7 +1195,7 @@ export function FilterChips({
             }
           }))}
           <button 
-            onClick={() => onRemove([])}
+            onClick={() => onRemove('clear_all')}
             className="text-[11px] font-black text-gray-400 hover:text-gray-600 px-2 transition-colors shrink-0"
           >
             クリア

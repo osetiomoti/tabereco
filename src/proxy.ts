@@ -70,9 +70,9 @@ export async function proxy(request: NextRequest) {
 
   // 1. 公開ページや静的ファイルはスルー
   if (isAuthPage || isDevPage || isSetupPage || isManifest || isStaticFile) {
-    // ログイン済みなら /login から /map へリダイレクト
+    // ログイン済みなら /login から / へリダイレクト
     if ((accessToken || devToken) && pathname === '/login') {
-      return NextResponse.redirect(new URL('/map', request.url));
+      return NextResponse.redirect(new URL('/', request.url));
     }
     return NextResponse.next();
   }

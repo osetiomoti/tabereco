@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     name: isTabireco ? '旅レコ' : '食べレコ',
     short_name: isTabireco ? '旅レコ' : '食べレコ',
     description: isTabireco ? 'あなたの旅の記録を、もっと楽しく。' : 'あなたの食の記録を、もっと楽しく。',
-    start_url: isTabireco ? '/map?app_type=tabireco' : '/map',
+    start_url: isTabireco ? '/?app_type=tabireco' : '/',
     display: 'standalone',
     background_color: '#fcfcfc',
     theme_color: '#fcfcfc',
