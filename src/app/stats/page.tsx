@@ -3,7 +3,7 @@
 import { useState, useMemo, Suspense, useEffect, useRef } from 'react';
 import useSWR from 'swr';
 import { Header } from '@/components/Header';
-import { Loader2, AlertCircle, Filter, X, Search } from 'lucide-react';
+import { Loader2, AlertCircle, Filter, X, Search, Calendar as CalendarIcon, BarChart2 } from 'lucide-react';
 import { FilterModal } from '@/components/FilterModal';
 import { useSharedFilter } from '@/hooks/useSharedFilter';
 import { useSearchParams } from 'next/navigation';
@@ -576,7 +576,15 @@ function StatsPageInner() {
 
   return (
     <div className="bg-[#fcfcfc] min-h-[100dvh] pb-24">
-      <Header title="統計データ" showBackButton>
+      <Header title="振り返り・統計">
+        <Link
+          href="/calendar"
+          className="w-9 h-9 rounded-full flex items-center justify-center bg-gray-100 text-gray-500 hover:bg-gray-200 transition-all"
+          title="カレンダーで見る"
+          aria-label="カレンダーで見る"
+        >
+          <CalendarIcon size={18} />
+        </Link>
         <button
           onClick={() => setIsFilterModalOpen(true)}
           className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-all ${
@@ -594,7 +602,21 @@ function StatsPageInner() {
         </button>
       </Header>
 
-      <main className="max-w-xl mx-auto px-4 py-6 space-y-4">
+      <main className="max-w-xl mx-auto px-4 py-4 space-y-4">
+        {/* 表示切替タブ */}
+        <div className="flex bg-gray-100/80 p-1 rounded-2xl">
+          <div className="flex-1 py-2 text-xs font-black rounded-xl bg-white text-gray-900 shadow-sm flex items-center justify-center gap-1.5 transition-all">
+            <BarChart2 size={15} style={{ color: 'var(--color-primary)' }} />
+            統計・グラフ
+          </div>
+          <Link
+            href="/calendar"
+            className="flex-1 py-2 text-xs font-bold rounded-xl text-gray-500 hover:text-gray-900 flex items-center justify-center gap-1.5 transition-all active:scale-95"
+          >
+            <CalendarIcon size={15} />
+            カレンダー
+          </Link>
+        </div>
         {/* Search bar */}
         <div className="mb-4">
           <div className="flex gap-2 mb-2.5">

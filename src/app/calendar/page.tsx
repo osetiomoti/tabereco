@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Header } from '@/components/Header';
-import { ChevronLeft, ChevronRight, ChevronDown, Plus, UtensilsCrossed, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronDown, Plus, UtensilsCrossed, Calendar as CalendarIcon, BarChart2 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { format, startOfMonth, endOfMonth, isSameDay, addMonths, subMonths, getDay, isToday, addDays, startOfWeek, isSameMonth } from 'date-fns';
@@ -47,7 +47,22 @@ export default function CalendarPage() {
     <div className="min-h-screen bg-white pb-32 font-sans">
       
       {/* 1. Header with Gradient */}
-      <div className="bg-gradient-to-r from-pink-400 via-pink-400 to-orange-300 rounded-b-[2rem] pt-12 pb-6 px-4 shadow-sm relative z-10">
+      <div className="bg-gradient-to-r from-pink-400 via-pink-400 to-orange-300 rounded-b-[2rem] pt-10 pb-5 px-4 shadow-sm relative z-10">
+        {/* 表示切替タブ */}
+        <div className="flex bg-black/15 p-1 rounded-2xl backdrop-blur-sm max-w-xs mx-auto mb-4">
+          <Link
+            href="/stats"
+            className="flex-1 py-1.5 text-xs font-bold rounded-xl text-white/80 hover:text-white flex items-center justify-center gap-1.5 transition-all active:scale-95"
+          >
+            <BarChart2 size={15} />
+            統計・グラフ
+          </Link>
+          <div className="flex-1 py-1.5 text-xs font-black rounded-xl bg-white text-gray-900 shadow-sm flex items-center justify-center gap-1.5">
+            <CalendarIcon size={15} style={{ color: 'var(--color-primary)' }} />
+            カレンダー
+          </div>
+        </div>
+
         <div className="flex items-center justify-between max-w-2xl mx-auto">
           <button onClick={prevMonth} className="p-2 text-white hover:bg-white/20 rounded-full transition-colors">
             <ChevronLeft size={24} />
