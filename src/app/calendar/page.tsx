@@ -48,17 +48,15 @@ export default function CalendarPage() {
       
       {/* 1. Header with Gradient */}
       <div className="bg-gradient-to-r from-pink-400 via-pink-400 to-orange-300 rounded-b-[2rem] pt-10 pb-5 px-4 shadow-sm relative z-10">
-        {/* 表示切替タブ */}
-        <div className="flex bg-black/15 p-1 rounded-2xl backdrop-blur-sm max-w-xs mx-auto mb-4">
+        {/* 表示切替ピル */}
+        <div className="flex bg-black/15 p-0.5 rounded-xl backdrop-blur-sm w-fit mx-auto mb-4 border border-white/20">
           <Link
             href="/stats"
-            className="flex-1 py-1.5 text-xs font-bold rounded-xl text-white/80 hover:text-white flex items-center justify-center gap-1.5 transition-all active:scale-95"
+            className="px-3 py-1 text-[11px] font-black rounded-[9px] text-white/80 hover:text-white transition-all duration-200"
           >
-            <BarChart2 size={15} />
-            統計・グラフ
+            グラフ
           </Link>
-          <div className="flex-1 py-1.5 text-xs font-black rounded-xl bg-white text-gray-900 shadow-sm flex items-center justify-center gap-1.5">
-            <CalendarIcon size={15} style={{ color: 'var(--color-primary)' }} />
+          <div className="px-3 py-1 text-[11px] font-black rounded-[9px] bg-white text-gray-900 shadow-xs">
             カレンダー
           </div>
         </div>

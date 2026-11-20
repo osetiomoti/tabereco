@@ -3,9 +3,11 @@
 import { useState, useMemo, Suspense, useEffect, useRef } from 'react';
 import useSWR from 'swr';
 import { Header } from '@/components/Header';
-import { Loader2, AlertCircle, Filter, X, Search, Calendar as CalendarIcon, BarChart2 } from 'lucide-react';
+import { Loader2, AlertCircle, Filter, X, Search } from 'lucide-react';
 import { FilterModal } from '@/components/FilterModal';
+import { FilterChips } from '@/components/PostCard';
 import { useSharedFilter } from '@/hooks/useSharedFilter';
+import { useGroupMembers } from '@/hooks/useGroupMembers';
 import { useSearchParams } from 'next/navigation';
 import { useMyProfile } from '@/hooks/useAppData';
 import Image from 'next/image';
@@ -400,6 +402,7 @@ function StatsPageInner() {
 
   const { profile } = useMyProfile();
   const { appType } = useAppType();
+  const { memberUsers, joinedGroups } = useGroupMembers();
 
   // マイページから遷移してきた場合、フィルターを「自分のみ（または対象ユーザーのみ）」に設定
   useEffect(() => {
@@ -428,15 +431,20 @@ function StatsPageInner() {
 
   const [inputValue, setInputValue] = useState(filterState.keyword || '');
   const [debouncedKeyword, setDebouncedKeyword] = useState(filterState.keyword || '');
-  const [searchMode, setSearchMode] = useState<'store_name' | 'address'>((filterState.searchMode as any) || 'store_name');
+  const searchMode = (filterState.searchMode as 'store_name' | 'address') || 'store_name';
+
+  useEffect(() => {
+    setInputValue(filterState.keyword || '');
+    setDebouncedKeyword(filterState.keyword || '');
+  }, [filterState.keyword]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedKeyword(inputValue);
-      updateFilter({ keyword: inputValue, searchMode });
-    }, 500);
+      updateFilter({ keyword: inputValue });
+    }, 400);
     return () => clearTimeout(timer);
-  }, [inputValue, searchMode, updateFilter]);
+  }, [inputValue, updateFilter]);
 
   // フィルタ状態からクエリ文字列を構築
   const queryString = useMemo(() => {
@@ -517,10 +525,111 @@ function StatsPageInner() {
   const isRegistrantFiltered = currentFilterMode === 'registrant' && registrantIds.length > 0;
   const isGroupFiltered = currentFilterMode === 'group' && filterState.activeGroups?.length > 0 && !filterState.activeGroups.includes('all');
 
-  const hasActiveFilters = (filterState.advancedFilters?.tags?.length > 0) || 
-                           (filterState.activeTab && filterState.activeTab !== 'all' && filterState.activeTab !== 'visited') ||
-                           !!activePref || !!activeRatingLabel ||
-                           isRegistrantFiltered || isGroupFiltered;
+  const removeFilter = (key: string | string[] | Record<string, any>) => {
+    // 1. 全解除（クリアボタン押下時）
+    if (key === 'clear_all' || (Array.isArray(key) && key.length === 0)) {
+      setActivePref(undefined);
+      setActiveRatingLabel(undefined);
+      updateFilter({
+        activeTab: 'all',
+        activeGroups: ['all'],
+        advancedFilters: null,
+      });
+      return;
+    }
+
+    // 2. オブジェクト指定（グループ除外や投稿者除外）
+    if (typeof key === 'object' && !Array.isArray(key)) {
+      if ('activeGroups' in key) {
+        const newGroups = key.activeGroups.length === 0 ? ['all'] : key.activeGroups;
+        updateFilter({ activeGroups: newGroups });
+        return;
+      }
+      if ('registrantUserIds' in key) {
+        updateFilter({
+          advancedFilters: {
+            ...(filterState.advancedFilters || {}),
+            registrantUserIds: key.registrantUserIds,
+          },
+        });
+        return;
+      }
+    }
+
+    // 3. 都道府県解除
+    if (key === 'pref') {
+      setActivePref(undefined);
+      return;
+    }
+
+    // 4. 評価ラベル解除
+    if (key === 'ratingLabel') {
+      setActiveRatingLabel(undefined);
+      return;
+    }
+
+    let next = { ...(filterState.advancedFilters || {}) };
+
+    // 5. タグ配列指定
+    if (Array.isArray(key)) {
+      next.tags = key;
+    } else if (key === 'status') {
+      // 6. 状態解除
+      delete next.status;
+      updateFilter({ activeTab: 'all', advancedFilters: Object.keys(next).length > 0 ? next : null });
+      return;
+    } else if (key === 'price') {
+      // 7. 価格帯解除
+      delete next.price_min;
+      delete next.price_max;
+    } else if (key === 'rating') {
+      // 8. 評価解除
+      delete next.rating_min;
+      delete next.rating_max;
+      delete next.rating_unrated;
+    } else if (key === 'period') {
+      // 9. 期間解除
+      delete next.period;
+      delete next.period_start;
+      delete next.period_end;
+    } else {
+      delete next[key as string];
+    }
+
+    updateFilter({ advancedFilters: Object.keys(next).length > 0 ? next : null });
+  };
+
+  const activeFilterCount = useMemo(() => {
+    const advanced = filterState.advancedFilters;
+    const activeGroups = filterState.activeGroups || [];
+    const activeTab = filterState.activeTab;
+
+    const baseCount = advanced
+      ? Object.entries(advanced).filter(
+          ([k, v]: [string, any]) =>
+            v !== undefined &&
+            v !== null &&
+            v !== 'all' &&
+            v !== 'none' &&
+            v !== '' &&
+            v !== false &&
+            k !== 'activeGroups' &&
+            k !== 'tags' &&
+            k !== 'registrantUserIds' &&
+            k !== 'sort_order' &&
+            k !== 'status'
+        ).length +
+          (advanced.tags?.length || 0) +
+          (advanced.registrantUserIds?.length || 0)
+      : 0;
+
+    const groupCount = activeGroups.filter((x: string) => x !== 'all').length > 0 ? 1 : 0;
+    const statusCount = (activeTab && activeTab !== 'all') || (advanced?.status && advanced.status !== 'all') ? 1 : 0;
+    const prefCount = activePref ? 1 : 0;
+    const ratingLabelCount = activeRatingLabel ? 1 : 0;
+
+    return baseCount + groupCount + statusCount + prefCount + ratingLabelCount;
+  }, [filterState.advancedFilters, filterState.activeGroups, filterState.activeTab, activePref, activeRatingLabel]);
 
   const handleTagClick = (tag: string) => {
     if (tag === 'その他') return;
@@ -535,33 +644,6 @@ function StatsPageInner() {
     }
   };
 
-  const removeTagFilter = (tag: string) => {
-    const currentTags = filterState.advancedFilters?.tags || [];
-    updateFilter({
-      advancedFilters: {
-        ...filterState.advancedFilters,
-        tags: currentTags.filter((t: string) => t !== tag)
-      }
-    });
-  };
-
-  const clearFilters = () => {
-    setActivePref(undefined);
-    setActiveRatingLabel(undefined);
-    updateFilter({
-      activeTab: 'all',
-      activeGroups: ['all'],
-      filterMode: 'group',
-      advancedFilters: {
-        ...filterState.advancedFilters,
-        tags: [],
-        tagMatchMode: 'AND',
-        filterMode: 'group',
-        registrantUserIds: [],
-      }
-    });
-  };
-
   const handlePrefClick = (pref: string) => {
     setActivePref(prev => prev === pref ? undefined : pref);
     setShowPosts(false);
@@ -572,154 +654,130 @@ function StatsPageInner() {
     setShowPosts(false);
   };
 
-  const activeTags = filterState.advancedFilters?.tags || [];
-
   return (
     <div className="bg-[#fcfcfc] min-h-[100dvh] pb-24">
-      <Header title="振り返り・統計">
-        <Link
-          href="/calendar"
-          className="w-9 h-9 rounded-full flex items-center justify-center bg-gray-100 text-gray-500 hover:bg-gray-200 transition-all"
-          title="カレンダーで見る"
-          aria-label="カレンダーで見る"
-        >
-          <CalendarIcon size={18} />
-        </Link>
+      <Header title="統計">
         <button
           onClick={() => setIsFilterModalOpen(true)}
           className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-            hasActiveFilters
-              ? 'bg-orange-50 text-orange-500'
+            activeFilterCount > 0
+              ? 'bg-orange-500 text-white shadow-sm'
               : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
           }`}
+          title="絞り込みフィルター"
+          aria-label="絞り込みフィルター"
         >
           <Filter size={18} />
-          {hasActiveFilters && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-orange-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center border-2 border-white shadow-sm">
-              !
+          {activeFilterCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-white text-orange-500 text-[9px] font-black rounded-full flex items-center justify-center border border-orange-200">
+              {activeFilterCount}
             </span>
           )}
         </button>
       </Header>
 
-      <main className="max-w-xl mx-auto px-4 py-4 space-y-4">
-        {/* 表示切替タブ */}
-        <div className="flex bg-gray-100/80 p-1 rounded-2xl">
-          <div className="flex-1 py-2 text-xs font-black rounded-xl bg-white text-gray-900 shadow-sm flex items-center justify-center gap-1.5 transition-all">
-            <BarChart2 size={15} style={{ color: 'var(--color-primary)' }} />
-            統計・グラフ
+      <main className="max-w-2xl mx-auto w-full px-4 pt-1.5 pb-28 animate-fade-in space-y-2.5">
+        {/* 1. 検索・フィルター操作エリア（1行統合型） */}
+        <div className="flex flex-col gap-1.5 mb-2">
+          {/* 1行統合バー：店名/住所切り替えトグル ＋ キーワード入力欄 */}
+          <div className="flex items-center gap-1.5 bg-gray-50/90 border border-gray-200/70 rounded-2xl p-1 shadow-2xs focus-within:ring-2 focus-within:ring-orange-100 focus-within:border-orange-300 focus-within:bg-white transition-all">
+            {/* 店名／住所 切り替えピル */}
+            <div className="flex bg-gray-200/60 p-0.5 rounded-xl shrink-0">
+              <button
+                type="button"
+                onClick={() => updateFilter({ searchMode: 'store_name' })}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-[10px] text-[11px] font-black transition-all ${
+                  searchMode !== 'address'
+                    ? 'bg-orange-500 text-white shadow-xs'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <span>🏪</span>
+                <span>店名</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => updateFilter({ searchMode: 'address' })}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-[10px] text-[11px] font-black transition-all ${
+                  searchMode === 'address'
+                    ? 'bg-orange-500 text-white shadow-xs'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <span>📍</span>
+                <span>住所</span>
+              </button>
+            </div>
+
+            {/* キーワード入力欄 */}
+            <div className="relative flex-1 flex items-center min-w-0">
+              <Search className="absolute left-1.5 text-gray-400 shrink-0 pointer-events-none" size={14} />
+              <input
+                type="text"
+                placeholder={searchMode === 'address' ? '住所・エリアで検索 (東京など)...' : '店名で検索...'}
+                className="w-full pl-6 pr-6 py-1 text-[12px] font-medium text-gray-800 placeholder:text-gray-400 bg-transparent outline-none"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+              />
+              {inputValue && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInputValue('');
+                    setDebouncedKeyword('');
+                    updateFilter({ keyword: '' });
+                  }}
+                  className="absolute right-1 text-gray-300 hover:text-gray-500 transition-colors p-1"
+                  aria-label="検索キーワードをクリア"
+                >
+                  <X size={13} />
+                </button>
+              )}
+            </div>
           </div>
-          <Link
-            href="/calendar"
-            className="flex-1 py-2 text-xs font-bold rounded-xl text-gray-500 hover:text-gray-900 flex items-center justify-center gap-1.5 transition-all active:scale-95"
-          >
-            <CalendarIcon size={15} />
-            カレンダー
-          </Link>
-        </div>
-        {/* Search bar */}
-        <div className="mb-4">
-          <div className="flex gap-2 mb-2.5">
-            <button
-              onClick={() => { setSearchMode('store_name'); setInputValue(''); }}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-black transition-all ${
-                searchMode === 'store_name'
-                  ? 'bg-orange-500 text-white shadow-sm'
-                  : 'bg-white border border-gray-100 text-gray-400 hover:bg-gray-50'
-              }`}
-            >
-              🏪 店名
-            </button>
-            <button
-              onClick={() => { setSearchMode('address'); setInputValue(''); }}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-[12px] font-black transition-all ${
-                searchMode === 'address'
-                  ? 'bg-orange-500 text-white shadow-sm'
-                  : 'bg-white border border-gray-100 text-gray-400 hover:bg-gray-50'
-              }`}
-            >
-              📍 住所
-            </button>
-          </div>
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300" size={18} />
-            <input
-              type="text"
-              placeholder={searchMode === 'address' ? '住所・エリアで検索（例：渋谷区...）' : '記録を検索...'}
-              className="w-full pl-11 pr-4 py-3.5 bg-white border border-gray-100 rounded-2xl text-sm focus:ring-2 focus:ring-orange-100 transition-all font-medium text-gray-800 placeholder:text-gray-300 shadow-sm"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-            />
-          </div>
+
+          {/* アクティブなフィルターチップ（1行横スクロール） */}
+          <FilterChips
+            filters={{
+              ...(filterState.advancedFilters || {}),
+              status: filterState.activeTab,
+              filterMode: filterState.filterMode || 'group',
+              activeGroups: filterState.activeGroups,
+              pref: activePref,
+              ratingLabel: activeRatingLabel,
+            }}
+            onRemove={removeFilter}
+            users={memberUsers}
+            groups={joinedGroups}
+          />
         </div>
 
-        {/* Active Filters Display */}
-        {hasActiveFilters && (
-          <div className="flex flex-wrap gap-2 items-center mb-2">
-            <span className="text-[10px] font-black text-gray-400 mr-1">絞り込み中:</span>
-            {isRegistrantFiltered && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-50 text-indigo-600 rounded-full text-[10px] font-bold border border-indigo-100">
-                👤 {registrantIds.length === 1 && registrantIds[0] === profile?.id ? '自分のみ' : `投稿者 (${registrantIds.length}人)`}
-                <button
-                  onClick={() => {
-                    updateFilter({
-                      advancedFilters: {
-                        ...filterState.advancedFilters,
-                        registrantUserIds: [],
-                      },
-                    });
-                  }}
-                  className="hover:bg-indigo-200 rounded-full p-0.5 transition-colors"
-                >
-                  <X size={10} />
-                </button>
+        {/* 2. 件数表示 ＆ グラフ／カレンダー切り替え（1行に統合して省スペース化） */}
+        <div className="flex items-center justify-between mb-2.5 px-0.5">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-[12px] font-black text-gray-700">
+              📊 {stats ? `${stats.totalPosts} 件の記録` : '...'}
+            </span>
+            {inputValue && (
+              <span className="text-[10px] text-gray-400 truncate max-w-[120px]">
+                (「{inputValue}」)
               </span>
             )}
-            {isGroupFiltered && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 bg-purple-50 text-purple-600 rounded-full text-[10px] font-bold border border-purple-100">
-                👥 {filterState.activeGroups.length}グループ
-                <button
-                  onClick={() => {
-                    updateFilter({
-                      activeGroups: ['all'],
-                    });
-                  }}
-                  className="hover:bg-purple-200 rounded-full p-0.5 transition-colors"
-                >
-                  <X size={10} />
-                </button>
-              </span>
-            )}
-            {activeTags.map((tag: string) => (
-              <span key={tag} className="inline-flex items-center gap-1 px-2 py-1 bg-orange-50 text-orange-600 rounded-full text-[10px] font-bold border border-orange-100">
-                #{tag}
-                <button onClick={() => removeTagFilter(tag)} className="hover:bg-orange-200 rounded-full p-0.5 transition-colors">
-                  <X size={10} />
-                </button>
-              </span>
-            ))}
-            {filterState.activeTab && filterState.activeTab !== 'all' && (
-              <span className="inline-flex items-center px-2 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-bold border border-blue-100">
-                状態: {filterState.activeTab === 'visited' ? '行った' : '行きたい'}
-              </span>
-            )}
-            {activePref && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-600 rounded-full text-[10px] font-bold border border-green-100">
-                📍 {activePref}
-                <button onClick={() => setActivePref(undefined)} className="hover:bg-green-200 rounded-full p-0.5 transition-colors"><X size={10} /></button>
-              </span>
-            )}
-            {activeRatingLabel && (
-              <span className="inline-flex items-center gap-1 px-2 py-1 bg-yellow-50 text-yellow-600 rounded-full text-[10px] font-bold border border-yellow-100">
-                ⭐ {activeRatingLabel}
-                <button onClick={() => setActiveRatingLabel(undefined)} className="hover:bg-yellow-200 rounded-full p-0.5 transition-colors"><X size={10} /></button>
-              </span>
-            )}
-            <button onClick={clearFilters} className="text-[10px] font-bold text-gray-400 hover:text-gray-600 underline ml-auto">
-              クリア
-            </button>
           </div>
-        )}
+
+          {/* コンパクトなグラフ/カレンダー切り替えピル */}
+          <div className="flex bg-gray-100/90 rounded-xl p-0.5 border border-black/5 shadow-inner">
+            <div className="px-3 py-1 text-[11px] font-black rounded-[9px] bg-white text-gray-900 shadow-xs">
+              グラフ
+            </div>
+            <Link
+              href="/calendar"
+              className="px-3 py-1 text-[11px] font-black rounded-[9px] text-gray-400 hover:text-gray-600 transition-all duration-200"
+            >
+              カレンダー
+            </Link>
+          </div>
+        </div>
         {isLoading && (
           <div className="flex items-center justify-center py-24">
             <Loader2 className="animate-spin text-orange-400" size={32} />

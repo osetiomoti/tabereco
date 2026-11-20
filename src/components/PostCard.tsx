@@ -1141,6 +1141,24 @@ export function FilterChips({
     secondaryChips.push({ key: 'is_hot_spring_mode', label: '♨️ 温泉モード', color: 'bg-teal-50 text-teal-600 border-teal-100' });
   }
 
+  // 8. 都道府県 (pref)
+  if (filters.pref) {
+    secondaryChips.push({
+      key: 'pref',
+      label: `📍 ${filters.pref}`,
+      color: 'bg-orange-50 text-orange-500 border-orange-100',
+    });
+  }
+
+  // 9. 評価ラベル (ratingLabel: ★5, ★4など)
+  if (filters.ratingLabel) {
+    secondaryChips.push({
+      key: 'ratingLabel',
+      label: filters.ratingLabel,
+      color: 'bg-amber-50 text-amber-600 border-amber-100',
+    });
+  }
+
   if (primaryChips.length === 0 && secondaryChips.length === 0) return null;
 
   const renderChip = (chip: any, onRemoveFn: () => void) => (
