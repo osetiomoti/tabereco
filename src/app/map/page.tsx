@@ -36,19 +36,54 @@ const JAPAN_CENTER = { lat: 37.0, lng: 137.5 };
 const JAPAN_ZOOM = 5;
 const PAGE_SIZE = 100;
 
+interface SearchPageCache {
+  filterKey: string;
+  listPosts: Post[];
+  listTotal: number;
+  listPage: number;
+  listHasMore: boolean;
+  scrollY: number;
+  viewMode: 'list' | 'map';
+  mapPosts: Post[];
+  center: { lat: number; lng: number };
+  zoom: number;
+}
+
+let searchPageCache: SearchPageCache | null = null;
+
+function getFilterKey(filterState: any): string {
+  const params = new URLSearchParams();
+  appendFilterSearchParams(params, filterState);
+  return params.toString();
+}
+
 function SearchPageInner() {
   const { appType } = useAppType();
   const { filterState, updateFilter } = useSharedFilter();
   const { activeTab, keyword, searchMode, activeGroups, advancedFilters, activeMapTag, filterMode } = filterState;
   const { memberUsers, joinedGroups } = useGroupMembers();
 
-  // 初期表示は「リスト」
-  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  // 現在のフィルターキー（フィルター条件が変わると変化）
+  const currentFilterKey = useMemo(() => getFilterKey(filterState), [filterState]);
+
+  // 直前のキャッシュが現在のフィルター条件と合致しているか判定
+  const isCacheValid = useMemo(() => {
+    return !!(searchPageCache && searchPageCache.filterKey === currentFilterKey && searchPageCache.listPosts.length > 0);
+  }, [currentFilterKey]);
 
   const searchParams = useSearchParams();
   const queryLat = searchParams.get('lat');
   const queryLng = searchParams.get('lng');
   const queryPostId = searchParams.get('postId');
+
+  // 初期表示（詳細から戻った時はキャッシュのviewModeを維持）
+  const [viewMode, setViewMode] = useState<'list' | 'map'>(() => {
+    if (queryLat && queryLng) return 'map';
+    if (searchPageCache && searchPageCache.filterKey === currentFilterKey) {
+      return searchPageCache.viewMode;
+    }
+    return 'list';
+  });
 
   // URLパラメータ（lat, lng, postId）で遷移してきた場合は自動的にマップを表示
   useEffect(() => {
@@ -61,10 +96,17 @@ function SearchPageInner() {
     if (queryLat && queryLng) {
       return { lat: parseFloat(queryLat), lng: parseFloat(queryLng) };
     }
+    if (searchPageCache && searchPageCache.filterKey === currentFilterKey) {
+      return searchPageCache.center;
+    }
     return JAPAN_CENTER;
   });
   const [zoom, setZoom] = useState<number>(() => {
-    return (queryLat && queryLng) || queryPostId ? 16 : JAPAN_ZOOM;
+    if (queryLat && queryLng || queryPostId) return 16;
+    if (searchPageCache && searchPageCache.filterKey === currentFilterKey) {
+      return searchPageCache.zoom;
+    }
+    return JAPAN_ZOOM;
   });
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   const [tempMarker, setTempMarker] = useState<{ lat: number; lng: number; placeId?: string; name?: string; address?: string } | null>(null);
@@ -101,11 +143,37 @@ function SearchPageInner() {
   // ═══════════════════════════════════════════════════
   // 1. リスト表示データ取得（100件ずつページネーション＆無限スクロール）
   // ═══════════════════════════════════════════════════
-  const [listPosts, setListPosts] = useState<Post[]>([]);
-  const [listTotal, setListTotal] = useState<number>(0);
-  const [listPage, setListPage] = useState<number>(1);
-  const [listHasMore, setListHasMore] = useState<boolean>(true);
-  const [listLoading, setListLoading] = useState<boolean>(true);
+  // 詳細画面から戻った際はキャッシュから即時復元して通信を回避
+  const [listPosts, setListPosts] = useState<Post[]>(() => {
+    if (searchPageCache && searchPageCache.filterKey === currentFilterKey) {
+      return searchPageCache.listPosts;
+    }
+    return [];
+  });
+  const [listTotal, setListTotal] = useState<number>(() => {
+    if (searchPageCache && searchPageCache.filterKey === currentFilterKey) {
+      return searchPageCache.listTotal;
+    }
+    return 0;
+  });
+  const [listPage, setListPage] = useState<number>(() => {
+    if (searchPageCache && searchPageCache.filterKey === currentFilterKey) {
+      return searchPageCache.listPage;
+    }
+    return 1;
+  });
+  const [listHasMore, setListHasMore] = useState<boolean>(() => {
+    if (searchPageCache && searchPageCache.filterKey === currentFilterKey) {
+      return searchPageCache.listHasMore;
+    }
+    return true;
+  });
+  const [listLoading, setListLoading] = useState<boolean>(() => {
+    if (searchPageCache && searchPageCache.filterKey === currentFilterKey && searchPageCache.listPosts.length > 0) {
+      return false;
+    }
+    return true;
+  });
   const [listLoadingMore, setListLoadingMore] = useState<boolean>(false);
 
   const listRequestIdRef = useRef<number>(0);
@@ -175,14 +243,86 @@ function SearchPageInner() {
     }
   }, [filterState, listHasMore, listLoading, listLoadingMore, listPage]);
 
-  // フィルター変更時に初回取得を実行
-  useEffect(() => {
-    fetchInitialList();
-  }, [fetchInitialList]);
+  // 初回マウント時、キャッシュがあれば再フェッチをスキップ。フィルター条件が変わった時のみ再取得。
+  const isFirstMountRef = useRef<boolean>(true);
+  const prevFilterKeyRef = useRef<string>(currentFilterKey);
 
-  // 投稿作成・更新・削除などのイベント通知を受信した際に自動再フェッチ
+  useEffect(() => {
+    if (isFirstMountRef.current) {
+      isFirstMountRef.current = false;
+      if (isCacheValid) {
+        // キャッシュが存在するので初回フェッチをスキップ
+        return;
+      }
+    } else {
+      if (prevFilterKeyRef.current === currentFilterKey) {
+        return;
+      }
+    }
+    prevFilterKeyRef.current = currentFilterKey;
+    fetchInitialList();
+  }, [fetchInitialList, currentFilterKey, isCacheValid]);
+
+  // スクロール位置のリアルタイム追跡＆キャッシュ保持
+  const scrollYRef = useRef<number>(
+    searchPageCache && searchPageCache.filterKey === currentFilterKey
+      ? searchPageCache.scrollY
+      : 0
+  );
+
+  useEffect(() => {
+    const handleScroll = () => {
+      const y = window.scrollY;
+      scrollYRef.current = y;
+      if (searchPageCache) {
+        searchPageCache.scrollY = y;
+      }
+    };
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  // 画面アンマウント時のスクロール位置確定
+  useEffect(() => {
+    return () => {
+      if (searchPageCache) {
+        searchPageCache.scrollY = scrollYRef.current;
+      }
+    };
+  }, []);
+
+  // 詳細から戻った時のスクロール位置復元
+  const restoredScrollRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (restoredScrollRef.current) return;
+    if (!isCacheValid || !searchPageCache || searchPageCache.scrollY <= 0) return;
+
+    restoredScrollRef.current = true;
+    const targetY = searchPageCache.scrollY;
+
+    const restore = () => {
+      window.scrollTo({ top: targetY, behavior: 'instant' });
+    };
+
+    restore();
+    const r1 = requestAnimationFrame(restore);
+    const t1 = setTimeout(restore, 50);
+    const t2 = setTimeout(restore, 150);
+
+    return () => {
+      cancelAnimationFrame(r1);
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+  }, [isCacheValid]);
+
+  // 投稿作成・更新・削除などのイベント通知を受信した際にキャッシュをクリアして再フェッチ
   useEffect(() => {
     const handleUpdate = () => {
+      searchPageCache = null;
       fetchInitialList();
     };
     window.addEventListener('app:post-updated', handleUpdate);
@@ -290,7 +430,12 @@ function SearchPageInner() {
   }, [mapInitialBounds, queryLat, queryLng]);
 
   // マップ用ピンデータ
-  const [mapPosts, setMapPosts] = useState<Post[]>([]);
+  const [mapPosts, setMapPosts] = useState<Post[]>(() => {
+    if (searchPageCache && searchPageCache.filterKey === currentFilterKey && searchPageCache.mapPosts.length > 0) {
+      return searchPageCache.mapPosts;
+    }
+    return [];
+  });
   const [mapLoading, setMapLoading] = useState<boolean>(false);
   const [currentBounds, setCurrentBounds] = useState<MapBounds | null>(null);
   const mapRequestIdRef = useRef<number>(0);
@@ -346,6 +491,22 @@ function SearchPageInner() {
       fetchMapPosts(mapInitialBounds);
     }
   }, [fetchMapPosts, currentBounds, mapInitialBounds]);
+
+  // キャッシュの同期更新（全ステート変更時に即時保持）
+  useEffect(() => {
+    searchPageCache = {
+      filterKey: currentFilterKey,
+      listPosts,
+      listTotal,
+      listPage,
+      listHasMore,
+      scrollY: scrollYRef.current,
+      viewMode,
+      mapPosts,
+      center,
+      zoom,
+    };
+  }, [currentFilterKey, listPosts, listTotal, listPage, listHasMore, viewMode, mapPosts, center, zoom]);
 
   // ═══════════════════════════════════════════════════
   // 3. 店舗単位でのグルーピング（リスト表示用）

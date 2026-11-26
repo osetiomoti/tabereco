@@ -28,6 +28,7 @@ import { FoodRouletteModal } from '@/components/home/FoodRouletteModal';
 import { MemoriesCard } from '@/components/home/MemoriesCard';
 import { NearbyWantToGo } from '@/components/home/NearbyWantToGo';
 import { PrefectureMapWidget } from '@/components/home/PrefectureMapWidget';
+import { FloatingActionButton } from '@/components/FloatingActionButton';
 
 // ─── サブコンポーネント ───────────────────────────────────
 
@@ -500,6 +501,9 @@ export default function HomePage() {
           </section>
         )}
       </main>
+
+      {/* ── 画面右下のフローティングアクションボタン（＋ 記録する） ── */}
+      <FloatingActionButton />
 
       {/* ── 🎲 ルーレットモーダル ── */}
       <FoodRouletteModal
