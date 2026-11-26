@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { Header } from '@/components/Header';
 import { formatDate, getGoogleMapsUrl } from '@/lib/utils';
+import { getImageUrl } from '@/lib/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { User, ChevronDown, MapPin } from 'lucide-react';
@@ -102,12 +103,16 @@ export default async function PostDetailPage({ params }: Props) {
 
       {/* 3. ユーザー情報と評価 */}
       <div className="px-4 py-4 flex items-center justify-between border-b border-gray-100">
-        <div className="flex items-center gap-3">
-          <div className="w-[34px] h-[34px] rounded-full bg-gray-200 flex items-center justify-center text-gray-500">
-            <User size={18} />
+        <Link href={`/mypage?userId=${post.user_id}`} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
+          <div className="w-[34px] h-[34px] rounded-full bg-gray-100 border border-gray-200/60 overflow-hidden flex items-center justify-center text-gray-500">
+            {post.user?.avatar_url ? (
+              <img src={getImageUrl(post.user.avatar_url)} alt={post.user?.name || ''} className="w-full h-full object-cover" />
+            ) : (
+              <User size={18} />
+            )}
           </div>
-          <span className="text-sm text-gray-800">{post.user?.name || 'ゲスト'}</span>
-        </div>
+          <span className="text-sm font-bold text-gray-800">{post.user?.name || 'ユーザー'}</span>
+        </Link>
         {post.status !== 'want_to_go' && post.rating != null && (
           <div className="flex items-center gap-1.5">
             <StarDisplay rating={post.rating} size="md" />

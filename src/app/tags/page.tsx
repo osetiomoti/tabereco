@@ -131,6 +131,7 @@ function SortableTagRow({
 export default function TagsPage() {
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
+  const [successToast, setSuccessToast] = useState<string | null>(null);
   const [newTagName, setNewTagName] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState('');
@@ -172,6 +173,8 @@ export default function TagsPage() {
       const res = await createTag(trimmed);
       setTags(prev => [...prev, res]);
       setNewTagName('');
+      setSuccessToast(`タグ「#${trimmed}」を追加しました`);
+      setTimeout(() => setSuccessToast(null), 3000);
       router.refresh();
     } catch (err) {
       console.error(err);
@@ -295,7 +298,7 @@ export default function TagsPage() {
         <div className="space-y-4">
           <div className="flex items-center justify-between px-2">
             <span className="text-gray-400 text-[11px] font-black tracking-widest uppercase">
-              登録済みタグ ({tags.length}件)
+              登録済みタグ ({loading ? '—' : `${tags.length}件`})
             </span>
             <span className="text-gray-300 text-[10px] font-black tracking-widest uppercase flex items-center gap-1">
               {savingOrder ? (

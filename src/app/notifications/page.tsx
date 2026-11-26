@@ -34,7 +34,7 @@ function getNotificationHref(n: any): string | null {
 
 /** 通知の本文を自然な日本語で返す */
 function getNotificationText(n: any): string {
-  const actor = n.actor?.name || 'ゲスト';
+  const actor = n.actor?.name || 'ユーザー';
   switch (n.type) {
     case 'like':
       return `${actor}さんがあなたの投稿にいいねしました`;

@@ -7,6 +7,7 @@ import { Pencil, Camera, Tag, LogOut, ChevronRight, User, Check, X, Loader2, Use
 import Image from 'next/image';
 import { Header } from '@/components/Header';
 import { useUpload } from '@/hooks/useUpload';
+import { useMyProfile } from '@/hooks/useAppData';
 import { PushNotificationToggle } from '@/components/PushNotificationToggle';
 import { mutate } from 'swr';
 import { getImageUrl } from '@/lib/image';
@@ -16,21 +17,18 @@ export default function SettingsPage() {
   const { uploadFile, isUploading } = useUpload();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const { profile, isLoading: isProfileLoading, mutate: mutateProfile } = useMyProfile();
   const [user, setUser] = useState<any | null>(null);
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    fetch('/api/profiles/me')
-      .then(res => res.json())
-      .then(json => {
-        if (json.success) {
-          setUser(json.data);
-          setNameInput(json.data.name || '');
-        }
-      });
-  }, []);
+    if (profile) {
+      setUser(profile);
+      setNameInput(profile.name || '');
+    }
+  }, [profile]);
 
   const handleSignOut = () => {
     localStorage.removeItem('tabereco_rt');
@@ -91,6 +89,8 @@ export default function SettingsPage() {
                   <div className="w-full h-full flex items-center justify-center bg-gray-100">
                     <Loader2 size={24} className="text-orange-500 animate-spin" />
                   </div>
+                ) : isProfileLoading && !user ? (
+                  <div className="w-full h-full bg-gray-200 animate-pulse" />
                 ) : user?.avatar_url ? (
                   <Image src={getImageUrl(user.avatar_url)} alt="Profile" fill className="object-cover" unoptimized />
                 ) : (
@@ -143,7 +143,13 @@ export default function SettingsPage() {
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <h2 className="text-xl font-black text-gray-900 truncate">{user?.name || 'ゲスト'}</h2>
+                  <h2 className="text-xl font-black text-gray-900 truncate">
+                    {isProfileLoading && !user ? (
+                      <span className="inline-block w-28 h-6 bg-gray-200 rounded-lg animate-pulse align-middle" />
+                    ) : (
+                      user?.name || 'ゲスト'
+                    )}
+                  </h2>
                   <button
                     onClick={() => setEditingName(true)}
                     className="p-1.5 text-gray-300 hover:text-orange-500 hover:bg-orange-50 rounded-lg transition-colors"

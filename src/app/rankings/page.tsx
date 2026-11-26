@@ -665,9 +665,25 @@ export default function RankingsPage() {
         /* ── ランキング表示画面 ── */
         <>
           {rankingLoading ? (
-            <div className="px-4 py-8 flex flex-col items-center gap-3">
-              <Loader2 size={32} className="animate-spin text-gray-300" />
-              <p className="text-gray-400 text-sm font-bold">読み込み中...</p>
+            <div className="space-y-4">
+              <div className="mx-4 mt-4 h-12 bg-amber-50/60 border border-amber-100/60 rounded-2xl animate-pulse" />
+              <div className="flex gap-3 overflow-x-hidden px-4 pb-4 pt-2">
+                {[1, 2].map(i => (
+                  <div key={i} className="w-[300px] shrink-0 bg-white rounded-3xl p-5 border border-gray-100 shadow-sm space-y-4 animate-pulse">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-full bg-gray-200" />
+                      <div className="space-y-1.5 flex-1">
+                        <div className="w-20 h-4 bg-gray-200 rounded" />
+                        <div className="w-12 h-3 bg-gray-100 rounded" />
+                      </div>
+                    </div>
+                    <div className="space-y-2 pt-2">
+                      <div className="h-20 bg-gray-100 rounded-2xl" />
+                      <div className="h-20 bg-gray-100 rounded-2xl" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : filteredUsers.length === 0 ? (
             <div className="px-4 py-16 text-center">

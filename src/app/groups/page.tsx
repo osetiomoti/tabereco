@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { Header } from '@/components/Header';
+import { useMyProfile } from '@/hooks/useAppData';
 import { getJoinedGroups, createGroup, joinGroup } from '@/lib/api/groups';
 import { getFriends, addFriend, removeFriend, searchUsers } from '@/lib/api/friends';
 import {
@@ -147,7 +148,9 @@ export default function FriendsPage() {
     if (tabParam === 'groups') setTab('groups');
   }, []);
 
+  const { profile } = useMyProfile();
   const [myId, setMyId] = useState('');
+  const effectiveMyId = profile?.id || myId;
   const [friends, setFriends] = useState<Friend[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
   const [pendingRequests, setPendingRequests] = useState<any[]>([]);
@@ -365,7 +368,7 @@ export default function FriendsPage() {
               <p className="text-[11px] font-black text-orange-400 tracking-widest mb-2">あなたのID</p>
               <div className="flex items-center gap-2">
                 <p className="flex-1 min-w-0 font-mono text-[11px] text-gray-600 font-bold truncate bg-white/70 px-3 py-2 rounded-xl border border-orange-100">
-                  {myId || '読み込み中...'}
+                  {effectiveMyId || <span className="inline-block w-48 h-3.5 bg-gray-200 rounded animate-pulse align-middle" />}
                 </p>
                 <button
                   onClick={copyMyId}
@@ -465,7 +468,7 @@ export default function FriendsPage() {
 
             {/* ともだち一覧 */}
             <div>
-              <h2 className="text-[11px] font-black text-gray-400 tracking-widest ml-1 mb-3">ともだち（{friends.length}人）</h2>
+              <h2 className="text-[11px] font-black text-gray-400 tracking-widest ml-1 mb-3">ともだち（{loading ? '—' : `${friends.length}人`}）</h2>
               {loading ? (
                 <div className="space-y-3">
                   {[1,2,3].map(i => <div key={i} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />)}

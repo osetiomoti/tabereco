@@ -136,7 +136,7 @@ export default function MyPage() {
     () => getPosts({ is_mine: true })
   );
 
-  const { data: friendsData } = useSWR<any[]>(
+  const { data: friendsData, isLoading: friendsLoading } = useSWR<any[]>(
     !targetUserId ? '/api/friends' : null,
     () => import('@/lib/api/friends').then(m => m.getFriends())
   );
@@ -163,6 +163,7 @@ export default function MyPage() {
   const posts: Post[] = targetUserId ? (targetUserData?.data?.posts || []) : (ownPostsData || []);
   const loading = targetUserId ? !targetUserData : ownPostsLoading;
   const friendsCount = targetUserId ? (targetUserData?.data?.friendsCount || 0) : (friendsData?.length || 0);
+  const friendsLoadingEffective = targetUserId ? loading : friendsLoading;
 
   // Stats from API
   const avgRating = targetUserId
@@ -545,7 +546,9 @@ export default function MyPage() {
           {/* 平均評価 */}
           <Link href={ratingsHref} className="flex flex-col items-center justify-end h-[42px] group relative -top-1">
             <div className="flex flex-col items-center flex-1 justify-end">
-              {avgRating !== null ? (
+              {loading ? (
+                <span className="text-[17px] font-black text-gray-300 leading-none">—</span>
+              ) : avgRating !== null ? (
                 <>
                   <span className="text-[17px] font-black text-orange-500 leading-none">
                     {avgRating.toFixed(1)}
@@ -564,7 +567,11 @@ export default function MyPage() {
           {/* 投稿 */}
           <div className="flex flex-col items-center justify-end h-[42px] relative -top-1">
             <div className="flex-1 flex flex-col justify-end items-center">
-              <span className="text-[17px] font-black text-gray-900 leading-none">{totalPostCount}</span>
+              {loading ? (
+                <span className="text-[17px] font-black text-gray-300 leading-none">—</span>
+              ) : (
+                <span className="text-[17px] font-black text-gray-900 leading-none">{totalPostCount}</span>
+              )}
             </div>
             <span className="text-[10px] text-gray-400 font-black mt-1.5 h-[12px] flex items-center">投稿</span>
           </div>
@@ -573,14 +580,22 @@ export default function MyPage() {
           {!targetUserId ? (
             <Link href="/groups" className="hover:scale-105 transition-transform h-[42px] flex flex-col items-center justify-end relative -top-1">
               <div className="flex-1 flex flex-col justify-end items-center">
-                <span className="text-[17px] font-black text-gray-900 leading-none">{friendsCount}</span>
+                {friendsLoadingEffective ? (
+                  <span className="text-[17px] font-black text-gray-300 leading-none">—</span>
+                ) : (
+                  <span className="text-[17px] font-black text-gray-900 leading-none">{friendsCount}</span>
+                )}
               </div>
               <span className="text-[10px] text-gray-400 font-black mt-1.5 h-[12px] flex items-center">ともだち</span>
             </Link>
           ) : (
             <div className="flex flex-col items-center justify-end h-[42px] relative -top-1">
               <div className="flex-1 flex flex-col justify-end items-center">
-                <span className="text-[17px] font-black text-gray-900 leading-none">{friendsCount}</span>
+                {friendsLoadingEffective ? (
+                  <span className="text-[17px] font-black text-gray-300 leading-none">—</span>
+                ) : (
+                  <span className="text-[17px] font-black text-gray-900 leading-none">{friendsCount}</span>
+                )}
               </div>
               <span className="text-[10px] text-gray-400 font-black mt-1.5 h-[12px] flex items-center">ともだち</span>
             </div>
@@ -591,7 +606,11 @@ export default function MyPage() {
             <div className="flex-1 flex flex-col justify-end items-center">
               <div className="flex items-center gap-1">
                 <ThumbsUp size={14} className="text-pink-400 fill-pink-400" />
-                <span className="text-[17px] font-black text-gray-900 leading-none">{totalLikesReceived}</span>
+                {loading ? (
+                  <span className="text-[17px] font-black text-gray-300 leading-none">—</span>
+                ) : (
+                  <span className="text-[17px] font-black text-gray-900 leading-none">{totalLikesReceived}</span>
+                )}
               </div>
             </div>
             <span className="text-[10px] text-gray-400 font-black mt-1.5 whitespace-nowrap -ml-1 -mr-1 text-center scale-90 h-[12px] flex items-center">もらったいいね</span>

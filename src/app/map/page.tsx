@@ -446,9 +446,19 @@ function SearchPageInner() {
     return [];
   });
   const [mapLoading, setMapLoading] = useState<boolean>(false);
+  const [hasMapLoadedOnce, setHasMapLoadedOnce] = useState<boolean>(() => {
+    return Boolean(searchPageCache && searchPageCache.filterKey === currentFilterKey && searchPageCache.mapPosts.length > 0);
+  });
   const [currentBounds, setCurrentBounds] = useState<MapBounds | null>(null);
   const mapRequestIdRef = useRef<number>(0);
   const mapDebounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // フィルター変更時はピン取得状態をリセット
+  useEffect(() => {
+    if (!(searchPageCache && searchPageCache.filterKey === currentFilterKey && searchPageCache.mapPosts.length > 0)) {
+      setHasMapLoadedOnce(false);
+    }
+  }, [currentFilterKey]);
 
   // マップデータ取得関数（表示範囲Boundsに基づく軽量ピン取得）
   const fetchMapPosts = useCallback(
@@ -474,6 +484,7 @@ function SearchPageInner() {
       } finally {
         if (reqId === mapRequestIdRef.current) {
           setMapLoading(false);
+          setHasMapLoadedOnce(true);
         }
       }
     },
@@ -786,11 +797,19 @@ function SearchPageInner() {
         <div className="flex items-center justify-between mb-2.5 px-0.5">
           <div className="flex items-baseline gap-1.5">
             <span className="text-[12px] font-black text-gray-700">
-              {listLoading
-                ? <span className="inline-block w-10 h-3 bg-gray-200 rounded animate-pulse align-middle" />
-                : viewMode === 'list'
-                  ? `📍 ${storeGroups.length} 店舗`
-                  : `📍 ${mapPosts.filter((p: Post) => p.latitude && p.longitude).length} 件のピン`}
+              {viewMode === 'list' ? (
+                listLoading ? (
+                  <span className="inline-block w-10 h-3 bg-gray-200 rounded animate-pulse align-middle" />
+                ) : (
+                  `📍 ${storeGroups.length} 店舗`
+                )
+              ) : (
+                mapLoading || !hasMapLoadedOnce ? (
+                  <span className="inline-block w-16 h-3 bg-gray-200 rounded animate-pulse align-middle" />
+                ) : (
+                  `📍 ${mapPosts.filter((p: Post) => p.latitude && p.longitude).length} 件のピン`
+                )
+              )}
             </span>
             {!listLoading && viewMode === 'list' && listTotal > 0 && storeGroups.length < listTotal && (
               <span className="text-[10px] font-medium text-gray-400">
@@ -884,12 +903,17 @@ function SearchPageInner() {
           </div>
         ) : (
           <div className="w-full h-[calc(100dvh-200px)] min-h-[420px] rounded-2xl overflow-hidden border border-gray-100 relative shadow-sm">
-            {mapLoading && (
+            {(!hasMapLoadedOnce && mapLoading) ? (
+              <div className="absolute inset-0 z-[160] bg-white/70 backdrop-blur-xs flex flex-col items-center justify-center gap-2 pointer-events-none">
+                <Loader2 size={24} className="animate-spin text-orange-500" />
+                <span className="text-xs font-bold text-gray-600">マップのピンを読み込み中...</span>
+              </div>
+            ) : mapLoading ? (
               <div className="absolute top-3 left-3 z-[160] bg-white/90 backdrop-blur-sm px-2.5 py-1 rounded-full shadow-sm border border-gray-200/60 flex items-center gap-1.5 pointer-events-none">
                 <Loader2 size={12} className="animate-spin text-orange-500" />
                 <span className="text-[10px] font-bold text-gray-600">店舗を更新中...</span>
               </div>
-            )}
+            ) : null}
             <MapView
               posts={mapPosts}
               center={center}

@@ -32,7 +32,7 @@ import { FloatingActionButton } from '@/components/FloatingActionButton';
 
 // ─── サブコンポーネント ───────────────────────────────────
 
-function StatPill({ href, value, label, icon, color }: { href: string; value: number; label: string; icon: React.ReactNode; color: string }) {
+function StatPill({ href, value, label, icon, color, isLoading }: { href: string; value: number; label: string; icon: React.ReactNode; color: string; isLoading?: boolean }) {
   return (
     <Link
       href={href}
@@ -42,7 +42,13 @@ function StatPill({ href, value, label, icon, color }: { href: string; value: nu
         {icon}
       </div>
       <div>
-        <div className="text-[17px] font-black text-white leading-none">{value}</div>
+        <div className="text-[17px] font-black text-white leading-none">
+          {isLoading ? (
+            <span className="inline-block w-6 h-4 bg-white/30 rounded animate-pulse align-middle" />
+          ) : (
+            value
+          )}
+        </div>
         <div className="text-[10px] font-bold text-white/80 mt-0.5">{label}</div>
       </div>
     </Link>
@@ -202,7 +208,9 @@ export default function HomePage() {
               className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm border-2 border-white/40 flex items-center justify-center shadow-lg shrink-0 cursor-pointer active:scale-95 transition-transform"
               onClick={() => router.push('/mypage')}
             >
-              {profile?.avatar_url ? (
+              {profileLoading ? (
+                <div className="w-full h-full bg-white/20 animate-pulse" />
+              ) : profile?.avatar_url ? (
                 <img src={getImageUrl(profile.avatar_url)} alt={userName} className="w-full h-full rounded-2xl object-cover" />
               ) : (
                 <span className="text-white font-black text-2xl">{userName[0]?.toUpperCase() || '?'}</span>
@@ -211,7 +219,11 @@ export default function HomePage() {
             <div>
               <p className="text-white/80 text-[12px] font-bold mb-0.5">{greetingEmoji} {greeting}</p>
               <h1 className="text-white font-black text-[22px] leading-tight">
-                {userName}<span className="text-white/80 font-bold text-[16px]">さん！</span>
+                {profileLoading ? (
+                  <span className="inline-block w-28 h-6 bg-white/30 rounded-lg animate-pulse align-middle" />
+                ) : (
+                  <>{userName}<span className="text-white/80 font-bold text-[16px]">さん！</span></>
+                )}
               </h1>
             </div>
           </div>
@@ -224,6 +236,7 @@ export default function HomePage() {
               label={appType === 'tabereco' ? '訪問した店' : '行った場所'}
               icon={<Utensils size={16} className="text-white" />}
               color="bg-white/20"
+              isLoading={postsLoading}
             />
             <StatPill
               href="/mypage?tab=want_to_go"
@@ -231,6 +244,7 @@ export default function HomePage() {
               label="行きたい"
               icon={<Bookmark size={16} className="text-white" />}
               color="bg-white/20"
+              isLoading={postsLoading}
             />
             <StatPill
               href="/map"
@@ -238,6 +252,7 @@ export default function HomePage() {
               label="みんなの投稿"
               icon={<Camera size={16} className="text-white" />}
               color="bg-white/20"
+              isLoading={postsLoading || activitiesLoading}
             />
           </div>
         </div>
@@ -354,9 +369,11 @@ export default function HomePage() {
                       <h3 className="text-[22px] font-black text-white leading-tight mb-1 drop-shadow-lg line-clamp-2">
                         {currentRanking.post.store_name || currentRanking.post.title}
                       </h3>
-                      <p className="text-[11px] text-white/70 font-bold">
-                        by {currentRanking.post.user?.name || 'ゲスト'}
-                      </p>
+                      {currentRanking.post.user?.name && (
+                        <p className="text-[11px] text-white/70 font-bold">
+                          by {currentRanking.post.user.name}
+                        </p>
+                      )}
                     </div>
                   </div>
 

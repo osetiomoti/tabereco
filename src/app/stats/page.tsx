@@ -778,8 +778,35 @@ function StatsPageInner() {
           </div>
         </div>
         {isLoading && (
-          <div className="flex items-center justify-center py-24">
-            <Loader2 className="animate-spin text-orange-400" size={32} />
+          <div className="space-y-4">
+            {/* ローディングステータス通知 */}
+            <div className="flex items-center justify-center gap-2 py-2 text-xs font-bold text-orange-500">
+              <Loader2 className="animate-spin text-orange-500" size={16} />
+              <span>統計データを集計中...</span>
+            </div>
+
+            {/* TOTAL サマリーカードのスケルトン */}
+            <div className="bg-gradient-to-br from-orange-50/50 to-amber-50/50 rounded-3xl p-5 border border-orange-100/60 animate-pulse">
+              <div className="w-14 h-3 bg-orange-200/50 rounded mb-3" />
+              <div className="w-24 h-9 bg-orange-200/60 rounded-xl mb-2" />
+              <div className="w-44 h-3 bg-orange-100/70 rounded" />
+            </div>
+
+            {/* ① ジャンル割合 スケルトン */}
+            <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-[0_2px_12px_rgba(0,0,0,0.03)] space-y-4 animate-pulse">
+              <div className="w-32 h-4 bg-gray-200 rounded" />
+              <div className="w-44 h-44 mx-auto bg-gray-100 rounded-full flex items-center justify-center border-8 border-gray-50" />
+              <div className="grid grid-cols-2 gap-2 pt-2">
+                <div className="h-4 bg-gray-100 rounded" />
+                <div className="h-4 bg-gray-100 rounded" />
+              </div>
+            </div>
+
+            {/* ② 価格帯 スケルトン */}
+            <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-[0_2px_12px_rgba(0,0,0,0.03)] space-y-4 animate-pulse">
+              <div className="w-24 h-4 bg-gray-200 rounded" />
+              <div className="h-32 bg-gray-100 rounded-2xl" />
+            </div>
           </div>
         )}
 
@@ -899,8 +926,19 @@ function StatsPageInner() {
 export default function StatsPage() {
   return (
     <Suspense fallback={
-      <div className="bg-[#fcfcfc] min-h-[100dvh] flex items-center justify-center">
-        <Loader2 className="animate-spin text-orange-400" size={32} />
+      <div className="bg-[#fcfcfc] min-h-[100dvh]">
+        <Header />
+        <main className="max-w-2xl mx-auto px-4 pt-4 pb-28 space-y-4">
+          <div className="bg-gradient-to-br from-orange-50/50 to-amber-50/50 rounded-3xl p-5 border border-orange-100/60 animate-pulse">
+            <div className="w-14 h-3 bg-orange-200/50 rounded mb-3" />
+            <div className="w-24 h-9 bg-orange-200/60 rounded-xl mb-2" />
+            <div className="w-44 h-3 bg-orange-100/70 rounded" />
+          </div>
+          <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-[0_2px_12px_rgba(0,0,0,0.03)] space-y-4 animate-pulse">
+            <div className="w-32 h-4 bg-gray-200 rounded" />
+            <div className="w-44 h-44 mx-auto bg-gray-100 rounded-full" />
+          </div>
+        </main>
       </div>
     }>
       <StatsPageInner />
