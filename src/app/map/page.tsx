@@ -59,9 +59,9 @@ function getFilterKey(filterState: any): string {
 
 function SearchPageInner() {
   const { appType } = useAppType();
-  const { filterState, updateFilter } = useSharedFilter();
+  const { filterState, updateFilter, isLoaded: isFilterLoaded } = useSharedFilter();
   const { activeTab, keyword, searchMode, activeGroups, advancedFilters, activeMapTag, filterMode } = filterState;
-  const { memberUsers, joinedGroups } = useGroupMembers();
+  const { memberUsers, joinedGroups, isLoading: isGroupsLoading } = useGroupMembers();
 
   // 現在のフィルターキー（フィルター条件が変わると変化）
   const currentFilterKey = useMemo(() => getFilterKey(filterState), [filterState]);
@@ -130,7 +130,16 @@ function SearchPageInner() {
 
   const handleClearKeyword = () => {
     setLocalKeyword('');
-    updateFilter({ keyword: '' });
+    // キーワード・チップ（グループ・タグ等）・フィルター条件をすべてリセットして全件表示に戻す
+    updateFilter({
+      keyword: '',
+      activeTab: 'all',
+      activeGroups: ['all'],
+      advancedFilters: null,
+      activeMapTag: null,
+      filterMode: 'group',
+    });
+    searchPageCache = null;
   };
 
   useEffect(() => {
@@ -769,6 +778,7 @@ function SearchPageInner() {
             onRemove={removeFilter}
             users={memberUsers}
             groups={joinedGroups}
+            isLoading={!isFilterLoaded || isGroupsLoading}
           />
         </div>
 
@@ -776,13 +786,15 @@ function SearchPageInner() {
         <div className="flex items-center justify-between mb-2.5 px-0.5">
           <div className="flex items-baseline gap-1.5">
             <span className="text-[12px] font-black text-gray-700">
-              {viewMode === 'list'
-                ? `📍 ${storeGroups.length} 店舗`
-                : `📍 ${mapPosts.filter((p: Post) => p.latitude && p.longitude).length} 件のピン`}
+              {listLoading
+                ? <span className="inline-block w-10 h-3 bg-gray-200 rounded animate-pulse align-middle" />
+                : viewMode === 'list'
+                  ? `📍 ${storeGroups.length} 店舗`
+                  : `📍 ${mapPosts.filter((p: Post) => p.latitude && p.longitude).length} 件のピン`}
             </span>
-            {viewMode === 'list' && listTotal > 0 && storeGroups.length < listTotal && (
+            {!listLoading && viewMode === 'list' && listTotal > 0 && storeGroups.length < listTotal && (
               <span className="text-[10px] font-medium text-gray-400">
-                / 全 {listTotal} 件
+                / 全 {listTotal} 件の記録
               </span>
             )}
             {localKeyword && (

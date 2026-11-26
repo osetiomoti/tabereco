@@ -975,14 +975,25 @@ export function FilterChips({
   onRemove, 
   users, 
   groups,
+  isLoading,
   className 
 }: { 
   filters?: any, 
   onRemove: (key: string | string[] | Record<string, any>) => void,
   users?: Array<{ id: string, name: string }>,
   groups?: Array<{ id: string, name: string }>,
+  isLoading?: boolean,
   className?: string 
 }) {
+  if (isLoading) {
+    return (
+      <div className={`flex items-center gap-1.5 overflow-x-auto py-1 no-scrollbar ${className || ''}`}>
+        <div className="h-6 w-24 bg-indigo-50/60 rounded-full animate-pulse shrink-0 border border-indigo-100/50" />
+        <div className="h-6 w-16 bg-gray-100 rounded-full animate-pulse shrink-0" />
+      </div>
+    );
+  }
+
   if (!filters) return null;
 
   const primaryChips: Array<{ key: string, label: string, color: string, isRegistrant?: boolean, userId?: string, isGroup?: boolean, groupId?: string }> = [];

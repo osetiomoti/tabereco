@@ -189,9 +189,20 @@ export function RatingAndActions({ postId, post, isOwner, ownerRating, ownerVisi
     }
   };
 
-  const allRatings = visUsers.filter(u => u.rating != null).map(u => u.rating as number);
-  if (ownerRating != null && ownerRating > 0) allRatings.push(ownerRating);
-  const avgRating = allRatings.length > 0 ? allRatings.reduce((a, b) => a + b, 0) / allRatings.length : null;
+  // 評価集計: ユーザー単位で重複を除去（投稿者 + 他の訪問者）
+  const ratedVisitors = visUsers.filter(u => u.rating != null);
+  const authorInVisitors = ratedVisitors.find(u => u.isAuthor || u.id === post?.user_id);
+  const effectiveOwnerRating = authorInVisitors?.rating ?? (ownerRating != null && ownerRating > 0 ? ownerRating : null);
+  const otherRatings = ratedVisitors
+    .filter(u => !u.isAuthor && u.id !== post?.user_id)
+    .map(u => u.rating as number);
+
+  const allRatings = effectiveOwnerRating != null 
+    ? [effectiveOwnerRating, ...otherRatings] 
+    : otherRatings;
+  const avgRating = allRatings.length > 0 
+    ? Math.round((allRatings.reduce((a, b) => a + b, 0) / allRatings.length) * 10) / 10 
+    : null;
 
   const ratingChanged = pendingRating !== myRating;
 
@@ -384,17 +395,17 @@ export function RatingAndActions({ postId, post, isOwner, ownerRating, ownerVisi
               <p className="text-[11px] font-bold text-gray-500 mb-3">評価の詳細</p>
               <div className="space-y-3">
                 {/* Owner Rating */}
-                {ownerRating != null && ownerRating > 0 && (
+                {effectiveOwnerRating != null && effectiveOwnerRating > 0 && (
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-[12px] font-bold text-gray-700">
                       <span className="w-5 h-5 rounded-full bg-orange-100 flex items-center justify-center text-[10px] text-orange-600">主</span>
-                      投稿者
+                      投稿者 {post?.user?.name ? `(${post.user.name})` : ''}
                     </div>
-                    <StarDisplay rating={ownerRating} size="xs" />
+                    <StarDisplay rating={effectiveOwnerRating} size="xs" />
                   </div>
                 )}
-                {/* Visited Users Ratings */}
-                {visUsers.filter(u => u.rating != null).map(u => (
+                {/* Visited Users Ratings (excluding post author to prevent duplicate) */}
+                {visUsers.filter(u => u.rating != null && !u.isAuthor && u.id !== post?.user_id).map(u => (
                   <div key={u.id} className="flex items-center justify-between">
                     <div className="flex items-center gap-2 text-[12px] font-bold text-gray-700">
                       <div className="w-5 h-5 rounded-full bg-gray-200 overflow-hidden flex items-center justify-center">

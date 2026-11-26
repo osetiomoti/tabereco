@@ -6,8 +6,9 @@ import { getJoinedGroups } from '@/lib/api/groups';
 
 export function useGroupMembers() {
   const [memberUsers, setMemberUsers] = useState<{ id: string; name: string }[]>([]);
+  const [membersLoading, setMembersLoading] = useState(true);
 
-  const { data: groupsData } = useSWR<any[]>('/api/groups', () => getJoinedGroups(), {
+  const { data: groupsData, isLoading: groupsLoading } = useSWR<any[]>('/api/groups', () => getJoinedGroups(), {
     revalidateOnFocus: false,
     dedupingInterval: 30000,
   });
@@ -15,7 +16,9 @@ export function useGroupMembers() {
   const joinedGroups = groupsData || [];
 
   useEffect(() => {
+    if (groupsLoading) return;
     if (joinedGroups.length > 0) {
+      setMembersLoading(true);
       const loadAllMembers = async () => {
         const map = new Map<string, { id: string; name: string }>();
         try {
@@ -43,11 +46,14 @@ export function useGroupMembers() {
           })
         );
         setMemberUsers(Array.from(map.values()));
+        setMembersLoading(false);
       };
       loadAllMembers();
+    } else {
+      setMembersLoading(false);
     }
-  }, [joinedGroups]);
+  }, [joinedGroups, groupsLoading]);
 
-  return { memberUsers, joinedGroups };
+  return { memberUsers, joinedGroups, isLoading: groupsLoading || membersLoading };
 }
 

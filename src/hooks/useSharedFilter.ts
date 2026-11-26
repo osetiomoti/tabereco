@@ -42,7 +42,21 @@ export function useSharedFilter() {
   const storageKey = getStorageKey(appType);
   const eventKey = getEventKey(appType);
 
-  const [filterState, setFilterState] = useState<SharedFilterState>(defaultState);
+  const [filterState, setFilterState] = useState<SharedFilterState>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(storageKey);
+        if (stored) return JSON.parse(stored);
+        if (appType === 'tabereco') {
+          const legacy = localStorage.getItem('tabereco_shared_filter_v2');
+          if (legacy) return JSON.parse(legacy);
+        }
+      } catch (e) {}
+    }
+    return defaultState;
+  });
+
+  const [isLoaded, setIsLoaded] = useState(false);
 
   useEffect(() => {
     // 初回ロードまたは appType 切り替え時
@@ -62,12 +76,14 @@ export function useSharedFilter() {
             const parsed = JSON.parse(legacy);
             localStorage.setItem(storageKey, legacy);
             setFilterState(parsed);
+            setIsLoaded(true);
             return;
           } catch (e) {}
         }
       }
       setFilterState(defaultState);
     }
+    setIsLoaded(true);
 
     // イベントリスナー
     const handleUpdate = () => {
@@ -100,6 +116,6 @@ export function useSharedFilter() {
     });
   }, [storageKey, eventKey]);
 
-  return { filterState, updateFilter };
+  return { filterState, updateFilter, isLoaded };
 }
 

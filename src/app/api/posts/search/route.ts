@@ -62,10 +62,11 @@ export async function GET(request: NextRequest) {
 
       // レコード整形
       const items = posts.map((post: any) => {
-        // 平均評価
-        const allRatings = post.visiteds
-          .filter((v: any) => v.rating != null)
+        // 平均評価（投稿者本人の評価重複を除外）
+        const visitedRatings = post.visiteds
+          .filter((v: any) => v.rating != null && v.user_id !== post.user_id)
           .map((v: any) => v.rating);
+        const allRatings = [...visitedRatings];
         if (post.rating != null && post.rating > 0) allRatings.push(post.rating);
         const rawAvg =
           allRatings.length > 0

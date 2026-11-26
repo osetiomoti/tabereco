@@ -5,12 +5,59 @@ import useSWR from 'swr';
 import { Header } from '@/components/Header';
 import { BottomNav } from '@/components/BottomNav';
 import Link from 'next/link';
-import { Heart, MessageCircle, BookmarkCheck, Bookmark, Bell, X, Settings } from 'lucide-react';
+import { Heart, MessageCircle, BookmarkCheck, Bookmark, Bell, X, Settings, Users } from 'lucide-react';
 import { useUnreadNotifications } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
 const fetcher = (url: string) => fetch(url).then(res => res.json());
+
+/** 通知タイプに応じた遷移先URLを返す。遷移先がない場合は null */
+function getNotificationHref(n: any): string | null {
+  switch (n.type) {
+    case 'like':
+    case 'comment':
+    case 'visited':
+    case 'want_to_go':
+    case 'new_post':
+      return n.post_id ? `/posts/${n.post_id}` : null;
+    case 'friend_request':
+      return '/friends';
+    case 'friend_accepted':
+      return '/friends';
+    case 'group_invite':
+      return '/groups';
+    default:
+      return n.post_id ? `/posts/${n.post_id}` : null;
+  }
+}
+
+/** 通知の本文を自然な日本語で返す */
+function getNotificationText(n: any): string {
+  const actor = n.actor?.name || 'ゲスト';
+  switch (n.type) {
+    case 'like':
+      return `${actor}さんがあなたの投稿にいいねしました`;
+    case 'comment':
+      return `${actor}さんがあなたの投稿にコメントしました`;
+    case 'visited':
+      return n.message
+        ? `${actor}さんが${n.message}`
+        : `${actor}さんがあなたの投稿を「行った」に追加しました`;
+    case 'want_to_go':
+      return `${actor}さんがあなたの投稿を「行きたい」に追加しました`;
+    case 'new_post':
+      return `${actor}さんが新しい投稿をしました`;
+    case 'friend_request':
+      return `${actor}さんからともだちリクエストが届きました`;
+    case 'friend_accepted':
+      return `${actor}さんへのともだちリクエストが承認されました`;
+    case 'group_invite':
+      return n.message || `${actor}さんがグループに招待しました`;
+    default:
+      return n.message ? `${actor}さんが${n.message}` : `${actor}さんから通知があります`;
+  }
+}
 
 export default function NotificationsPage() {
   const { data, error, isLoading, mutate } = useSWR('/api/notifications', fetcher);
@@ -44,6 +91,8 @@ export default function NotificationsPage() {
       case 'visited': return <BookmarkCheck size={20} className="text-orange-500" />;
       case 'want_to_go': return <Bookmark size={20} className="text-orange-400" />;
       case 'new_post': return <Bell size={20} className="text-yellow-500" />;
+      case 'friend_request':
+      case 'friend_accepted': return <Users size={20} className="text-green-500" />;
       default: return <Bell size={20} className="text-gray-400" />;
     }
   };
@@ -97,15 +146,14 @@ export default function NotificationsPage() {
         )}
 
         <div className="divide-y divide-gray-100">
-          {notifications.map((n: any) => (
-            <Link key={n.id} href={`/posts/${n.post_id}`} className={`block p-4 transition-colors hover:bg-gray-50 ${!n.is_read ? 'bg-orange-50/30' : ''}`}>
+          {notifications.map((n: any) => {
+            const href = getNotificationHref(n);
+            const text = getNotificationText(n);
+            const inner = (
               <div className="flex gap-4">
                 <div className="shrink-0 mt-1">{getIcon(n.type)}</div>
                 <div className="flex-1">
-                  <p className="text-[13px] text-gray-800 font-medium">
-                    <span className="font-black mr-1">{n.actor?.name || 'ゲスト'}</span>
-                    さんが{n.message}
-                  </p>
+                  <p className="text-[13px] text-gray-800 font-medium">{text}</p>
                   {n.post?.title && (
                     <p className="text-[11px] text-gray-500 mt-1 line-clamp-1 bg-gray-50 p-1.5 rounded border border-gray-100">
                       {n.post.store_name ? `📍${n.post.store_name} ` : ''}{n.post.title}
@@ -116,8 +164,22 @@ export default function NotificationsPage() {
                   </p>
                 </div>
               </div>
-            </Link>
-          ))}
+            );
+
+            if (href) {
+              return (
+                <Link key={n.id} href={href} className={`block p-4 transition-colors hover:bg-gray-50 active:bg-orange-50/50 ${!n.is_read ? 'bg-orange-50/30' : ''}`}>
+                  {inner}
+                </Link>
+              );
+            }
+            // 遷移先がない通知はタップ不可に見せる
+            return (
+              <div key={n.id} className={`p-4 ${!n.is_read ? 'bg-orange-50/30' : ''}`}>
+                {inner}
+              </div>
+            );
+          })}
         </div>
       </div>
       

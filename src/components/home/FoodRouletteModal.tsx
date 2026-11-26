@@ -34,10 +34,12 @@ export function FoodRouletteModal({ isOpen, onClose, posts }: Props) {
     let list = [...posts];
 
     // Status filter
+    // _isMarkedVisited / _isMarkedWantToGo は「他人の投稿にマーク済み」を示すフラグ
+    // status は投稿者本人の登録ステータスのため、両方を考慮する必要がある
     if (statusTab === 'want_to_go') {
-      list = list.filter(p => p.status === 'want_to_go');
+      list = list.filter(p => p.status === 'want_to_go' || (p as any)._isMarkedWantToGo);
     } else if (statusTab === 'visited') {
-      list = list.filter(p => p.status === 'visited');
+      list = list.filter(p => p.status === 'visited' || (p as any)._isMarkedVisited);
     }
 
     // Keyword filter (title, store_name, address, comment)

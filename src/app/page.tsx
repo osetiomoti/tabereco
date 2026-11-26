@@ -234,7 +234,7 @@ export default function HomePage() {
             />
             <StatPill
               href="/map"
-              value={groupActivities.length}
+              value={allCandidatePosts.length}
               label="みんなの投稿"
               icon={<Camera size={16} className="text-white" />}
               color="bg-white/20"

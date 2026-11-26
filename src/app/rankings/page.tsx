@@ -290,7 +290,7 @@ function UserPanel({
               )}
             </div>
             <div className="flex items-center gap-2 mt-0.5">
-              <span className="text-[11px] text-gray-400 font-bold">{userRanking.postCount}件</span>
+              <span className="text-[11px] text-gray-400 font-bold">{userRanking.postCount}件の記録</span>
               {saving && (
                 <span className="flex items-center gap-1 text-[10px] text-gray-400">
                   <Loader2 size={10} className="animate-spin" /> 保存中...
@@ -468,7 +468,7 @@ function TagSelectorView({
                   <div className="text-left">
                     <p className="font-black text-gray-900 text-[15px]">#{tag.name}</p>
                     <p className="text-[11px] text-gray-400 font-bold mt-0.5">
-                      {tagScope === 'mine' ? `${tag.post_count}件` : `${tag.user_count}人 · ${tag.post_count}件`}
+                      {tagScope === 'mine' ? `タグ使用 ${tag.post_count}回` : `${tag.user_count}人 · タグ使用 ${tag.post_count}回`}
                     </p>
                   </div>
                 </div>

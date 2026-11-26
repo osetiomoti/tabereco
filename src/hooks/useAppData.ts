@@ -101,9 +101,14 @@ export function useGroups() {
 
 /** 自分の投稿（訪問済み+行きたい）をSWRでキャッシュ */
 export function useMyPosts() {
-  const { data: visited, isLoading: v1 } = useSWR<Post[]>(
+  const { data: visited, isLoading: v1, mutate: mutateVisited } = useSWR<Post[]>(
     ['/api/posts', 'visited'],
     () => getPosts({ status: 'visited' }),
+    { dedupingInterval: 180_000, revalidateOnFocus: false }
+  );
+  const { data: markedVisitedData, isLoading: v1m, mutate: mutateMarkedVisited } = useSWR<{ success: boolean; data: Post[] }>(
+    '/api/posts?marked_visited=true',
+    jsonFetcher,
     { dedupingInterval: 180_000, revalidateOnFocus: false }
   );
   const { data: wantToGo, isLoading: v2, mutate: mutateWantToGo } = useSWR<Post[]>(
@@ -111,11 +116,53 @@ export function useMyPosts() {
     () => getPosts({ status: 'want_to_go' }),
     { dedupingInterval: 180_000, revalidateOnFocus: false }
   );
+  const { data: markedWantToGoData, isLoading: v2m, mutate: mutateMarkedWantToGo } = useSWR<{ success: boolean; data: Post[] }>(
+    '/api/posts?marked_want_to_go=true',
+    jsonFetcher,
+    { dedupingInterval: 180_000, revalidateOnFocus: false }
+  );
+
+  const visitedPosts = useMemo(() => {
+    const list = [...(visited ?? [])];
+    const marked = markedVisitedData?.data ?? [];
+    const seen = new Set(list.map(p => p.id));
+    for (const p of marked) {
+      if (!seen.has(p.id)) {
+        list.push(p);
+        seen.add(p.id);
+      }
+    }
+    return list;
+  }, [visited, markedVisitedData]);
+
+  const wantToGoPosts = useMemo(() => {
+    const list = [...(wantToGo ?? [])];
+    const marked = markedWantToGoData?.data ?? [];
+    const seen = new Set(list.map(p => p.id));
+    for (const p of marked) {
+      if (!seen.has(p.id)) {
+        list.push(p);
+        seen.add(p.id);
+      }
+    }
+    return list;
+  }, [wantToGo, markedWantToGoData]);
+
+  const mutateAll = async () => {
+    await Promise.all([
+      mutateVisited(),
+      mutateMarkedVisited(),
+      mutateWantToGo(),
+      mutateMarkedWantToGo(),
+    ]);
+  };
+
   return {
-    visitedPosts: visited ?? [],
-    wantToGoPosts: wantToGo ?? [],
-    isLoading: v1 || v2,
+    visitedPosts,
+    wantToGoPosts,
+    isLoading: v1 || v1m || v2 || v2m,
     mutateWantToGo,
+    mutateAll,
   };
 }
 

@@ -392,7 +392,7 @@ function FilteredPostsList({ keyword, searchMode }: { keyword: string, searchMod
 function StatsPageInner() {
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
   
-  const { filterState, updateFilter } = useSharedFilter();
+  const { filterState, updateFilter, isLoaded: isFilterLoaded } = useSharedFilter();
   const searchParams = useSearchParams();
   const from = searchParams.get('from');
   const mode = searchParams.get('mode');
@@ -402,7 +402,7 @@ function StatsPageInner() {
 
   const { profile } = useMyProfile();
   const { appType } = useAppType();
-  const { memberUsers, joinedGroups } = useGroupMembers();
+  const { memberUsers, joinedGroups, isLoading: isGroupsLoading } = useGroupMembers();
 
   // マイページから遷移してきた場合、フィルターを「自分のみ（または対象ユーザーのみ）」に設定
   useEffect(() => {
@@ -429,22 +429,20 @@ function StatsPageInner() {
   const [activePref, setActivePref] = useState<string | undefined>(undefined);
   const [activeRatingLabel, setActiveRatingLabel] = useState<string | undefined>(undefined);
 
-  const [inputValue, setInputValue] = useState(filterState.keyword || '');
-  const [debouncedKeyword, setDebouncedKeyword] = useState(filterState.keyword || '');
-  const searchMode = (filterState.searchMode as 'store_name' | 'address') || 'store_name';
-
-  useEffect(() => {
-    setInputValue(filterState.keyword || '');
-    setDebouncedKeyword(filterState.keyword || '');
-  }, [filterState.keyword]);
+  // 統計画面のキーワード検索は sharedFilter と独立したローカルstateで管理する
+  // （検索画面のキーワードを引き継がない）
+  const [inputValue, setInputValue] = useState('');
+  const [debouncedKeyword, setDebouncedKeyword] = useState('');
+  const [localSearchMode, setLocalSearchMode] = useState<'store_name' | 'address'>('store_name');
+  const searchMode = localSearchMode;
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedKeyword(inputValue);
-      updateFilter({ keyword: inputValue });
+      // sharedFilter には書き戻さない（検索画面に影響させない）
     }, 400);
     return () => clearTimeout(timer);
-  }, [inputValue, updateFilter]);
+  }, [inputValue]);
 
   // フィルタ状態からクエリ文字列を構築
   const queryString = useMemo(() => {
@@ -476,7 +474,7 @@ function StatsPageInner() {
       params.append('selected_tags', tags.join(','));
       params.append('tag_match_mode', advanced.tagMatchMode || filterState.tagMatchMode || 'AND');
     }
-    if (filterState.activeTab && filterState.activeTab !== 'all') params.append('status', filterState.activeTab);
+    // 統計画面は検索画面のステータス（visited/want_to_go）を引き継がない（全体統計を表示）
     
     // Hot spring filters
     if (advanced.is_hot_spring_mode) {
@@ -685,7 +683,7 @@ function StatsPageInner() {
             <div className="flex bg-gray-200/60 p-0.5 rounded-xl shrink-0">
               <button
                 type="button"
-                onClick={() => updateFilter({ searchMode: 'store_name' })}
+                onClick={() => setLocalSearchMode('store_name')}
                 className={`flex items-center gap-1 px-2.5 py-1 rounded-[10px] text-[11px] font-black transition-all ${
                   searchMode !== 'address'
                     ? 'bg-orange-500 text-white shadow-xs'
@@ -697,7 +695,7 @@ function StatsPageInner() {
               </button>
               <button
                 type="button"
-                onClick={() => updateFilter({ searchMode: 'address' })}
+                onClick={() => setLocalSearchMode('address')}
                 className={`flex items-center gap-1 px-2.5 py-1 rounded-[10px] text-[11px] font-black transition-all ${
                   searchMode === 'address'
                     ? 'bg-orange-500 text-white shadow-xs'
@@ -749,6 +747,7 @@ function StatsPageInner() {
             onRemove={removeFilter}
             users={memberUsers}
             groups={joinedGroups}
+            isLoading={!isFilterLoaded || isGroupsLoading}
           />
         </div>
 
